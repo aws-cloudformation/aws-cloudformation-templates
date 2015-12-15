@@ -7,7 +7,7 @@ In many cases, an AWS Administrator needs to temporarily provide read-only crede
 
 ## Policy
 
-This example provides READ-ONLY access to the following infrastructure and data services: EC2, CloudFormation, AutoScaling, and S3. They are controlled by the inline policy _ReadPolicy_ seen below. 
+This **example** provides READ-ONLY access to the following infrastructure and data services: EC2, CloudFormation, AutoScaling, and S3. The policy was derived from the AWS Managed Policy *ReadOnlyAccess*. 
   
 	"ReadPolicy" : {
       "Type": "AWS::IAM::Policy",
