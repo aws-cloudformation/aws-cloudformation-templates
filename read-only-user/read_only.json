@@ -1,0 +1,160 @@
+{
+ "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Creates a read only user, that has permission to controls it's own Access Keys and MFA device",
+
+  "Parameters" : {
+    "Password" : {
+      "NoEcho": "true",
+      "Description" : "IAM user's console password, that follows accounts IAM password policy",
+      "Type": "String"
+    }   
+  },
+  
+  "Resources" : {
+    "User" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Path" : "/",
+        "LoginProfile" : {
+          "Password" : { "Ref" : "Password" },
+          "PasswordResetRequired" : "True"
+        }
+      }
+    },
+
+    "ReadPolicy" : {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "read_only_policy",
+        "PolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [
+            {
+              "Effect" : "Allow",
+              "Action":[
+        	"autoscaling:Describe*",
+            	"cloudformation:Describe*",
+   		"cloudformation:GetTemplate",
+   		"cloudformation:List*",
+ 		"ec2:Describe*",
+  		"ec2:GetConsoleOutput",
+ 	        "s3:List*",
+                "s3:GetBucketLocation",
+                "s3:GetBucketPolicy",
+                "s3:GetLifecycleConfiguration",
+                "tag:Get*"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Users" : [
+          { "Ref" : "User" }
+        ]
+      }
+    },
+
+    "MFAPolicy" : {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateVirtualMFADevice",
+                "iam:EnableMFADevice",
+                "iam:ResyncMFADevice"
+              ],
+              "Resource": [
+                { "Fn::Join" : [ "", [ "arn:aws:iam::", 
+                    { "Ref" : "AWS::AccountId" }, ":mfa/${aws:username}" ] ] },
+                { "Fn::Join" : [ "", [ "arn:aws:iam::", 
+                    { "Ref" : "AWS::AccountId" }, ":user/${aws:username}" ] ] }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:DeactivateMFADevice",
+                "iam:DeleteVirtualMFADevice"
+              ],
+              "Resource": [
+                { "Fn::Join" : [ "", [ "arn:aws:iam::", 
+                    { "Ref" : "AWS::AccountId" }, ":mfa/${aws:username}" ] ] },
+                { "Fn::Join" : [ "", [ "arn:aws:iam::", 
+                    { "Ref" : "AWS::AccountId" }, ":user/${aws:username}" ] ] }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:MultiFactorAuthPresent": true
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:ListMFADevices",
+                "iam:ListVirtualMFADevices",
+                "iam:ListUsers"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Users" : [
+          { "Ref" : "User" }
+        ]
+      }
+    },
+
+    "AccessKeyPolicy" : {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:*LoginProfile",
+                "iam:*AccessKey*"
+              ],
+              "Resource" : [
+                { "Fn::Join" : [ "", [ "arn:aws:iam::", 
+                  { "Ref" : "AWS::AccountId" }, ":user/${aws:username}" ] ] }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:ListAccount*",
+                "iam:GetAccount*",
+                "iam:ListUsers"
+              ],
+              "Resource" : [
+                "*"
+              ]
+            }
+          ]
+        },
+        "Users" : [
+          { "Ref" : "User" }
+        ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "User" : {
+      "Value" : { "Ref" : "User" }
+    },
+
+    "ConsoleAccess" : {
+      "Value" : { "Fn::Join" : [ "", [ "https://", 
+        { "Ref" : "AWS::AccountId" }, ".signin.aws.amazon.com/console" ] ] }
+    }
+  }
+}
