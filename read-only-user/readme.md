@@ -130,6 +130,6 @@ To make changes to users policy, update the template and stack.
 
 AWS CLI can be downloaded here [http://aws.amazon.com/cli](http://aws.amazon.com/cli), or use a python package manager. After the install, configure the cli using the command below. (**NOTE:** One must set default region, i.e. us-west-2)
 
-  $ pip install awscli
-  $ aws configure
+    $ pip install awscli
+    $ aws configure
 
