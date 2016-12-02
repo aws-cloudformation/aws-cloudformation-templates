@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation Sample Template DynamoDB_Secondary_Indexes: Create
+  a DynamoDB table with local and global secondary indexes. **WARNING** This template
+  creates an Amazon DynamoDB table. You will be billed for the AWS resources used
+  if you create a stack from this template.'
+Parameters:
+  ReadCapacityUnits:
+    Description: Provisioned read throughput
+    Type: Number
+    Default: '5'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+  WriteCapacityUnits:
+    Description: Provisioned write throughput
+    Type: Number
+    Default: '10'
+    MinValue: '5'
+    MaxValue: '10000'
+    ConstraintDescription: must be between 5 and 10000
+Resources:
+  TableOfBooks:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: Title
+        AttributeType: S
+      - AttributeName: Category
+        AttributeType: S
+      - AttributeName: Language
+        AttributeType: S
+      KeySchema:
+      - AttributeName: Category
+        KeyType: HASH
+      - AttributeName: Title
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref 'ReadCapacityUnits'
+        WriteCapacityUnits: !Ref 'WriteCapacityUnits'
+      LocalSecondaryIndexes:
+      - IndexName: LanguageIndex
+        KeySchema:
+        - AttributeName: Category
+          KeyType: HASH
+        - AttributeName: Language
+          KeyType: RANGE
+        Projection:
+          ProjectionType: KEYS_ONLY
+      GlobalSecondaryIndexes:
+      - IndexName: TitleIndex
+        KeySchema:
+        - AttributeName: Title
+          KeyType: HASH
+        Projection:
+          ProjectionType: KEYS_ONLY
+        ProvisionedThroughput:
+          ReadCapacityUnits: !Ref 'ReadCapacityUnits'
+          WriteCapacityUnits: !Ref 'WriteCapacityUnits'
+Outputs:
+  TableName:
+    Value: !Ref 'TableOfBooks'
+    Description: Name of the newly created DynamoDB table
