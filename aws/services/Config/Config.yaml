@@ -1,4 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Metadata: 
+  License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template Config: This template demonstrates
   the usage of AWS Config resources. **WARNING** You will be billed for the AWS resources
   used if you create a stack from this template.'
