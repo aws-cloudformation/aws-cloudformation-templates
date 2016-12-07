@@ -1,4 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Metadata: 
+  License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template DynamoDB_Secondary_Indexes: Create
   a DynamoDB table with local and global secondary indexes. **WARNING** This template
   creates an Amazon DynamoDB table. You will be billed for the AWS resources used
