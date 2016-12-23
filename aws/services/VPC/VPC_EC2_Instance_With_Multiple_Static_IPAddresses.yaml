@@ -1,15 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Metadata: 
   License: Apache-2.0
-Description: 'AWS CloudFormation Sample Template ELBGuidedAutoScalingRollingUpdates:
-  This example creates an auto scaling group behind a load balancer with a simple
-  health check. The Auto Scaling launch configuration includes an update policy that
-  will keep 2 instances running while doing an autoscaling rolling update. The update
-  will roll forward only when the ELB health check detects an updated instance in-service.
-  **WARNING** This template creates one or more Amazon EC2  instances and an Elastic
-  Load Balancer. You will be billed for the AWS resources used if you create a stack
-  from this template.'
+Description: 'AWS CloudFormation Sample Template VPC_EC2_Instance_With_Multiple_Static_IPAddresses:
+  Sample template showing how to create an instance with a single network interface
+  and multiple static IP addresses in an existing VPC. It assumes you have already
+  created a VPC. **WARNING** This template creates an Amazon EC2 instance. You will
+  be billed for the AWS resources used if you create a stack from this template.'
 Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
@@ -23,10 +24,26 @@ Parameters:
       i2.2xlarge, i2.4xlarge, i2.8xlarge, d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge,
       hi1.4xlarge, hs1.8xlarge, cr1.8xlarge, cc2.8xlarge, cg1.4xlarge]
     ConstraintDescription: must be a valid EC2 instance type.
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
-    Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VpcId of your existing Virtual Private Cloud (VPC)
+    ConstraintDescription: must be the VPC Id of an existing Virtual Private Cloud.
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: SubnetId of an existing subnet (for the primary network) in your
+      Virtual Private Cloud (VPC)
+    ConstraintDescription: must be an existing subnet in the selected Virtual Private
+      Cloud.
+  PrimaryIPAddress:
+    Type: String
+    Description: Primary private IP. This must be a valid IP address for Subnet
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})
+    ConstraintDescription: must be a valid IP address of the form x.x.x.x.
+  SecondaryIPAddress:
+    Type: String
+    Description: Secondary private IP. This ust be a valid IP address for Subnet
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})
+    ConstraintDescription: must be a valid IP address of the form x.x.x.x.
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
@@ -254,19 +271,19 @@ Mappings:
     us-east-1:
       PV64: ami-2a69aa47
       HVM64: ami-6869aa05
-      HVMG2: ami-a41a3fb3
+      HVMG2: ami-648d9973
     us-west-2:
       PV64: ami-7f77b31f
       HVM64: ami-7172b611
-      HVMG2: ami-caf253aa
+      HVMG2: ami-09cd7a69
     us-west-1:
       PV64: ami-a2490dc2
       HVM64: ami-31490d51
-      HVMG2: ami-00347e60
+      HVMG2: ami-1e5f0e7e
     eu-west-1:
       PV64: ami-4cdd453f
       HVM64: ami-f9dd458a
-      HVMG2: ami-e2f7bd91
+      HVMG2: ami-b4694ac7
     eu-west-2:
       PV64: NOT_SUPPORTED
       HVM64: ami-886369ec
@@ -274,11 +291,11 @@ Mappings:
     eu-central-1:
       PV64: ami-6527cf0a
       HVM64: ami-ea26ce85
-      HVMG2: ami-d2ff04bd
+      HVMG2: ami-de5191b1
     ap-northeast-1:
       PV64: ami-3e42b65f
       HVM64: ami-374db956
-      HVMG2: ami-4c78d52d
+      HVMG2: ami-df9ff4b8
     ap-northeast-2:
       PV64: NOT_SUPPORTED
       HVM64: ami-2b408b45
@@ -286,15 +303,15 @@ Mappings:
     ap-southeast-1:
       PV64: ami-df9e4cbc
       HVM64: ami-a59b49c6
-      HVMG2: ami-f3f95990
+      HVMG2: ami-8d8d23ee
     ap-southeast-2:
       PV64: ami-63351d00
       HVM64: ami-dc361ebf
-      HVMG2: ami-3a122e59
+      HVMG2: ami-cbaf94a8
     ap-south-1:
       PV64: NOT_SUPPORTED
       HVM64: ami-ffbdd790
-      HVMG2: ami-21a7d34e
+      HVMG2: ami-decdbab1
     us-east-2:
       PV64: NOT_SUPPORTED
       HVM64: ami-f6035893
@@ -312,143 +329,67 @@ Mappings:
       HVM64: ami-8e6aa0e3
       HVMG2: NOT_SUPPORTED
 Resources:
-  WebServerGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT15M
-        Count: '2'
-    UpdatePolicy:
-      AutoScalingRollingUpdate:
-        MaxBatchSize: '1'
-        MinInstancesInService: '1'
-        PauseTime: PT15M
-        WaitOnResourceSignals: 'true'
+  EIP1:
+    Type: AWS::EC2::EIP
     Properties:
-      AvailabilityZones: !GetAZs ''
-      LaunchConfigurationName: !Ref 'LaunchConfig'
-      MinSize: '2'
-      MaxSize: '4'
-      LoadBalancerNames: [!Ref 'ElasticLoadBalancer']
-  LaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
-    Metadata:
-      AWS::CloudFormation::Init:
-        configSets:
-          full_install: [install_cfn, install_app, verify_instance_health]
-        install_cfn:
-          files:
-            /etc/cfn/cfn-hup.conf:
-              content: !Sub |
-                [main]
-                stack=${AWS::StackId}
-                region=${AWS::Region}
-              mode: '000400'
-              owner: root
-              group: root
-            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
-              content: !Sub |
-                [cfn-auto-reloader-hook]
-                triggers=post.update
-                path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
-                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
-                runas=root
-          services:
-            sysvinit:
-              cfn-hup:
-                enabled: 'true'
-                ensureRunning: 'true'
-                files: [/etc/cfn/cfn-hup.conf, /etc/cfn/hooks.d/cfn-auto-reloader.conf]
-        install_app:
-          packages:
-            yum:
-              httpd: []
-          files:
-            /var/www/html/index.html:
-              content: !Join
-                - ''
-                - - '<h1>Congratulations, you have successfully launched the AWS CloudFormation sample.</h1>'
-                  - '<p>Version: 1.0</p>'
-              mode: '000644'
-              owner: root
-              group: root
-          services:
-            sysvinit:
-              httpd:
-                enabled: 'true'
-                ensureRunning: 'true'
-        verify_instance_health:
-          commands:
-            ELBHealthCheck:
-              command: !Sub
-                'until [ "$state" == "\"InService\"" ]; do state=$(aws --region ${AWS::Region} elb describe-instance-health
-                 --load-balancer-name ${ElasticLoadBalancer}
-                 --instances $(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-                 --query InstanceStates[0].State); sleep 10; done'
+      Domain: vpc
+  EIPAssoc1:
+    Type: AWS::EC2::EIPAssociation
     Properties:
-      KeyName: !Ref 'KeyName'
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
-          !Ref 'InstanceType', Arch]]
-      InstanceType: !Ref 'InstanceType'
-      SecurityGroups: [!Ref 'InstanceSecurityGroup']
-      IamInstanceProfile: !Ref 'WebServerInstanceProfile'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource LaunchConfig --configsets full_install --region ${AWS::Region}
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServerGroup --region ${AWS::Region}
-  ElasticLoadBalancer:
-    Type: AWS::ElasticLoadBalancing::LoadBalancer
-    Properties:
-      AvailabilityZones: !GetAZs ''
-      CrossZone: 'true'
-      Listeners:
-      - LoadBalancerPort: '80'
-        InstancePort: '80'
-        Protocol: HTTP
-      HealthCheck:
-        Target: HTTP:80/
-        HealthyThreshold: '3'
-        UnhealthyThreshold: '5'
-        Interval: '30'
-        Timeout: '5'
-  InstanceSecurityGroup:
+      NetworkInterfaceId: !Ref 'Eth0'
+      AllocationId: !GetAtt [EIP1, AllocationId]
+  SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH access and HTTP access on the configured port
+      VpcId: !Ref 'VpcId'
+      GroupDescription: Enable SSH access via port 22
       SecurityGroupIngress:
       - IpProtocol: tcp
         FromPort: '22'
         ToPort: '22'
         CidrIp: !Ref 'SSHLocation'
-      - IpProtocol: tcp
-        FromPort: '80'
-        ToPort: '80'
-        CidrIp: 0.0.0.0/0
-  WebServerInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
+  EC2Instance:
+    Type: AWS::EC2::Instance
     Properties:
-      Path: /
-      Roles: [!Ref 'DescribeHealthRole']
-  DescribeHealthRole:
-    Type: AWS::IAM::Role
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
+          !Ref 'InstanceType', Arch]]
+      InstanceType: !Ref 'InstanceType'
+      KeyName: !Ref 'KeyName'
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref 'Eth0'
+        DeviceIndex: '0'
+      Tags:
+      - Key: Name
+        Value: myInstance
+  Eth0:
+    Type: AWS::EC2::NetworkInterface
     Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [ec2.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-      - PolicyName: describe-instance-health-policy
-        PolicyDocument:
-          Statement:
-          - Effect: Allow
-            Action: ['elasticloadbalancing:DescribeInstanceHealth']
-            Resource: '*'
+      Description: eth0
+      GroupSet: [!Ref 'SSHSecurityGroup']
+      PrivateIpAddresses:
+      - PrivateIpAddress: !Ref 'PrimaryIPAddress'
+        Primary: 'true'
+      - PrivateIpAddress: !Ref 'SecondaryIPAddress'
+        Primary: 'false'
+      SourceDestCheck: 'true'
+      SubnetId: !Ref 'SubnetId'
+      Tags:
+      - Key: Name
+        Value: Interface 0
+      - Key: Interface
+        Value: eth0
 Outputs:
-  URL:
-    Description: URL of the website
-    Value: !Join ['', ['http://', !GetAtt [ElasticLoadBalancer, DNSName]]]
+  InstanceId:
+    Value: !Ref 'EC2Instance'
+    Description: Instance Id of newly created instance
+  EIP1:
+    Value: !Join [' ', [IP address, !Ref 'EIP1', on subnet, !Ref 'SubnetId']]
+    Description: Primary public IP of Eth0
+  PrimaryPrivateIPAddress:
+    Value: !Join [' ', [IP address, !GetAtt [Eth0, PrimaryPrivateIpAddress], on subnet,
+        !Ref 'SubnetId']]
+    Description: Primary private IP address of Eth0
+  SecondaryPrivateIPAddresses:
+    Value: !Join [' ', [IP address, !Select ['0', !GetAtt [Eth0, SecondaryPrivateIpAddresses]],
+        on subnet, !Ref 'SubnetId']]
+    Description: Secondary private IP address of Eth0
