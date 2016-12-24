@@ -34,6 +34,8 @@ Once stack creation is completed the outputs provides urls for a git pull method
 
 This function generates and ssh keypair that will be used by the GitPull function to authenticate to git. the private key is encrypted with KMS and stored in a dedicated S3 bucket.
 
+***Note:*** * This function requires the pycrypto library to be built and included in the lambda function zipfile
+
 #### DeleteBucketContents
 
 As CloudFormation does not delete S3 bucket contents when a stack is deleted, this function removes the S3 keys and Code zips from S3 when the CloudFormation DeleteStack operation is called.
@@ -41,6 +43,39 @@ As CloudFormation does not delete S3 bucket contents when a stack is deleted, th
 #### GitPullS3
 
 This function backs the git pull method of the API, it uses the pygit2 library to perform a clone (over ssh) of the repository received in the event. This clone is then zipped and uploaded to S3.
+
+###### Setup build environment for Lambda function
+This function uses the pygit2 library to interface with git, as this library requires some C libraries to be compiled you will need to do this on an instance that matches the Lambda execution environment (amzn-ami-hvm-2015.09.1.x86_64-gp2 AMI).
+
+###### Build dependencies
+The libgit2 library is required by pygit2. First off ssh into your instance created with the lambda AMI and install the required packages:
+```bash
+$ sudo yum update
+$ sudo yum install -y cmake openssl-devel libssh2-devel gcc libcurl-devel libffi-devel
+```
+Now download and build libgit2
+```bash
+$ mkdir ~/build
+$ cd ~/build
+$ wget https://github.com/libgit2/libgit2/archive/v0.24.1.tar.gz
+$ tar -xvf v0.24.1.tar.gz
+$ cd libgit2-0.24.1/
+$ cmake -DBUILD_CLAR=OFF .
+$ make
+$ sudo make install
+```
+Install pygit2 and copy the required libraries and python modules to the folder.
+```bash
+$ mkdir ~/lambda
+$ cd ~/lambda
+$ sudo pip install pygit2
+$ sudo pip install ipaddress
+$ cp ~/build/libgit2-0.24.1/libgit2.so.24 ./
+$ cp /usr/local/lib64/python2.7/site-packages/_cffi_backend.so ./
+$ cp -r /usr/local/lib64/python2.7/site-packages/cffi ./
+$ cp -r /usr/local/lib64/python2.7/site-packages/pygit2 ./
+$ cp /usr/local/lib/python2.7/site-packages/ipaddress.py ./
+```
 
 #### ZipDl  
 
