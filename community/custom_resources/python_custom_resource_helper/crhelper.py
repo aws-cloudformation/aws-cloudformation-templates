@@ -84,7 +84,7 @@ def send(event, context, responseStatus, responseData, physicalResourceId,
 
 
 # Function that executes just before lambda excecution times out
-def timeout(event, context):
+def timeout(event, context, logger):
     logger.error("Execution is about to time out, sending failure message")
     send(event, context, "FAILED", None, None, reason="Execution timed out",
          logger=logger)
@@ -114,7 +114,7 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
 
     # Setup timer to catch timeouts
     t = threading.Timer((context.get_remaining_time_in_millis()/1000.00)-0.5,
-                        timeout, args=[event, context])
+                        timeout, args=[event, context, logger])
     t.start()
 
     try:
