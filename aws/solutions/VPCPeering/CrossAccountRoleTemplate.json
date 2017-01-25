@@ -1,0 +1,61 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This Template Create a CrossAccount Role _CrossAccountRoleForRequesterVPCAccount_",
+  "Parameters": {
+    "RequesterAccountNumber" : {
+      "Type"                  : "String",
+      "Default"               : "1234567891011",
+      "Description"           : "Number of the requester account",
+      "AllowedPattern"        : "[0-9]*",
+      "ConstraintDescription" : "Must be an account number"
+    }
+  },
+  "Resources": {
+    "VPCPeeringAuthorizerRole" : {
+      "Type": "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+            "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      { "Ref" : "RequesterAccountNumber" },
+                      ":root"
+                    ]
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies" : [
+          {
+            "PolicyName" : "VPCAuthorizer",
+            "PolicyDocument" : {
+              "Statement" : 
+              [
+                {
+                  "Effect" : "Allow",
+                  "Action" : ["ec2:AcceptVpcPeeringConnection"],
+                  "Resource" : ["*"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs":{
+    "RoleName" : {
+      "Description": "Cross Account Role Name",
+      "Value" : { "Ref" : "VPCPeeringAuthorizerRole" }
+    }
+  }
+}
