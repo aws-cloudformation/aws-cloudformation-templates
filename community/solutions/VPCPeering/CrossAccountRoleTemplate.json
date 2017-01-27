@@ -1,13 +1,13 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This Template Create a CrossAccount Role _CrossAccountRoleForRequesterVPCAccount_",
+  "Description": "Create a role to authorize the VPC Peering request from a specific account, this is used to create the VPC Peer between different accounts in CloudFormation",
   "Parameters": {
     "RequesterAccountNumber" : {
       "Type"                  : "String",
       "Default"               : "1234567891011",
       "Description"           : "Number of the requester account",
       "AllowedPattern"        : "[0-9]*",
-      "ConstraintDescription" : "Must be an account number"
+      "ConstraintDescription" : "Must be account number without dashes"
     }
   },
   "Resources": {

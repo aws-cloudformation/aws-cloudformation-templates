@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Create Cross Account VPC Peer, with Lambda backed custom resources. _VPCPeerTemplate_",
+  "Description": "This template create a lambda function and use it to generate a cross account VPC Peer request , the destination account must have created the role to authorize the VPC Peer request",
   "Metadata": {},
   "Parameters": {
     "LocalVPC": {
