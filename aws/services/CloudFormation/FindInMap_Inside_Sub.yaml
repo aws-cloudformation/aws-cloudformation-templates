@@ -66,11 +66,13 @@ Resources:
             - |
               #!/bin/bash
 
-              # Examples of using a variable from FindInMap below
+              # Examples of using Fn::FindInMap inside Fn::Sub
               useradd ${LocalFindInMapVarUsername}
               yum install ${LocalFindInMapVarWebserver}
               service ${LocalFindInMapVarWebserver} start
               chkconfig ${LocalFindInMapVarWebserver} on
+
+              # Example of using Fn::If inside Fn::Sub
               echo "${LocalIfVar}" > /etc/ssh/banner_text
 
               # Example of using Fn::GetAtt inside Fn::Sub
