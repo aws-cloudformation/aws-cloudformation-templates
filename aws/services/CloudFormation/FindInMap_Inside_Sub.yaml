@@ -1,0 +1,105 @@
+Metadata:
+  License: Apache-2.0
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation Sample Template FindInMap_Inside_Sub.yaml
+  This template shows a working example of using the new Fn::Sub function with
+  the Fn::FinInMap function embedded inside it.
+
+  This creates an EC2 instance with a customized UserData field.
+  The instance itself is not the point of this example, just the UserData field.
+
+  This template outputs a AWS CLI command for viewing the UserData on Mac/Linux.
+  You can also use the web console by going to the EC2 service, instances, select
+  your instance, click "actions" above the list, Instance Settings, View/Change User Data.
+
+  **WARNING** This template creates an Amazon EC2 instance.
+  You will be billed for the AWS resources used if you create a stack from this template.'
+Parameters:
+  EnvNameParam:
+    Description: Example 'dev' or 'test' switch, determines which settings are passed to userdata.
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+  AMIidParam:
+    Description: Enter a valid AMI ID for your selected region, suggested to use latest Amazon Linux.
+    Type: AWS::EC2::Image::Id
+    Default: ami-5ec1673e
+  InstanceTypeParam:
+    Description: Enter a valid instance type for your selected region.
+    Type: String
+    Default: 't2.micro'
+Mappings:
+  EnvMap:
+    dev:
+      UserToCreate: devuser
+      WebServer: httpd
+    test:
+      UserToCreate: testuser
+      WebServer: nginx
+Conditions:
+  ExampleConditionIfDev:
+    Fn::Equals:
+      - Ref: EnvNameParam
+      - 'dev'
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: FindInMap-Inside-Sub-Example
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId:
+        Ref: AMIidParam
+      InstanceType:
+        Ref: InstanceTypeParam
+      SecurityGroupIds:
+        - Ref: InstanceSecurityGroup
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            # Use a literal | to let us enter a large block of text but with variable replacements
+            # We then use those special variables inside the literal block
+            # We can also use some functions and variables directly inside the literal block
+            - |
+              #!/bin/bash
+
+              # Examples of using Fn::FindInMap inside Fn::Sub
+              useradd ${LocalFindInMapVarUsername}
+              yum install ${LocalFindInMapVarWebserver}
+              service ${LocalFindInMapVarWebserver} start
+              chkconfig ${LocalFindInMapVarWebserver} on
+
+              # Example of using Fn::If inside Fn::Sub
+              echo "${LocalIfVar}" > /etc/ssh/banner_text
+
+              # Example of using Fn::GetAtt inside Fn::Sub
+              echo "Security Group ID is ${InstanceSecurityGroup.GroupId}" >> /etc/ssh/banner_text
+
+              # Example of using Ref inside Fn::Sub
+              echo "Instance type is ${InstanceTypeParam}" >> /etc/ssh/banner_text
+
+              echo "Banner /etc/ssh/banner_text" >> /etc/ssh/sshd_config
+              service sshd restart
+            - {
+              # This is where we keep the complex things we want inserted into the Fn::Sub literal block
+              # You can even use Fn::If statements in this section
+              LocalFindInMapVarUsername:    !FindInMap [ EnvMap,                !Ref EnvNameParam,         UserToCreate ],
+              LocalFindInMapVarWebserver:   !FindInMap [ EnvMap,                !Ref EnvNameParam,         WebServer ],
+              LocalIfVar:                   !If        [ ExampleConditionIfDev, 'This box is development', 'This box is testing' ]
+              }
+Outputs:
+  CLIcommand:
+    Description: CLI command to view the user data on Mac/Linux.
+    Value:
+      Fn::Join:
+        - ""
+        - - 'aws ec2 describe-instance-attribute --instance-id '
+          - Ref: EC2Instance
+          - " --attribute userData | awk '{print $2}' | base64 --decode"
+  WebConsoleInstructions:
+    Description: Instructions for using the web console to view userdata.
+    Value: 'Log in to the web console, navigate to the EC2 service section, select instances on the left, select
+    your instance from the list, click "actions" above the list, mouse over Instance Settings, click View/Change User Data.'
