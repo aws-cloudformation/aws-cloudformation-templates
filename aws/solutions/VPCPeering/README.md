@@ -9,7 +9,7 @@ When you request a VPC peering connection from one AWS account (referred to here
 ## Resolution
 Using AWS Lambda and CloudFormation Custom Resources we can go around this limitation, allowing the creation of the VPC Peers from within a CloudFormation Stack.
 
-# Instructions
+## Instructions
 
 The following steps provide a brief overview of this process:
  * Create a Cross Account Role on the peer account, using the template CrossAccountRoleTemplate.json, in this stack you need to specify the account id that will be requesting the VPC Peer connection
