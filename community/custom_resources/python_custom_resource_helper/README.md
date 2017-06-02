@@ -23,7 +23,9 @@ except Exception, e:
 
 def create(event, context):
     """
-    Place your code to handle Create events here
+    Place your code to handle Create events here.
+    
+    To return a failure to CloudFormation simply raise an exception, the exception message will be sent to CloudFormation Events.
     """
     physical_resource_id = 'myResourceId'
     response_data = {}
@@ -33,6 +35,8 @@ def create(event, context):
 def update(event, context):
     """
     Place your code to handle Update events here
+    
+    To return a failure to CloudFormation simply raise an exception, the exception message will be sent to CloudFormation Events.
     """
     physical_resource_id = event['PhysicalResourceId']
     response_data = {}
@@ -42,6 +46,8 @@ def update(event, context):
 def delete(event, context):
     """
     Place your code to handle Delete events here
+    
+    To return a failure to CloudFormation simply raise an exception, the exception message will be sent to CloudFormation Events.
     """
     return
 
