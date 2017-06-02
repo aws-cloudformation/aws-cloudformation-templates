@@ -16,7 +16,7 @@ init_failed = False
 try:
     # Place initialization code here
     logger.info("Container initialization completed")
-except Exception, e:
+except Exception as e:
     logger.error(e, exc_info=True)
     init_failed = e
 
