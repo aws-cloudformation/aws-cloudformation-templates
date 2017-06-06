@@ -1,9 +1,5 @@
 { 
-  "Description": "A CloudFormation template which shows how to provide multiple values to one StringValue when creating a DataPipeline definition, 
-  This template is entirely based on the example provided in the DataPipeline documentation here: 
-  http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-object-emrconfiguration.html
-  Written by Nishant Casey",
-  
+  "Description": "A CloudFormation template which shows how to provide multiple values to one StringValue when creating a DataPipeline definition, This template is entirely based on the example provided in the DataPipeline documentation here: http://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-object-emrconfiguration.html - Written by Nishant Casey",
   "Resources": {
     "DynamoDBInputS3OutputHive": {
       "Type": "AWS::DataPipeline::Pipeline",
@@ -22,11 +18,19 @@
               },
               {
                 "Key": "applications",
-                "StringValue": "['spark', 'hive', 'pig']"
+                "StringValue": "spark"
+              },
+              {
+                "Key": "applications",
+                "StringValue": "hive"
+              },
+              {
+                "Key": "applications",
+                "StringValue": "pig"
               },
               {
                 "Key": "type",
-                "StringValue": "EmrCluster",
+                "StringValue": "EmrCluster"
               },
               {
                 "Key": "configuration",
