@@ -5,23 +5,26 @@ with properties of another.
 
 ### Usage
 This template is for use as-is and does not require any Parameters or user input whatsoever. You can deploy this in any region
-that supports DataPipeline and CloudFormation. The Pipeline itself does not serve any particular purpose, rather, this exemplifies the
-tranlation of DataPipeline definitions using Cloudformation. 
+that supports DataPipeline and CloudFormation. The Pipeline itself does not serve any particular purpose, rather, this exemplifies the translation of DataPipeline definitions using Cloudformation. 
 
 You can see when we look at the following: 
 
 ```
               {
-                "Key": "releaseLabel",
-                "StringValue": "emr-4.1.0"
+                "Key": "applications",
+                "StringValue": "spark"
               },
               {
                 "Key": "applications",
-                "StringValue": "['spark', 'hive', 'pig']"
+                "StringValue": "hive"
+              },
+              {
+                "Key": "applications",
+                "StringValue": "pig"
               },
 ```
 
-We can pass multiple 'StringValue' using a combination of double and single quotes. 
+We can pass multiple 'StringValue' the same 'Key' multiple times
 
 And here we have an example of providing parameters for RefValues given in a different part of the PipelineObjects: 
 
