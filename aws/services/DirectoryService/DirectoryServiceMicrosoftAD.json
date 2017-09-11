@@ -1,0 +1,115 @@
+{"Parameters":{
+   "DomainName": {
+      "Description": "FQDN of the domain for this directory",
+      "Type": "String",
+      "Default": "corp.example.com"
+    },
+    "MicrosoftADShortName": {
+      "Description": "Netbios name of the domain for this directory",
+      "Type": "String",
+      "Default": "corp"
+    },
+    "EnableSingleSignOn": {
+      "Description": "Enable SSO",
+      "Type": "String",
+       "AllowedValues": [
+        "true",
+        "false"],
+      "Default": "false"
+    },
+    "CreateAlias": {
+      "Description": "Only required for applications which need a URL to connect to the directory",
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"],
+      "Default": "false"
+    },
+    "MicrosoftADPW": {
+      "Description": "Domain admin Password",
+      "Type": "String",
+      "NoEcho":true,
+      "Default": "Pass@w0rd"
+    },
+    "PrivateSubnet1": {
+    "Description" : "Subnet to be used for the Directoty",
+    "Type" : "List<AWS::EC2::Subnet::Id>"
+  },
+  "PrivateSubnet2": {
+    "Description" : "Subnet to be used for the Directoty",
+    "Type" : "List<AWS::EC2::Subnet::Id>"
+  },
+  "VPCID": {
+    "Description" : "The VPC the directory will be created in",
+    "Type" : "List<AWS::EC2::VPC::Id>"
+  }
+},
+  "Resources": {
+    "MSDirectory": {
+      "Type": "AWS::DirectoryService::MicrosoftAD",
+      "Properties": {
+        "CreateAlias" : false,
+    "EnableSso" : false,
+        "Name": {
+          "Ref": "DomainName"
+        },
+        "Password": {
+          "Ref": "MicrosoftADPW"
+        },
+        "ShortName": {
+          "Ref": "MicrosoftADShortName"
+        },
+        "VpcSettings": {
+          
+          "SubnetIds": [
+            { "Fn::Select" : [ "0",  {"Ref":"PrivateSubnet1"}  ] },
+            { "Fn::Select" : [ "0",  {"Ref":"PrivateSubnet2"}  ] }
+          ],
+          "VpcId": { "Fn::Select" : [ "0",  {"Ref":"VPCID"}  ] }
+        }
+      }
+    }
+  },
+  "Conditions" : {
+    "Alias" : {"Fn::Equals" : [{"Ref" : "CreateAlias"}, "true"]}
+     
+  },
+  "Outputs": {
+    "DirectoryID": {
+      "Description": "ID of the MSDirectory",
+      "Value": {
+        "Ref": "MSDirectory"
+      }
+    },
+     "PrimaryDNS": {
+      "Description": "DNS IPs of the MSDirectory",
+      "Value":
+      { "Fn::Select" : [ "0",  {
+        "Fn::GetAtt": [
+          "MSDirectory",
+          "DnsIpAddresses"
+        ]
+      }  ] }},
+      "SecondaryDNS": {
+      "Description": "DNS IPs of the MSDirectory",
+      "Value":
+      { "Fn::Select" : [ "1",  {
+        "Fn::GetAtt": [
+          "MSDirectory",
+          "DnsIpAddresses"
+        ]
+      }  ] }
+      
+    },
+    "DirectoryAlias": {
+      "Description": "URL for the alias",
+      "Value": {
+        "Fn::GetAtt": [
+          "MSDirectory",
+          "Alias"
+        ]
+      },
+      "Condition": "Alias"
+    }
+  }
+}
