@@ -1,0 +1,55 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template Creates a single EC2 instance with a single ENI which has multiple private and public IPs",
+  "Parameters":{
+  "Subnet": {
+      "Description": "ID of the Subnet the instance should be launched in, this will link the instance to the same VPC.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+      
+    }
+},
+  "Resources": {
+    "EIP1": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "VPC"
+      }
+    },
+    "EIP2": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "VPC"
+      }
+    },
+    "Association1":
+    {
+   "Type": "AWS::EC2::EIPAssociation",
+   "DependsOn" : ["ENI","EIP1"],
+   "Properties": {
+      "AllocationId": { "Fn::GetAtt" : [ "EIP1", "AllocationId" ]},
+      "NetworkInterfaceId": {"Ref":"ENI"},
+      "PrivateIpAddress": {"Fn::Select" : [ "0", {"Fn::GetAtt" : [ "ENI" , "SecondaryPrivateIpAddresses"]} ]}
+   }
+},
+"Association2":
+    {
+   "Type": "AWS::EC2::EIPAssociation",
+   "DependsOn" : ["ENI","EIP2"],
+   "Properties": {
+      "AllocationId": { "Fn::GetAtt" : [ "EIP2", "AllocationId" ]},
+       "NetworkInterfaceId": {"Ref":"ENI"},
+      "PrivateIpAddress": {"Fn::Select" : [ "1", {"Fn::GetAtt" : [ "ENI" , "SecondaryPrivateIpAddresses"]} ]}
+   }
+},
+ "ENI":
+{
+   "Type" : "AWS::EC2::NetworkInterface",
+   "Properties" : {
+      "SecondaryPrivateIpAddressCount" : 2,
+      "SourceDestCheck" : true,
+      "SubnetId" : { "Fn::Select" : [ "0", {"Ref" : "Subnet"} ] }
+}
+
+
+  
+}}}
