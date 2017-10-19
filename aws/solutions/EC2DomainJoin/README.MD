@@ -1,4 +1,4 @@
-# Join EC2 Windows to AD with no Powershelll
+# Join a new EC2 Windows to AD with no Powershelll
 
 Cloudformation template that will join a new Windows Server instance to Active Directory without powershell in UserData.
 
