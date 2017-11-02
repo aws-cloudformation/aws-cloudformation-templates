@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Test our custom resource
+Resources:
+  UpdateS3VPCEndpoint:
+    # The "EndpointUpdater" just has to be a unique string, can be anything
+    Type: Custom::EndpointUpdater
+    Properties:
+      # ARN of the Lambda function, here we import it from the other template included "deploy_update_endpoint_policy.yaml"
+      ServiceToken: !ImportValue S3EndpointUpdatedARN
+      # The VPC endpoint ID
+      vpc-endpoint-id: 'vpce-d6a55bbf'
+      # The bucket to add to the policy
+      bucket-arn: 'arn:aws:s3:::my_secure_bucket_abc123'
+      # The region the bucket resides in
+      region: 'us-west-2'
