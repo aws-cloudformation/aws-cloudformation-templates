@@ -1,0 +1,126 @@
+{"AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template creates a Network Load Balancer in 2 AZs with EIPs listening on TCP port 80. There are no registered targets these would either be EC2 instance IDs added to the targets property of the target group  or defined under the autoscaling group resources  ",
+    "Parameters": {
+      "VPC": {
+            "Type": "List<AWS::EC2::VPC::Id>"
+         
+        },
+         "Subnet1": {
+      "Description": "ID of the Subnet the instance should be launched in, this will link the instance to the same VPC.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+     "Subnet2": {
+      "Description": "ID of the Subnet the instance should be launched in, this will link the instance to the same VPC.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+        "ELBType": {
+            "Type": "String",
+            "Default":"network"
+        },
+        "ELBIpAddressType": {
+            "Type": "String",
+            "AllowedValues":["ipv4","dualstack"],
+            "Default":"ipv4"
+        }
+    },
+    "Resources": {
+      "EIP1": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "VPC"
+      }
+    },
+    "EIP2": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "VPC"
+      }
+    },
+        "loadBalancer": {
+          "DependsOn":["EIP2","EIP1"],
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "SubnetMappings": [
+                    {
+                        "AllocationId": {
+                            "Fn::GetAtt": [
+                               "EIP1",
+                                "AllocationId"
+                            ]
+                        },
+                        "SubnetId": {"Fn::Select": [
+            "0",
+            {
+              "Ref": "Subnet1"
+            }
+          ]}
+                    },
+                    {
+                        "AllocationId": {
+                            "Fn::GetAtt": [
+                                "EIP2",
+                                "AllocationId"
+                            ]
+                        },
+                        "SubnetId": {
+                            "Fn::Select": [
+            "0",
+            {
+              "Ref": "Subnet2"
+            }
+          ]
+                        }
+                    }
+                ],
+                "Type": {
+                    "Ref": "ELBType"
+                },
+                "IpAddressType": {
+                    "Ref": "ELBIpAddressType"
+                }
+            }
+        },
+        "FirstEIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+        "SecondEIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+        "TargetGroup" : {
+  "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+  "Properties" : {
+    "Name": "MyTargets",
+    "Port": 10,
+    "Protocol": "TCP",
+    "TargetGroupAttributes": [{
+      "Key": "deregistration_delay.timeout_seconds",
+      "Value": "20"
+    }],
+    "VpcId": {"Fn::Select": [
+            "0",
+            {
+              "Ref": "VPC"
+            }
+          ]}
+  }
+},
+"Listener": {
+  "Type": "AWS::ElasticLoadBalancingV2::Listener",
+  "Properties": {
+    "DefaultActions": [{
+      "Type": "forward",
+      "TargetGroupArn": { "Ref": "TargetGroup" }
+    }],
+    "LoadBalancerArn": { "Ref": "loadBalancer" },
+    "Port": "80",
+    "Protocol": "TCP"
+  }
+}
+    }
+}

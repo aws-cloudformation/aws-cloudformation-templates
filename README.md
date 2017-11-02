@@ -1,12 +1,12 @@
-#AWS CloudFormation Sample Templates
+# AWS CloudFormation Sample Templates
 Use sample AWS CloudFormation templates to learn how to declare specific AWS resources or solve a particular use case. We recommend that you use sample templates as a starting point for creating your own templates, not for launching production-level environments. Before launching a template, always review the resources that it will create and the permissions it requires.
 
-##About the Repository
+## About the Repository
 The AWS CloudFormation team and approved contributors provide and maintain sample templates in the `aws ` folder. 
 
 We also collect and make available templates developed by the community. These sample templates are located in the `community` folder and its subfolders. We encourage your contributions to these templates. Note, however, that we don't test, maintain, or support community templates.
 
-##Submitting Templates
+## Submitting Templates
 Before you submit a template, we suggest that you follow these guidelines to help maintain consistency between templates.
 
 - Test your template. Can you successfully create a stack with it? When you create a stack, AWS CloudFormation uses the `ValidateTemplate` API to check your template. When you delete a stack, is the stack (and all of its resources) successfully deleted? Make sure users aren't left with stray resources or stacks that have deletion errors.
@@ -22,7 +22,7 @@ Before you submit a template, we suggest that you follow these guidelines to hel
 
 When your template is ready, submit a pull request. A member of the AWS organization will review your request and might suggest changes. We review templates to check for general security issues, but we won't test or maintain them. If we don't get back to you within a week of your submission, use your pull request to send us a message.
 
-##Additional Resources
+## Additional Resources
 In the *AWS CloudFormation User Guide*, you can view more information about the following topics:
 
 - Learn how to use templates to create AWS CloudFormation stacks using the [AWS Management Console](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html) or [AWS Command Line Interface (AWS CLI)](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-cli-creating-stack.html).

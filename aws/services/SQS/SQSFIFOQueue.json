@@ -1,0 +1,131 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Best Practice SQS FIFO Queue, only avialable in us-east-1, us-west-2, ue-west-1 at time of template creation.",
+  "Parameters": {
+    "ContentBasedDeduplication": {
+      "Description": "specifies whether to enable content-based deduplication",
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "true"
+    },
+    "QueueName": {
+      "Description": "This stack will append fifo to the end of this name.",
+      "Type": "String"
+    },
+    "DelaySeconds": {
+      "Description": "The Id of the AMI you wish to launch the instance from.",
+      "Type": "Number",
+      "Default": "5"
+    },
+    "MaximumMessageSize": {
+      "Type": "Number",
+      "Description": "The limit of how many bytes that a message can contain before Amazon SQS rejects it, 1024 bytes (1 KiB) to 262144 bytes (256 KiB)",
+      "Default": "262144"
+    },
+    "MessageRetentionPeriod": {
+      "Description": "The number of seconds that Amazon SQS retains a message. You can specify an integer value from 60 seconds (1 minute) to 1209600 seconds (14 days). ",
+      "Type": "Number",
+      "Default": "345600"
+    },
+    "ReceiveMessageWaitTimeSeconds": {
+      "Description": "Specifies the duration, in seconds, that the ReceiveMessage action call waits until a message is in the queue in order to include it in the response, as opposed to returning an empty response if a message is not yet available. 1 to 20",
+      "Type": "Number",
+      "Default": "0"
+    },
+    "UsedeadletterQueue": {
+      "Description": "A dead-letter queue is a queue that other (source) queues can target for messages that can't be processed (consumed) successfully. You can set aside and isolate these messages in the dead-letter queue to determine why their processing doesn't succeed.",
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "false"
+    },
+    "VisibilityTimeout": {
+      "Description": "This should be longer than the time it would take to process and delete a message, this should not exceed 12 hours.",
+      "Type": "Number",
+      "Default": "5"
+    }
+  },
+  "Mappings": {},
+  "Conditions": {"CreateDeadLetterQueue" : {"Fn::Equals" : [{"Ref" : "UsedeadletterQueue"}, "true"]}
+  },
+  "Resources": {
+    "SQSQueue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "ContentBasedDeduplication": {
+          "Ref": "ContentBasedDeduplication"
+        },
+        "FifoQueue": "true",
+        "QueueName":{"Fn::Join" : [ "", [ {"Ref":"QueueName"}, ".fifo" ] ]},
+        "MaximumMessageSize": {
+          "Ref": "MaximumMessageSize"
+        },
+        "MessageRetentionPeriod": {
+          "Ref": "MessageRetentionPeriod"
+        },
+        "ReceiveMessageWaitTimeSeconds": {
+          "Ref": "ReceiveMessageWaitTimeSeconds"
+        },
+        "RedrivePolicy": {
+          "Fn::If": [
+            "CreateDeadLetterQueue",
+            {
+              "deadLetterTargetArn": {
+                "Fn::GetAtt": [
+                  "MyDeadLetterQueue",
+                  "Arn"
+                ]
+              },
+              "maxReceiveCount": 5
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "VisibilityTimeout": {
+          "Ref": "VisibilityTimeout"
+        }
+      }
+    },
+    "MyDeadLetterQueue": {
+      "Condition": "CreateDeadLetterQueue",
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "FifoQueue": "true",
+         "QueueName":{"Fn::Join" : [ "", [ {"Ref":"QueueName"},"Deadletter", ".fifo" ] ]}
+      }
+    }
+  },
+  "Outputs": {
+    "QueueURL": {
+      "Description": "URL of newly created SQS Queue",
+      "Value": {
+        "Ref": "SQSQueue"
+      }
+    },
+    "QueueARN": {
+      "Description": "ARN of newly created SQS Queue",
+      "Value": {
+        "Fn::GetAtt": [
+          "SQSQueue",
+          "Arn"
+        ]
+      }
+    },
+    "QueueName": {
+      "Description": "Name newly created SQS Queue",
+      "Value": {
+        "Fn::GetAtt": [
+          "SQSQueue",
+          "QueueName"
+        ]
+      }
+    }
+  }
+}

@@ -40,7 +40,7 @@ Mappings:
     cn-north-1:
       Suffix: .s3-website.cn-north-1.amazonaws.com.cn
     eu-central-1:
-      Suffix: .s3-website-eu-central-1.amazonaws.com
+      Suffix: .s3-website.eu-central-1.amazonaws.com
 Resources:
   S3BucketForWebsiteContent:
     Type: AWS::S3::Bucket

@@ -134,7 +134,7 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
 
     # Catch any exceptions, log the stacktrace, send a failure back to
     # CloudFormation and then raise an exception
-    except Exception, e:
+    except Exception as e:
         logger.error(e, exc_info=True)
         send(event, context, "FAILED", responseData, physicalResourceId,
              reason=e, logger=logger)
