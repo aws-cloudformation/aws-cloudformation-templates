@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Test our custom resource
+Resources:
+  AMISearchCustomResource:
+    # The "AMISearch" just has to be a unique string, can be anything
+    Type: Custom::AMISearch
+    Properties:
+      # ARN of the Lambda function, here we import it from the other template included "deploy_get_latest_ami_id.yaml"
+      ServiceToken: !ImportValue AMISearchARN
+      # AMI search parameters
+      #   This example will return the latest Amazon Linux HVM GP2 AMI
+      owners: 'self amazon'
+      filters: '[{"Name":"root-device-type","Values":["ebs"]},{"Name":"name","Values":["amzn-ami-hvm-????.??.?.*gp2"]}]'
+      region: !Sub "${AWS::Region}"
+      executable-users: ''
+  EC2instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # How to reference the AMI ID that is returned from the custom resource
+      ImageId: !GetAtt AMISearchCustomResource.ami-id
+      # The rest of these parameters are not valid and are only here to fill in the example
+      AvailabilityZone: 'us-west-2'
+      InstanceType: t2.nano
+      SecurityGroupIds: 'sg-1234abcd'
+      SubnetId: 'subnet-1234abcd'
+Outputs:
+  FoundAMI:
+    Description: The AMI we found
+    # The custom resource returns "ami-id" property which is what we will use
+    Value: !GetAtt AMISearchCustomResource.ami-id
