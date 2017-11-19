@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Kinesis Stream Template Sample.
+Parameters:
+  EnvName:
+    Type: String
+    Description: Name of an environment. 'dev', 'staging', 'prod' and any name.
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non numberic character.
+Outputs:
+  Stream:
+    Description: Kinesis Stream ARN.
+    Value:
+      Ref: Stream
+    Export:
+      Name:
+        Fn::Sub: Stream-ARN-${EnvName}
+Resources:
+  Stream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name:
+        Fn::Sub: stream-${EnvName}
+      ShardCount: 1
