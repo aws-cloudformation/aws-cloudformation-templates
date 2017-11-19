@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ElasticSearch Instance Template Sample.
+Parameters:
+  EnvName:
+    Type: String
+    Description: Name of an environment. 'dev', 'staging', 'prod' and any name.
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non numberic character.
+  DeploymentEnv:
+    Type: String
+    Description: Deployment environment. 'blue' or 'green'.
+    AllowedValues:
+      - blue
+      - green
+Outputs:
+  ElasticSearchEndPoint:
+    Description: ElasticSearch domain endpoint.
+    Value:
+      Fn::GetAtt:
+        - ElasticSearchDomain
+        - DomainEndpoint
+    Export:
+      Name:
+        Fn::Sub: ESEndPoint-${EnvName}-${DeploymentEnv}
+Resources:
+  ElasticSearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      # under 28 character.
+      DomainName:
+        Fn::Sub: elasticsearch-${EnvName}-${DeploymentEnv}
+      ElasticsearchVersion: 5.3
+      ElasticsearchClusterConfig:
+        InstanceCount: 1
+        InstanceType: t2.small.elasticsearch
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 10
+        VolumeType: "gp2"
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: 0
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: true
