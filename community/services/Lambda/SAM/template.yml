@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Send data to Pardot from ferretone's form.
+Resources:
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs4.3
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
