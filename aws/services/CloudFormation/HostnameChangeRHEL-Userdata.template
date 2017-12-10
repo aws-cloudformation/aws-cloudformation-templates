@@ -1,0 +1,101 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description"              : "Persistantly sets the hostname of a RHEL7 EC2 instance on start",
+	"Mappings" : {
+		"RegionMap" : {
+		"us-east-1" : { "32" : "ami-6411e20d", "64" : "ami-7a11e213" },
+		"us-west-1" : { "32" : "ami-c9c7978c", "64" : "ami-cfc7978a" },
+		"eu-west-1" : { "32" : "ami-37c2f643", "64" : "ami-31c2f645" },
+		"ap-southeast-1" : { "32" : "ami-66f28c34", "64" : "ami-60f28c32" },
+		"ap-northeast-1" : { "32" : "ami-9c03a89d", "64" : "ami-a003a8a1" }
+		}
+	},		
+    "Parameters"               : {
+        "SSHKey" : {
+            "Description" : "Select your SSH Key",
+            "Type"        : "AWS::EC2::KeyPair::KeyName"
+        },
+        "InstanceTypeParameter" : {
+            "Type" : "String",
+            "Default" : "m4.xlarge",
+            "AllowedValues" : [
+                "t2.micro",
+                "m4.xlarge",
+                "m1.large"
+            ],
+            "Description"   : "Select Instancetype. Default is m4.xlarge."
+        },
+        "InstanceHostname"      : {
+            "Description" : "Select your you instance Hostname",
+            "Type"        : "String",
+            "Default"     : "RedHatDevInstance"
+        },
+        "InstanceDomainName"    : {
+            "Description" : "Select your instance DomainName",
+            "Type"        : "String",
+            "Default"     : "redhat1.org"
+        }
+    },
+    "Resources"                : {
+        "MyInstance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+				"ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "64"]},
+                "InstanceType" : {
+                    "Ref" : "InstanceTypeParameter"
+                },
+                "KeyName"      : {
+                    "Ref" : "SSHKey"
+                },
+                "UserData"     : {
+                    "Fn::Base64" : {
+                        "Fn::Join" : [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "# Replace this with your domain\n",
+                                "DOMAIN=",
+                                {
+                                    "Ref" : "InstanceDomainName"
+                                },
+                                "\n",
+                                "HOSTNAME=",
+                                {
+                                    "Ref" : "InstanceHostname"
+                                },
+                                "\n",
+                                "IPV4=/usr/bin/curl -s http://169.254.169.254/latest/meta-data/public-ipv4",
+                                "\n",
+                                "# Set the host name\n",
+                                "hostname",
+                                " ",
+                                {
+                                    "Ref" : "InstanceHostname"
+                                },
+                                "\n",
+                                "echo",
+                                " ",
+                                {
+                                    "Ref" : "InstanceHostname"
+                                },
+                                "> /etc/hostname\n",
+                                "# Add fqdn to hosts file\n",
+                                "echo 'HOSTNAME=",
+                                {
+                                    "Ref" : "InstanceHostname"
+                                },
+                                "'",
+                                ">> /etc/sysconfig/network\n",
+                                "echo 'preserve_hostname: true' >> /etc/cloud/cloud.cfg\n",
+                                "cat<<EOF > /etc/hosts\n",
+                                "127.0.0.1 localhost\n",
+                                "$IPV4 $HOSTNAME.$DOMAIN $HOSTNAME\n",
+                                "EOF"
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

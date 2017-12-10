@@ -1,0 +1,283 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description"              : "Persistantly sets the hostname of a RHEL7 EC2 instance on start",
+	"Mappings" : {
+		"RegionMap" : {
+		"us-east-1" : { "32" : "ami-6411e20d", "64" : "ami-7a11e213" },
+		"us-west-1" : { "32" : "ami-c9c7978c", "64" : "ami-cfc7978a" },
+		"eu-west-1" : { "32" : "ami-37c2f643", "64" : "ami-31c2f645" },
+		"ap-southeast-1" : { "32" : "ami-66f28c34", "64" : "ami-60f28c32" },
+		"ap-northeast-1" : { "32" : "ami-9c03a89d", "64" : "ami-a003a8a1" }
+		}
+	},	
+    "Parameters"               : {
+        "SSHKey" : {
+            "Description" : "Select your SSH Keypair",
+            "Type"        : "AWS::EC2::KeyPair::KeyName"
+        },
+        "InstanceTypeParameter" : {
+            "Type" : "String",
+            "Default" : "m4.xlarge",
+            "AllowedValues" : [
+                "t1.micro",
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "g2.8xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hi1.4xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "Description"   : "Select your Instancetype. Default is m4.xlarge."
+        },
+        "InstanceHostname"      : {
+            "Description" : "Select your Instance Hostname",
+            "Type"        : "String",
+            "Default"     : "RedHatDevInstanceHostname"
+        },
+        "InstanceDomainName"    : {
+            "Description" : "Select your instance DomainName",
+            "Type"        : "String",
+            "Default"     : "redhat.domainname.org"
+        }
+    },
+    "Resources"                : {
+        "MyInstance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "configSets" : {
+                        "mkscriptrunclean" : [
+                            "mkscript",
+                            "run",
+                            "clean"
+                        ]
+                    },
+                    "mkscript"   : {
+                        "files" : {
+                            "/tmp/changehostname.sh" : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "#!/bin/bash\n",
+                                            "# Replace this with your domain\n",
+                                            "DOMAIN=",
+                                            {
+                                                "Ref" : "InstanceDomainName"
+                                            },
+                                            "\n",
+                                            "HOSTNAME=",
+                                            {
+                                                "Ref" : "InstanceHostname"
+                                            },
+                                            "\n",
+                                            "IPV4=/usr/bin/curl -s http://169.254.169.254/latest/meta-data/public-ipv4",
+                                            "\n",
+                                            "# Set the host name\n",
+                                            "hostname",
+                                            " ",
+                                            {
+                                                "Ref" : "InstanceHostname"
+                                            },
+                                            "\n",
+                                            "echo testing >> /tmp/testing\n",
+                                            "echo",
+                                            " ",
+                                            {
+                                                "Ref" : "InstanceHostname"
+                                            },
+                                            "> /etc/hostname\n",
+                                            "# Add fqdn to hosts file\n",
+                                            "echo 'HOSTNAME=",
+                                            {
+                                                "Ref" : "InstanceHostname"
+                                            },
+                                            "'",
+                                            ">> /etc/sysconfig/network\n",
+                                            "echo 'preserve_hostname: true' >> /etc/cloud/cloud.cfg\n",
+                                            "cat<<EOF > /etc/hosts\n",
+                                            "127.0.0.1 localhost\n",
+                                            "$IPV4 $HOSTNAME.$DOMAIN $HOSTNAME\n",
+                                            "EOF"
+                                        ]
+                                    ]
+                                },
+                                "mode"    : "000777",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/cfn-hup.conf"  : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "[main]\n",
+                                            "stack=",
+                                            {
+                                                "Ref" : "AWS::StackId"
+                                            },
+                                            "\n",
+                                            "region=",
+                                            {
+                                                "Ref" : "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "mode"    : "000400",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "[cfn-auto-reloader-hook]\n",
+                                            "triggers=post.update\n",
+                                            "path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init\n",
+                                            "action=/opt/aws/bin/cfn-init -v ",
+                                            "         --stack ",
+                                            {
+                                                "Ref" : "AWS::StackName"
+                                            },
+                                            "         --resource MyInstance ",
+                                            "         --configsets mkscriptrunclean ",
+                                            "         --region ",
+                                            {
+                                                "Ref" : "AWS::Region"
+                                            },
+                                            "\n",
+                                            "runas=root\n"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "cfn-hup" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files"         : [
+                                        "/etc/cfn/cfn-hup.conf",
+                                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "run"        : {
+                        "commands" : {
+                            "runtmp" : {
+                                "command" : "sh changehostname.sh",
+                                "cwd"     : "/tmp/"
+                            }
+                        }
+                    },
+                    "clean"      : {
+                        "commands" : {
+                            "cleanup" : {
+                                "command" : "rm -rf *",
+                                "cwd"     : "/tmp/"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+				"ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "64"]},
+                "InstanceType" : {
+                    "Ref" : "InstanceTypeParameter"
+                },
+                "KeyName"      : {
+                    "Ref" : "SSHKey"
+                },
+                "UserData"     : {
+                    "Fn::Base64" : {
+                        "Fn::Join" : [
+                            "",
+                            [
+                                "#!/bin/bash\n",
+                                "# Download wget\n",
+                                "yum install wget -y\n",
+                                "# Download PIP and easy_install\n",
+                                "curl -o get-pip.py  https://bootstrap.pypa.io/get-pip.py\n",
+                                "curl -o ez_setup.py https://bootstrap.pypa.io/ez_setup.py\n",
+                                "# Installing PIP and easy_instal;\n",
+                                "python get-pip.py\n",
+                                "python ez_setup.py\n",
+                                "# Install CloudFormation Helpers\n",
+                                "easy_install --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                                "cp -f `pip show aws-cfn-bootstrap 2>/dev/null|grep -E '^Location' |awk -F: '{print $2}'`/init/redhat/cfn-hup /etc/init.d/\n",
+                                "chmod 755 /etc/init.d/cfn-hup\n",
+                                "chkconfig --add cfn-hup\n",
+                                "# Install the files and packages from the metadata\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                "         --stack ",
+                                {
+                                    "Ref" : "AWS::StackName"
+                                },
+                                "         --resource MyInstance ",
+                                "         --configsets mkscriptrunclean ",
+                                "         --region ",
+                                {
+                                    "Ref" : "AWS::Region"
+                                },
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
