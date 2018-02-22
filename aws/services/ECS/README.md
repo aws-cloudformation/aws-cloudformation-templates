@@ -53,7 +53,7 @@ This architecture deploys your container into a private subnet. The containers d
 ### Run on EC2
 
 1. Launch the [public + private](EC2LaunchType/clusters/private-vpc.yml) cluster template
-2. Launch the [public facing, private subnet service template](EC2LaunchType/services/private-subnet-public-service.yml).
+2. Launch the [public facing, private subnet service template](EC2LaunchType/services/public-service.yml).
 
 &nbsp;
 
@@ -73,5 +73,5 @@ This architecture deploys your container in a private subnet, with no direct int
 ### Run on EC2
 
 1. Launch the [public + private](EC2LaunchType/clusters/private-vpc.yml) cluster template
-2. Launch the [private service, private subnet template](EC2LaunchType/services/private-subnet-private-service.yml).
+2. Launch the [private service, private subnet template](EC2LaunchType/services/private-service.yml).
 
