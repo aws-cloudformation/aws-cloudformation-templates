@@ -2,7 +2,7 @@
 
 This [AWS Lambda-backed CloudFormation Custom Resource](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-custom-resources-lambda.html) can be used to update a [AWS KMS Key Policy](http://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html) from within CloudFormation.
 
-By using this resource you can follow the AWS best practice of [least privileged access](http://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) by adding and removing necessary AWS IAM ARNs and actions from the KMS key policy.
+By using this resource you can follow the AWS best practice of [least privileged access](http://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) by adding and removing necessary AWS IAM ARNs and actions from the KMS key policy.  However, the role the Lambda function assumes can modify any KMS key policy by default, **please lock down the role permissions** if you intend to use this outside of a proof of concept.
 
 
 # How to Install and Use the Lambda Function in Your AWS Account
