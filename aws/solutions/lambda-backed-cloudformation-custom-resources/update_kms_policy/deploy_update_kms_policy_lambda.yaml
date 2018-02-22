@@ -52,6 +52,8 @@ Resources:
                 Action:
                   - kms:GetKeyPolicy
                   - kms:PutKeyPolicy
+                # WARNING
+                # Lock this Resource down when deploying in a real environment
                 Resource: '*'
       RoleName: !Sub "KMS-Key-Policy-Updater-${AWS::StackName}"
       Path:
