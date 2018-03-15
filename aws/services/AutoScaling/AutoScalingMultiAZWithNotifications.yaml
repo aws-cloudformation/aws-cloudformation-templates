@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+Metadata:
   License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template AutoScalingMultiAZWithNotifications:
   Create a multi-az, load balanced and Auto Scaled sample web site running on an Apache
-  Web Serever. The application is configured to span all Availability Zones in the
+  Web Server. The application is configured to span all Availability Zones in the
   region and is Auto-Scaled based on the CPU utilization of the web servers. Notifications
   will be sent to the operator email address on scaling events. The instances are
   load balanced with a simple health check against the default web page. **WARNING**
@@ -35,8 +35,8 @@ Parameters:
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
-    MinLength: '9'
-    MaxLength: '18'
+    MinLength: 9
+    MaxLength: 18
     Default: 0.0.0.0/0
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
@@ -350,20 +350,20 @@ Resources:
       MinSize: '1'
       MaxSize: '3'
       LoadBalancerNames: [!Ref 'ElasticLoadBalancer']
-      NotificationConfiguration:
-        TopicARN: !Ref 'NotificationTopic'
-        NotificationTypes: ['autoscaling:EC2_INSTANCE_LAUNCH', 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR',
-          'autoscaling:EC2_INSTANCE_TERMINATE', 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR']
+      NotificationConfigurations:
+        - TopicARN: !Ref 'NotificationTopic'
+          NotificationTypes: ['autoscaling:EC2_INSTANCE_LAUNCH', 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR',
+            'autoscaling:EC2_INSTANCE_TERMINATE', 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR']
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
-        Count: '1'
+        Count: 1
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MinInstancesInService: '1'
-        MaxBatchSize: '1'
+        MinInstancesInService: 1
+        MaxBatchSize: 1
         PauseTime: PT15M
-        WaitOnResourceSignals: 'true'
+        WaitOnResourceSignals: true
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Metadata:
@@ -412,11 +412,11 @@ Resources:
           services:
             sysvinit:
               httpd:
-                enabled: 'true'
-                ensureRunning: 'true'
+                enabled: true
+                ensureRunning: true
               cfn-hup:
-                enabled: 'true'
-                ensureRunning: 'true'
+                enabled: true
+                ensureRunning: true
                 files: [/etc/cfn/cfn-hup.conf, /etc/cfn/hooks.d/cfn-auto-reloader.conf]
     Properties:
       KeyName: !Ref 'KeyName'
@@ -446,14 +446,14 @@ Resources:
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref 'WebServerGroup'
       Cooldown: '60'
-      ScalingAdjustment: '1'
+      ScalingAdjustment: 1
   WebServerScaleDownPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref 'WebServerGroup'
       Cooldown: '60'
-      ScalingAdjustment: '-1'
+      ScalingAdjustment: -1
   CPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -461,9 +461,9 @@ Resources:
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
-      Period: '300'
-      EvaluationPeriods: '2'
-      Threshold: '90'
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 90
       AlarmActions: [!Ref 'WebServerScaleUpPolicy']
       Dimensions:
       - Name: AutoScalingGroupName
@@ -476,9 +476,9 @@ Resources:
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
-      Period: '300'
-      EvaluationPeriods: '2'
-      Threshold: '70'
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
       AlarmActions: [!Ref 'WebServerScaleDownPolicy']
       Dimensions:
       - Name: AutoScalingGroupName
@@ -488,7 +488,7 @@ Resources:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
       AvailabilityZones: !GetAZs ''
-      CrossZone: 'true'
+      CrossZone: true
       Listeners:
       - LoadBalancerPort: '80'
         InstancePort: '80'
@@ -505,12 +505,12 @@ Resources:
       GroupDescription: Enable SSH access and HTTP from the load balancer only
       SecurityGroupIngress:
       - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
+        FromPort: 22
+        ToPort: 22
         CidrIp: !Ref 'SSHLocation'
       - IpProtocol: tcp
-        FromPort: '80'
-        ToPort: '80'
+        FromPort: 80
+        ToPort: 80
         SourceSecurityGroupOwnerId: !GetAtt [ElasticLoadBalancer, SourceSecurityGroup.OwnerAlias]
         SourceSecurityGroupName: !GetAtt [ElasticLoadBalancer, SourceSecurityGroup.GroupName]
 Outputs:
