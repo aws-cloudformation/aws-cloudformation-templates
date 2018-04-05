@@ -138,4 +138,5 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
         logger.error(e, exc_info=True)
         send(event, context, "FAILED", responseData, physicalResourceId,
              reason=e, logger=logger)
-        raise
+    finally:
+        t.cancel()
