@@ -3,7 +3,7 @@
   "Description": "Best Practice SQS Standard Queue",
   "Parameters": {
       "DelaySeconds": {
-      "Description": "The Id of the AMI you wish to launch the instance from.",
+      "Description": "The time in seconds that the delivery of all messages in the queue is delayed. You can specify an integer value of 0 to 900 (15 minutes).",
       "Type": "Number",
       "Default": "5"
     },
