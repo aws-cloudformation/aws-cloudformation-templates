@@ -5,7 +5,7 @@ This [AWS Lambda-backed CloudFormation Custom Resource](http://docs.aws.amazon.c
 1. https://aws.amazon.com/about-aws/whats-new/2018/04/amazon-ecs-provides-ecs-optimized-ami-metadata-via-ssm-parameter/
 2. https://aws.amazon.com/blogs/mt/query-for-the-latest-windows-ami-using-systems-manager-parameter-store/
 
-The native SSM Parameter Types supported by CloudFormation cannot be used here because those parameter types only look for parameters in the account creating the stack. However, these parameters are actually owned by internal AWS accounts. By using this solution you can use the same CloudFormation template over time and across different regions but select the AMI you want to use without having to specify the AMI name or ID. This can save a lot of time since you no longer have to manually update templates or resources with the new AMI ID.
+The native [SSM Parameter Types](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html#aws-ssm-parameter-types) supported by CloudFormation cannot be used here because those parameter types only look for parameters in the account creating the stack. However, these parameters are actually owned by internal AWS accounts. By using this solution you can use the same CloudFormation template over time and across different regions but select the AMI you want to use without having to specify the AMI name or ID. This can save a lot of time since you no longer have to manually update templates or resources with the new AMI ID.
 
 
 # How to Install and Use this solution in Your AWS Account
