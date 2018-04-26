@@ -1,4 +1,5 @@
 {
+	"Description": "This template retrieves the AMI ID associated with the SSM Parameter Name specified and launches instances with it.",
 	"Parameters": {
 		"ParameterName": {
 			"Type": "String",
