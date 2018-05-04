@@ -1,0 +1,1439 @@
+{
+    "Description": "A Python web service deployed to AWS Lambda.", 
+    "Parameters": {
+        "ProjectId": {
+            "Type": "String", 
+            "Description": "Project ID.", 
+            "MinLength": 2, 
+            "AllowedPattern": "^[a-z]([a-z0-9-])+$", 
+            "MaxLength": 15, 
+            "ConstraintDescription": "Project IDs must be between 2 and 15 characters, begin with a letter, and only contain lowercase letters, numbers, and hyphens (-)."
+        }, 
+        "RepositoryName": {
+            "MinLength": 1, 
+            "Type": "String", 
+            "Description": "AWS CodeCommit repository name.", 
+            "MaxLength": 100
+        }, 
+        "AppName": {
+            "MinLength": 1, 
+            "Type": "String", 
+            "Description": "Name of the application.", 
+            "MaxLength": 100
+        }
+    }, 
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Outputs": {
+        "LambdaTrustRole": {
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            {
+                                "Ref": "AWS::Region"
+                            }, 
+                            "LambdaTrustRole"
+                        ]
+                    ]
+                }
+            }, 
+            "Description": "AWS CodeStar role for AWS Lambda used for passRole to Lambda functions.", 
+            "Value": {
+                "Fn::GetAtt": [
+                    "LambdaTrustRole", 
+                    "Arn"
+                ]
+            }
+        }
+    }, 
+    "Conditions": {
+        "CreateCodeBuildResources": {
+            "Fn::Equals": [
+                true, 
+                true
+            ]
+        }, 
+        "CreateWebSiteS3Bucket": {
+            "Fn::Equals": [
+                false, 
+                true
+            ]
+        }
+    }, 
+    "Resources": {
+        "EnvironmentEC23fd7af6a4f1411e882fb290aa2a9d512": {
+            "Type": "AWS::Cloud9::EnvironmentEC2", 
+            "Properties": {
+                "Description": "Created from CodeStar.", 
+                "Repositories": [
+                    {
+                        "RepositoryUrl": "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/strate", 
+                        "PathComponent": "/strate"
+                    }
+                ], 
+                "OwnerArn": "arn:aws:sts::129440258330:assumed-role/BurnerConsoleAccessClientRole-DO-NOT-DELETE/BurnerConsole", 
+                "SubnetId": "subnet-b0f192ea", 
+                "AutomaticStopTimeMinutes": "30", 
+                "InstanceType": "t2.micro", 
+                "Name": "strate"
+            }
+        }, 
+        "CodeBuildRole": {
+            "Type": "AWS::IAM::Role", 
+            "Description": "Creating service role in IAM for Amazon EC2 instances", 
+            "Condition": "CreateCodeBuildResources", 
+            "Properties": {
+                "RoleName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "CodeStarWorker", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "CodeBuild"
+                        ]
+                    ]
+                }, 
+                "Path": "/", 
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole", 
+                            "Effect": "Allow", 
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            }
+        }, 
+        "CodePipelineTrustRole": {
+            "Type": "AWS::IAM::Role", 
+            "Description": "Creating service role in IAM for AWS CodePipeline", 
+            "Properties": {
+                "RoleName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "CodeStarWorker", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "CodePipeline"
+                        ]
+                    ]
+                }, 
+                "Path": "/", 
+                "Policies": [
+                    {
+                        "PolicyName": "CodeStarWorkerCodePipelineRolePolicy", 
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:GetObject", 
+                                        "s3:GetObjectVersion", 
+                                        "s3:GetBucketVersioning", 
+                                        "s3:PutObject"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "S3Bucket"
+                                                    }
+                                                ]
+                                            ]
+                                        }, 
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "S3Bucket"
+                                                    }, 
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "codecommit:CancelUploadArchive", 
+                                        "codecommit:GetBranch", 
+                                        "codecommit:GetCommit", 
+                                        "codecommit:GetUploadArchiveStatus", 
+                                        "codecommit:UploadArchive"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                ":", 
+                                                [
+                                                    "arn", 
+                                                    "aws", 
+                                                    "codecommit", 
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    }, 
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    }, 
+                                                    {
+                                                        "Ref": "RepositoryName"
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "codebuild:StartBuild", 
+                                        "codebuild:BatchGetBuilds", 
+                                        "codebuild:StopBuild"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "CodeBuildProject", 
+                                                "Arn"
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "cloudformation:DescribeStacks", 
+                                        "cloudformation:DescribeChangeSet", 
+                                        "cloudformation:CreateChangeSet", 
+                                        "cloudformation:DeleteChangeSet", 
+                                        "cloudformation:ExecuteChangeSet"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                ":", 
+                                                [
+                                                    "arn", 
+                                                    "aws", 
+                                                    "cloudformation", 
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    }, 
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    }, 
+                                                    {
+                                                        "Fn::Join": [
+                                                            "/", 
+                                                            [
+                                                                "stack", 
+                                                                {
+                                                                    "Fn::Join": [
+                                                                        "-", 
+                                                                        [
+                                                                            "awscodestar", 
+                                                                            {
+                                                                                "Ref": "ProjectId"
+                                                                            }, 
+                                                                            "lambda"
+                                                                        ]
+                                                                    ]
+                                                                }, 
+                                                                "*"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "CloudFormationTrustRole", 
+                                                "Arn"
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ], 
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole", 
+                            "Principal": {
+                                "Service": [
+                                    "codepipeline.amazonaws.com"
+                                ]
+                            }, 
+                            "Effect": "Allow", 
+                            "Sid": 1
+                        }
+                    ]
+                }
+            }
+        }, 
+        "SourceEventRole": {
+            "Type": "AWS::IAM::Role", 
+            "Description": "IAM role to allow Amazon CloudWatch Events to trigger AWS CodePipeline execution", 
+            "Properties": {
+                "RoleName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "CodeStarWorker", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "CloudWatchEventRule"
+                        ]
+                    ]
+                }, 
+                "Policies": [
+                    {
+                        "PolicyName": "CodeStarWorkerCloudWatchEventPolicy", 
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "codepipeline:StartPipelineExecution"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                ":", 
+                                                [
+                                                    "arn", 
+                                                    "aws", 
+                                                    "codepipeline", 
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    }, 
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    }, 
+                                                    {
+                                                        "Fn::Join": [
+                                                            "-", 
+                                                            [
+                                                                {
+                                                                    "Ref": "ProjectId"
+                                                                }, 
+                                                                "Pipeline"
+                                                            ]
+                                                        ]
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ], 
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole", 
+                            "Principal": {
+                                "Service": [
+                                    "events.amazonaws.com"
+                                ]
+                            }, 
+                            "Effect": "Allow", 
+                            "Sid": 1
+                        }
+                    ]
+                }
+            }
+        }, 
+        "CodeCommitRepo": {
+            "Type": "AWS::CodeCommit::Repository", 
+            "Description": "Creating AWS CodeCommit repository for application source code", 
+            "Properties": {
+                "RepositoryName": {
+                    "Ref": "RepositoryName"
+                }, 
+                "RepositoryDescription": {
+                    "Fn::Join": [
+                        "", 
+                        [
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            " project repository"
+                        ]
+                    ]
+                }
+            }
+        }, 
+        "CloudFormationTrustRole": {
+            "Type": "AWS::IAM::Role", 
+            "Description": "Creating service role in IAM for AWS CloudFormation", 
+            "Properties": {
+                "RoleName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "CodeStarWorker", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "CloudFormation"
+                        ]
+                    ]
+                }, 
+                "Path": "/", 
+                "Policies": [
+                    {
+                        "PolicyName": "CodeStarWorkerCloudFormationRolePolicy", 
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:PutObject", 
+                                        "s3:GetObject", 
+                                        "s3:GetObjectVersion"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "S3Bucket"
+                                                    }
+                                                ]
+                                            ]
+                                        }, 
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "S3Bucket"
+                                                    }, 
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "codestar:SyncResources", 
+                                        "lambda:CreateFunction", 
+                                        "lambda:DeleteFunction", 
+                                        "lambda:AddPermission", 
+                                        "lambda:UpdateFunction", 
+                                        "lambda:UpdateFunctionCode", 
+                                        "lambda:GetFunction", 
+                                        "lambda:GetFunctionConfiguration", 
+                                        "lambda:UpdateFunctionConfiguration", 
+                                        "lambda:RemovePermission", 
+                                        "lambda:listTags", 
+                                        "lambda:TagResource", 
+                                        "lambda:UntagResource", 
+                                        "apigateway:*", 
+                                        "dynamodb:CreateTable", 
+                                        "dynamodb:DeleteTable", 
+                                        "dynamodb:DescribeTable", 
+                                        "kinesis:CreateStream", 
+                                        "kinesis:DeleteStream", 
+                                        "kinesis:DescribeStream", 
+                                        "sns:CreateTopic", 
+                                        "sns:DeleteTopic", 
+                                        "sns:ListTopics", 
+                                        "sns:GetTopicAttributes", 
+                                        "sns:SetTopicAttributes", 
+                                        "s3:CreateBucket", 
+                                        "s3:DeleteBucket", 
+                                        "config:DescribeConfigRules", 
+                                        "config:PutConfigRule", 
+                                        "config:DeleteConfigRule"
+                                    ], 
+                                    "Resource": "*", 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "LambdaTrustRole", 
+                                                "Arn"
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Action": [
+                                        "cloudformation:CreateChangeSet"
+                                    ], 
+                                    "Resource": [
+                                        "arn:aws:cloudformation:us-west-2:aws:transform/Serverless-2016-10-31", 
+                                        "arn:aws:cloudformation:us-west-2:aws:transform/CodeStar"
+                                    ], 
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ], 
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole", 
+                            "Effect": "Allow", 
+                            "Principal": {
+                                "Service": [
+                                    "cloudformation.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }, 
+        "WebsiteS3Bucket": {
+            "DeletionPolicy": "Retain", 
+            "Type": "AWS::S3::Bucket", 
+            "Description": "Creating Amazon S3 bucket for Website static artifacts", 
+            "Condition": "CreateWebSiteS3Bucket", 
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }, 
+                "BucketName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "aws", 
+                            "codestar", 
+                            {
+                                "Ref": "AWS::Region"
+                            }, 
+                            {
+                                "Ref": "AWS::AccountId"
+                            }, 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "app"
+                        ]
+                    ]
+                }, 
+                "Tags": [
+                    {
+                        "Value": {
+                            "Fn::Join": [
+                                "-", 
+                                [
+                                    {
+                                        "Ref": "ProjectId"
+                                    }, 
+                                    "WebsiteS3Bucket"
+                                ]
+                            ]
+                        }, 
+                        "Key": "Name"
+                    }
+                ]
+            }
+        }, 
+        "SourceEvent": {
+            "Type": "AWS::Events::Rule", 
+            "Properties": {
+                "EventPattern": {
+                    "source": [
+                        "aws.codecommit"
+                    ], 
+                    "detail": {
+                        "referenceType": [
+                            "branch"
+                        ], 
+                        "event": [
+                            "referenceCreated", 
+                            "referenceUpdated"
+                        ], 
+                        "referenceName": [
+                            "master"
+                        ]
+                    }, 
+                    "resources": [
+                        {
+                            "Fn::GetAtt": [
+                                "CodeCommitRepo", 
+                                "Arn"
+                            ]
+                        }
+                    ], 
+                    "detail-type": [
+                        "CodeCommit Repository State Change"
+                    ]
+                }, 
+                "Targets": [
+                    {
+                        "RoleArn": {
+                            "Fn::GetAtt": [
+                                "SourceEventRole", 
+                                "Arn"
+                            ]
+                        }, 
+                        "Id": "ProjectPipelineTarget", 
+                        "Arn": {
+                            "Fn::Join": [
+                                ":", 
+                                [
+                                    "arn", 
+                                    "aws", 
+                                    "codepipeline", 
+                                    {
+                                        "Ref": "AWS::Region"
+                                    }, 
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    }, 
+                                    {
+                                        "Fn::Join": [
+                                            "-", 
+                                            [
+                                                {
+                                                    "Ref": "ProjectId"
+                                                }, 
+                                                "Pipeline"
+                                            ]
+                                        ]
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ], 
+                "Name": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "awscodestar", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "SourceEvent"
+                        ]
+                    ]
+                }, 
+                "State": "ENABLED", 
+                "Description": "Rule for Amazon CloudWatch Events to detect changes to the source repository and trigger pipeline execution"
+            }
+        }, 
+        "CodeBuildProject": {
+            "Type": "AWS::CodeBuild::Project", 
+            "Properties": {
+                "Description": {
+                    "Fn::Join": [
+                        "", 
+                        [
+                            "AWS CodeStar created CodeBuild Project for ", 
+                            {
+                                "Ref": "AppName"
+                            }
+                        ]
+                    ]
+                }, 
+                "ServiceRole": {
+                    "Ref": "CodeBuildRole"
+                }, 
+                "Artifacts": {
+                    "Packaging": "zip", 
+                    "Type": "codepipeline"
+                }, 
+                "Environment": {
+                    "ComputeType": "small", 
+                    "Image": "aws/codebuild/eb-nodejs-6.10.0-amazonlinux-64:4.0.0", 
+                    "Type": "container", 
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "S3_BUCKET", 
+                            "Value": {
+                                "Ref": "S3Bucket"
+                            }
+                        }, 
+                        {
+                            "Name": "WEBSITE_S3_PREFIX", 
+                            "Value": {
+                                "Fn::If": [
+                                    "CreateWebSiteS3Bucket", 
+                                    {
+                                        "Fn::Join": [
+                                            "", 
+                                            [
+                                                "https://s3-us-west-2.amazonaws.com/", 
+                                                {
+                                                    "Ref": "WebsiteS3Bucket"
+                                                }
+                                            ]
+                                        ]
+                                    }, 
+                                    "NoVal"
+                                ]
+                            }
+                        }, 
+                        {
+                            "Name": "WEBSITE_S3_BUCKET", 
+                            "Value": {
+                                "Fn::If": [
+                                    "CreateWebSiteS3Bucket", 
+                                    {
+                                        "Ref": "WebsiteS3Bucket"
+                                    }, 
+                                    "NoVal"
+                                ]
+                            }
+                        }
+                    ]
+                }, 
+                "Source": {
+                    "Type": "codepipeline"
+                }, 
+                "Name": {
+                    "Ref": "ProjectId"
+                }
+            }, 
+            "Condition": "CreateCodeBuildResources", 
+            "DependsOn": [
+                "CodeBuildPolicy"
+            ]
+        }, 
+        "CodeStarProject": {
+            "Version": 1, 
+            "Type": "AWS::CodeStar::Project", 
+            "Description": "Starting project creation", 
+            "Properties": {
+                "StackId": {
+                    "Ref": "AWS::StackId"
+                }, 
+                "ProjectName": {
+                    "Ref": "AppName"
+                }, 
+                "ProjectId": {
+                    "Ref": "ProjectId"
+                }, 
+                "ProjectTemplateId": "arn:aws:codestar:us-west-2::project-template/codecommit/webservice-pythonservice-lambda", 
+                "ProjectDescription": "AWS CodeStar created project"
+            }
+        }, 
+        "S3Bucket": {
+            "DeletionPolicy": "Retain", 
+            "Type": "AWS::S3::Bucket", 
+            "Description": "Creating Amazon S3 bucket for AWS CodePipeline artifacts", 
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }, 
+                "BucketName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "aws", 
+                            "codestar", 
+                            {
+                                "Ref": "AWS::Region"
+                            }, 
+                            {
+                                "Ref": "AWS::AccountId"
+                            }, 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "pipe"
+                        ]
+                    ]
+                }, 
+                "Tags": [
+                    {
+                        "Value": {
+                            "Fn::Join": [
+                                "-", 
+                                [
+                                    {
+                                        "Ref": "ProjectId"
+                                    }, 
+                                    "S3Bucket"
+                                ]
+                            ]
+                        }, 
+                        "Key": "Name"
+                    }
+                ]
+            }
+        }, 
+        "ProjectPipeline": {
+            "DependsOn": [
+                "SeedRepo", 
+                "LambdaTrustRole", 
+                "CodePipelineTrustRole", 
+                "S3Bucket", 
+                "CodeBuildProject", 
+                "CloudFormationTrustRole"
+            ], 
+            "Type": "AWS::CodePipeline::Pipeline", 
+            "Properties": {
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "CodePipelineTrustRole", 
+                        "Arn"
+                    ]
+                }, 
+                "Stages": [
+                    {
+                        "Name": "Source", 
+                        "Actions": [
+                            {
+                                "InputArtifacts": [], 
+                                "RunOrder": 1, 
+                                "ActionTypeId": {
+                                    "Owner": "AWS", 
+                                    "Category": "Source", 
+                                    "Version": 1, 
+                                    "Provider": "CodeCommit"
+                                }, 
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": {
+                                            "Fn::Join": [
+                                                "-", 
+                                                [
+                                                    {
+                                                        "Ref": "ProjectId"
+                                                    }, 
+                                                    "SourceArtifact"
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ], 
+                                "Configuration": {
+                                    "PollForSourceChanges": false, 
+                                    "RepositoryName": {
+                                        "Ref": "RepositoryName"
+                                    }, 
+                                    "BranchName": "master"
+                                }, 
+                                "Name": "ApplicationSource"
+                            }
+                        ]
+                    }, 
+                    {
+                        "Name": "Build", 
+                        "Actions": [
+                            {
+                                "InputArtifacts": [
+                                    {
+                                        "Name": {
+                                            "Fn::Join": [
+                                                "-", 
+                                                [
+                                                    {
+                                                        "Ref": "ProjectId"
+                                                    }, 
+                                                    "SourceArtifact"
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ], 
+                                "RunOrder": 1, 
+                                "ActionTypeId": {
+                                    "Owner": "AWS", 
+                                    "Category": "Build", 
+                                    "Version": 1, 
+                                    "Provider": "CodeBuild"
+                                }, 
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": {
+                                            "Fn::Join": [
+                                                "-", 
+                                                [
+                                                    {
+                                                        "Ref": "ProjectId"
+                                                    }, 
+                                                    "BuildArtifact"
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ], 
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "ProjectId"
+                                    }
+                                }, 
+                                "Name": "PackageExport"
+                            }
+                        ]
+                    }, 
+                    {
+                        "Name": "Deploy", 
+                        "Actions": [
+                            {
+                                "InputArtifacts": [
+                                    {
+                                        "Name": {
+                                            "Fn::Join": [
+                                                "-", 
+                                                [
+                                                    {
+                                                        "Ref": "ProjectId"
+                                                    }, 
+                                                    "BuildArtifact"
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ], 
+                                "RunOrder": 1, 
+                                "ActionTypeId": {
+                                    "Owner": "AWS", 
+                                    "Category": "Deploy", 
+                                    "Version": 1, 
+                                    "Provider": "CloudFormation"
+                                }, 
+                                "OutputArtifacts": [], 
+                                "Configuration": {
+                                    "ActionMode": "CHANGE_SET_REPLACE", 
+                                    "ChangeSetName": "pipeline-changeset", 
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudFormationTrustRole", 
+                                            "Arn"
+                                        ]
+                                    }, 
+                                    "Capabilities": "CAPABILITY_IAM", 
+                                    "StackName": {
+                                        "Fn::Join": [
+                                            "-", 
+                                            [
+                                                "awscodestar", 
+                                                {
+                                                    "Ref": "ProjectId"
+                                                }, 
+                                                "lambda"
+                                            ]
+                                        ]
+                                    }, 
+                                    "ParameterOverrides": {
+                                        "Fn::Join": [
+                                            "", 
+                                            [
+                                                "{\"ProjectId\":\"", 
+                                                {
+                                                    "Ref": "ProjectId"
+                                                }, 
+                                                "\"}"
+                                            ]
+                                        ]
+                                    }, 
+                                    "TemplatePath": {
+                                        "Fn::Join": [
+                                            "", 
+                                            [
+                                                {
+                                                    "Ref": "ProjectId"
+                                                }, 
+                                                "-BuildArtifact", 
+                                                "::template-export.yml"
+                                            ]
+                                        ]
+                                    }
+                                }, 
+                                "Name": "GenerateChangeSet"
+                            }, 
+                            {
+                                "InputArtifacts": [], 
+                                "RunOrder": 2, 
+                                "ActionTypeId": {
+                                    "Owner": "AWS", 
+                                    "Category": "Deploy", 
+                                    "Version": 1, 
+                                    "Provider": "CloudFormation"
+                                }, 
+                                "OutputArtifacts": [], 
+                                "Configuration": {
+                                    "StackName": {
+                                        "Fn::Join": [
+                                            "-", 
+                                            [
+                                                "awscodestar", 
+                                                {
+                                                    "Ref": "ProjectId"
+                                                }, 
+                                                "lambda"
+                                            ]
+                                        ]
+                                    }, 
+                                    "ActionMode": "CHANGE_SET_EXECUTE", 
+                                    "ChangeSetName": "pipeline-changeset"
+                                }, 
+                                "Name": "ExecuteChangeSet"
+                            }
+                        ]
+                    }
+                ], 
+                "ArtifactStore": {
+                    "Type": "S3", 
+                    "Location": {
+                        "Ref": "S3Bucket"
+                    }
+                }, 
+                "Name": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "Pipeline"
+                        ]
+                    ]
+                }
+            }, 
+            "Description": "Creating a deployment pipeline for your project in AWS CodePipeline"
+        }, 
+        "LambdaTrustRole": {
+            "Type": "AWS::IAM::Role", 
+            "Description": "Creating service role in IAM for AWS Lambda", 
+            "Properties": {
+                "RoleName": {
+                    "Fn::Join": [
+                        "-", 
+                        [
+                            "CodeStarWorker", 
+                            {
+                                "Ref": "ProjectId"
+                            }, 
+                            "Lambda"
+                        ]
+                    ]
+                }, 
+                "Path": "/", 
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole", 
+                    "arn:aws:iam::aws:policy/service-role/AWSConfigRulesExecutionRole"
+                ], 
+                "Policies": [
+                    {
+                        "PolicyName": "CodeStarLambdaWorkerPolicy", 
+                        "PolicyDocument": {
+                            "Version": "2012-10-17", 
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup", 
+                                        "logs:CreateLogStream", 
+                                        "logs:PutLogEvents"
+                                    ], 
+                                    "Resource": "*", 
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ], 
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole", 
+                            "Effect": "Allow", 
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }, 
+        "SeedRepo": {
+            "DeletionPolicy": "Retain", 
+            "DependsOn": [
+                "CodeCommitRepo"
+            ], 
+            "Type": "AWS::CodeStar::SeedRepository", 
+            "Properties": {
+                "RepositoryProvider": "CodeCommit", 
+                "RepositoryURL": {
+                    "Fn::GetAtt": [
+                        "CodeCommitRepo", 
+                        "CloneUrlHttp"
+                    ]
+                }, 
+                "ProjectTemplateId": "arn:aws:codestar:us-west-2::project-template/codecommit/webservice-pythonservice-lambda", 
+                "DefaultBranchName": "master"
+            }, 
+            "Description": "Adding application source code to the AWS CodeCommit repository for the project"
+        }, 
+        "CodeBuildPolicy": {
+            "Type": "AWS::IAM::Policy", 
+            "Description": "Setting IAM policy for service role for Amazon EC2 instances", 
+            "Condition": "CreateCodeBuildResources", 
+            "Properties": {
+                "PolicyName": "CodeStarWorkerCodeBuildPolicy", 
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup", 
+                                "logs:CreateLogStream", 
+                                "logs:PutLogEvents"
+                            ], 
+                            "Resource": "*", 
+                            "Effect": "Allow"
+                        }, 
+                        {
+                            "Action": [
+                                "s3:PutObject", 
+                                "s3:GetObject", 
+                                "s3:GetObjectVersion"
+                            ], 
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }
+                                        ]
+                                    ]
+                                }, 
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }, 
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ], 
+                            "Effect": "Allow"
+                        }, 
+                        {
+                            "Fn::If": [
+                                "CreateWebSiteS3Bucket", 
+                                {
+                                    "Action": [
+                                        "s3:PutObject*", 
+                                        "s3:GetObject", 
+                                        "s3:GetObjectVersion"
+                                    ], 
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "WebsiteS3Bucket"
+                                                    }
+                                                ]
+                                            ]
+                                        }, 
+                                        {
+                                            "Fn::Join": [
+                                                "", 
+                                                [
+                                                    "arn:aws:s3:::", 
+                                                    {
+                                                        "Ref": "WebsiteS3Bucket"
+                                                    }, 
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ], 
+                                    "Effect": "Allow"
+                                }, 
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }, 
+                        {
+                            "Action": [
+                                "codecommit:GitPull"
+                            ], 
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        ":", 
+                                        [
+                                            "arn", 
+                                            "aws", 
+                                            "codecommit", 
+                                            {
+                                                "Ref": "AWS::Region"
+                                            }, 
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            }, 
+                                            {
+                                                "Ref": "RepositoryName"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ], 
+                            "Effect": "Allow"
+                        }, 
+                        {
+                            "Action": [
+                                "kms:GenerateDataKey*", 
+                                "kms:Encrypt", 
+                                "kms:Decrypt"
+                            ], 
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        ":", 
+                                        [
+                                            "arn:aws:kms", 
+                                            {
+                                                "Ref": "AWS::Region"
+                                            }, 
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            }, 
+                                            {
+                                                "Fn::Join": [
+                                                    "/", 
+                                                    [
+                                                        "alias", 
+                                                        "aws/s3"
+                                                    ]
+                                                ]
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ], 
+                            "Effect": "Allow"
+                        }
+                    ]
+                }, 
+                "Roles": [
+                    {
+                        "Ref": "CodeBuildRole"
+                    }
+                ]
+            }
+        }, 
+        "S3ArtifactBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy", 
+            "Description": "Setting Amazon S3 bucket policy for AWS CodePipeline access", 
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17", 
+                    "Id": "SSEAndSSLPolicy", 
+                    "Statement": [
+                        {
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }
+                                        ]
+                                    ]
+                                }, 
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }, 
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ], 
+                            "Effect": "Allow", 
+                            "Sid": "WhitelistedGet", 
+                            "Action": [
+                                "s3:GetObject", 
+                                "s3:GetObjectVersion", 
+                                "s3:GetBucketVersioning"
+                            ], 
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            }, 
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CodePipelineTrustRole", 
+                                            "Arn"
+                                        ]
+                                    }, 
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CodeBuildRole", 
+                                            "Arn"
+                                        ]
+                                    }, 
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CloudFormationTrustRole", 
+                                            "Arn"
+                                        ]
+                                    }
+                                ]
+                            }
+                        }, 
+                        {
+                            "Action": [
+                                "s3:PutObject"
+                            ], 
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CodePipelineTrustRole", 
+                                            "Arn"
+                                        ]
+                                    }, 
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CodeBuildRole", 
+                                            "Arn"
+                                        ]
+                                    }
+                                ]
+                            }, 
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }
+                                        ]
+                                    ]
+                                }, 
+                                {
+                                    "Fn::Join": [
+                                        "", 
+                                        [
+                                            "arn:aws:s3:::", 
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }, 
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ], 
+                            "Effect": "Allow", 
+                            "Sid": "WhitelistedPut"
+                        }
+                    ]
+                }, 
+                "Bucket": {
+                    "Ref": "S3Bucket"
+                }
+            }
+        }, 
+        "SyncResources1525381009756": {
+            "Type": "AWS::CodeStar::SyncResources", 
+            "Properties": {
+                "ProjectId": {
+                    "Ref": "ProjectId"
+                }
+            }, 
+            "DependsOn": [
+                "S3ArtifactBucketPolicy", 
+                "CodePipelineTrustRole", 
+                "CodeCommitRepo", 
+                "SourceEvent", 
+                "EnvironmentEC23fd7af6a4f1411e882fb290aa2a9d512", 
+                "CloudFormationTrustRole", 
+                "SourceEventRole", 
+                "S3Bucket", 
+                "ProjectPipeline", 
+                "LambdaTrustRole", 
+                "SeedRepo", 
+                "CodeStarProject"
+            ]
+        }
+    }, 
+    "Metadata": {
+        "ProjectTemplateId": "webservice-pythonservice-lambda", 
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Parameters": [
+                        "ProjectId"
+                    ], 
+                    "Label": {
+                        "default": "Application"
+                    }
+                }
+            ]
+        }, 
+        "IsWebsite": false, 
+        "WebsiteS3Bucket": {
+            "Ref": "WebsiteS3Bucket"
+        }, 
+        "CodeBuildImage": "aws/codebuild/eb-nodejs-6.10.0-amazonlinux-64:4.0.0", 
+        "CodeBuildImageOverride": "aws/codebuild/eb-nodejs-6.10.0-amazonlinux-64:4.0.0"
+    }
+}
