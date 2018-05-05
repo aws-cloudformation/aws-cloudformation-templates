@@ -33,7 +33,7 @@
         "IsWebsite": false,
         "ProjectTemplateId": "webservice-pythonservice-lambda",
         "WebsiteS3Bucket": {
-            "Fn::Ref": "WebsiteS3Bucket"
+            "Ref": "WebsiteS3Bucket"
         }
     },
     "Outputs": {
@@ -45,10 +45,10 @@
                         "-",
                         [
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             {
-                                "Fn::Ref": "AWS::Region"
+                                "Ref": "AWS::Region"
                             },
                             "LambdaTrustRole"
                         ]
@@ -154,7 +154,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "S3Bucket"
+                                                        "Ref": "S3Bucket"
                                                     }
                                                 ]
                                             ]
@@ -165,7 +165,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "S3Bucket"
+                                                        "Ref": "S3Bucket"
                                                     },
                                                     "/*"
                                                 ]
@@ -244,7 +244,7 @@
                         [
                             "CodeStarWorker",
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "CloudFormation"
                         ]
@@ -282,7 +282,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             }
                                         ]
                                     ]
@@ -293,7 +293,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             },
                                             "/*"
                                         ]
@@ -318,7 +318,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "WebsiteS3Bucket"
+                                                        "Ref": "WebsiteS3Bucket"
                                                     }
                                                 ]
                                             ]
@@ -329,7 +329,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "WebsiteS3Bucket"
+                                                        "Ref": "WebsiteS3Bucket"
                                                     },
                                                     "/*"
                                                 ]
@@ -338,7 +338,7 @@
                                     ]
                                 },
                                 {
-                                    "Fn::Ref": "AWS::NoValue"
+                                    "Ref": "AWS::NoValue"
                                 }
                             ]
                         },
@@ -356,10 +356,10 @@
                                         [
                                             "arn:aws:kms",
                                             {
-                                                "Fn::Ref": "AWS::Region"
+                                                "Ref": "AWS::Region"
                                             },
                                             {
-                                                "Fn::Ref": "AWS::AccountId"
+                                                "Ref": "AWS::AccountId"
                                             },
                                             {
                                                 "Fn::Join": [
@@ -380,7 +380,7 @@
                 "PolicyName": "CodeStarWorkerCodeBuildPolicy",
                 "Roles": [
                     {
-                        "Fn::Ref": "CodeBuildRole"
+                        "Ref": "CodeBuildRole"
                     }
                 ]
             },
@@ -402,7 +402,7 @@
                         [
                             "AWS CodeStar created CodeBuild Project for ",
                             {
-                                "Fn::Ref": "AppName"
+                                "Ref": "AppName"
                             }
                         ]
                     ]
@@ -413,7 +413,7 @@
                         {
                             "Name": "S3_BUCKET",
                             "Value": {
-                                "Fn::Ref": "S3Bucket"
+                                "Ref": "S3Bucket"
                             }
                         },
                         {
@@ -427,7 +427,7 @@
                                             [
                                                 "https://s3-us-west-2.amazonaws.com/",
                                                 {
-                                                    "Fn::Ref": "WebsiteS3Bucket"
+                                                    "Ref": "WebsiteS3Bucket"
                                                 }
                                             ]
                                         ]
@@ -442,7 +442,7 @@
                                 "Fn::If": [
                                     "CreateWebSiteS3Bucket",
                                     {
-                                        "Fn::Ref": "WebsiteS3Bucket"
+                                        "Ref": "WebsiteS3Bucket"
                                     },
                                     "NoVal"
                                 ]
@@ -453,10 +453,10 @@
                     "Type": "container"
                 },
                 "Name": {
-                    "Fn::Ref": "ProjectId"
+                    "Ref": "ProjectId"
                 },
                 "ServiceRole": {
-                    "Fn::Ref": "CodeBuildRole"
+                    "Ref": "CodeBuildRole"
                 },
                 "Source": {
                     "Type": "codepipeline"
@@ -486,7 +486,7 @@
                         [
                             "CodeStarWorker",
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "CodeBuild"
                         ]
@@ -532,7 +532,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "S3Bucket"
+                                                        "Ref": "S3Bucket"
                                                     }
                                                 ]
                                             ]
@@ -543,7 +543,7 @@
                                                 [
                                                     "arn:aws:s3:::",
                                                     {
-                                                        "Fn::Ref": "S3Bucket"
+                                                        "Ref": "S3Bucket"
                                                     },
                                                     "/*"
                                                 ]
@@ -582,10 +582,10 @@
                                                     "aws",
                                                     "cloudformation",
                                                     {
-                                                        "Fn::Ref": "AWS::Region"
+                                                        "Ref": "AWS::Region"
                                                     },
                                                     {
-                                                        "Fn::Ref": "AWS::AccountId"
+                                                        "Ref": "AWS::AccountId"
                                                     },
                                                     {
                                                         "Fn::Join": [
@@ -598,7 +598,7 @@
                                                                         [
                                                                             "awscodestar",
                                                                             {
-                                                                                "Fn::Ref": "ProjectId"
+                                                                                "Ref": "ProjectId"
                                                                             },
                                                                             "lambda"
                                                                         ]
@@ -638,7 +638,7 @@
                         [
                             "CodeStarWorker",
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "CodePipeline"
                         ]
@@ -652,14 +652,14 @@
             "Properties": {
                 "ProjectDescription": "AWS CodeStar created project",
                 "ProjectId": {
-                    "Fn::Ref": "ProjectId"
+                    "Ref": "ProjectId"
                 },
                 "ProjectName": {
-                    "Fn::Ref": "AppName"
+                    "Ref": "AppName"
                 },
                 "ProjectTemplateId": "arn:aws:codestar:us-west-2::project-template/github/webservice-pythonservice-lambda",
                 "StackId": {
-                    "Fn::Ref": "AWS::StackId"
+                    "Ref": "AWS::StackId"
                 }
             },
             "Type": "AWS::CodeStar::Project",
@@ -711,7 +711,7 @@
                         [
                             "CodeStarWorker",
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "Lambda"
                         ]
@@ -733,7 +733,7 @@
             "Properties": {
                 "ArtifactStore": {
                     "Location": {
-                        "Fn::Ref": "S3Bucket"
+                        "Ref": "S3Bucket"
                     },
                     "Type": "S3"
                 },
@@ -742,7 +742,7 @@
                         "-",
                         [
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "Pipeline"
                         ]
@@ -766,16 +766,16 @@
                                 },
                                 "Configuration": {
                                     "Branch": {
-                                        "Fn::Ref": "RepositoryBranch"
+                                        "Ref": "RepositoryBranch"
                                     },
                                     "OAuthToken": {
-                                        "Fn::Ref": "RepositoryToken"
+                                        "Ref": "RepositoryToken"
                                     },
                                     "Owner": {
-                                        "Fn::Ref": "RepositoryProviderUsername"
+                                        "Ref": "RepositoryProviderUsername"
                                     },
                                     "Repo": {
-                                        "Fn::Ref": "RepositoryName"
+                                        "Ref": "RepositoryName"
                                     }
                                 },
                                 "InputArtifacts": [],
@@ -787,7 +787,7 @@
                                             "-",
                                             [
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "SourceArtifact"
                                             ]
@@ -810,7 +810,7 @@
                                 },
                                 "Configuration": {
                                     "ProjectName": {
-                                        "Fn::Ref": "ProjectId"
+                                        "Ref": "ProjectId"
                                     }
                                 },
                                 "InputArtifacts": [
@@ -820,7 +820,7 @@
                                             "-",
                                             [
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "SourceArtifact"
                                             ]
@@ -835,7 +835,7 @@
                                             "-",
                                             [
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "BuildArtifact"
                                             ]
@@ -866,7 +866,7 @@
                                             [
                                                 "{\"ProjectId\":\"",
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "\"}"
                                             ]
@@ -884,7 +884,7 @@
                                             [
                                                 "awscodestar",
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "lambda"
                                             ]
@@ -895,7 +895,7 @@
                                             "",
                                             [
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "-BuildArtifact",
                                                 "::template-export.yml"
@@ -910,7 +910,7 @@
                                             "-",
                                             [
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "BuildArtifact"
                                             ]
@@ -937,7 +937,7 @@
                                             [
                                                 "awscodestar",
                                                 {
-                                                    "Fn::Ref": "ProjectId"
+                                                    "Ref": "ProjectId"
                                                 },
                                                 "lambda"
                                             ]
@@ -960,7 +960,7 @@
             "Description": "Setting Amazon S3 bucket policy for AWS CodePipeline access",
             "Properties": {
                 "Bucket": {
-                    "Fn::Ref": "S3Bucket"
+                    "Ref": "S3Bucket"
                 },
                 "PolicyDocument": {
                     "Id": "SSEAndSSLPolicy",
@@ -1006,7 +1006,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             }
                                         ]
                                     ]
@@ -1017,7 +1017,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             },
                                             "/*"
                                         ]
@@ -1054,7 +1054,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             }
                                         ]
                                     ]
@@ -1065,7 +1065,7 @@
                                         [
                                             "arn:aws:s3:::",
                                             {
-                                                "Fn::Ref": "S3Bucket"
+                                                "Ref": "S3Bucket"
                                             },
                                             "/*"
                                         ]
@@ -1091,13 +1091,13 @@
                             "aws",
                             "codestar",
                             {
-                                "Fn::Ref": "AWS::Region"
+                                "Ref": "AWS::Region"
                             },
                             {
-                                "Fn::Ref": "AWS::AccountId"
+                                "Ref": "AWS::AccountId"
                             },
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "pipe"
                         ]
@@ -1111,7 +1111,7 @@
                                 "-",
                                 [
                                     {
-                                        "Fn::Ref": "ProjectId"
+                                        "Ref": "ProjectId"
                                     },
                                     "S3Bucket"
                                 ]
@@ -1130,23 +1130,23 @@
             "Description": "Adding application source code to the GitHub repository for the project.",
             "Properties": {
                 "DefaultBranchName": {
-                    "Fn::Ref": "RepositoryBranch"
+                    "Ref": "RepositoryBranch"
                 },
                 "ProjectId": {
-                    "Fn::Ref": "ProjectId"
+                    "Ref": "ProjectId"
                 },
                 "ProjectTemplateId": "arn:aws:codestar:us-west-2::project-template/github/webservice-pythonservice-lambda",
                 "RepositoryProvider": {
-                    "Fn::Ref": "RepositoryProvider"
+                    "Ref": "RepositoryProvider"
                 },
                 "RepositoryProviderUsername": {
-                    "Fn::Ref": "RepositoryProviderUsername"
+                    "Ref": "RepositoryProviderUsername"
                 },
                 "RepositoryToken": {
-                    "Fn::Ref": "RepositoryToken"
+                    "Ref": "RepositoryToken"
                 },
                 "RepositoryURL": {
-                    "Fn::Ref": "RepositoryURL"
+                    "Ref": "RepositoryURL"
                 }
             },
             "Type": "AWS::CodeStar::SeedRepository"
@@ -1158,7 +1158,7 @@
             "Description": "Getting GitHub issues tile settings for your AWS CodeStar project.",
             "Properties": {
                 "ProjectId": {
-                    "Fn::Ref": "ProjectId"
+                    "Ref": "ProjectId"
                 }
             },
             "Type": "AWS::CodeStar::SyncResources",
@@ -1174,7 +1174,7 @@
             "Description": "Adding all created resources to your AWS CodeStar project",
             "Properties": {
                 "ProjectId": {
-                    "Fn::Ref": "ProjectId"
+                    "Ref": "ProjectId"
                 }
             },
             "Type": "AWS::CodeStar::SyncResources",
@@ -1192,13 +1192,13 @@
                             "aws",
                             "codestar",
                             {
-                                "Fn::Ref": "AWS::Region"
+                                "Ref": "AWS::Region"
                             },
                             {
-                                "Fn::Ref": "AWS::AccountId"
+                                "Ref": "AWS::AccountId"
                             },
                             {
-                                "Fn::Ref": "ProjectId"
+                                "Ref": "ProjectId"
                             },
                             "app"
                         ]
@@ -1212,7 +1212,7 @@
                                 "-",
                                 [
                                     {
-                                        "Fn::Ref": "ProjectId"
+                                        "Ref": "ProjectId"
                                     },
                                     "WebsiteS3Bucket"
                                 ]
