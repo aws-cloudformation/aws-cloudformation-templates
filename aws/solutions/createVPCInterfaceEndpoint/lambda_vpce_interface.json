@@ -1,0 +1,96 @@
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+"Description": "This template create a lambda function and use it to create interface VPC endpoint",
+"Metadata": {},
+"Parameters": {
+  "VPC": {
+    "Description": "VPC ID",
+    "Type": "String"
+  },
+  "Subnet": {
+    "Description": "Subnet ID",
+    "Type": "String"
+  },
+  "SecurityGroup": {
+    "Description": "Security group ID",
+    "Type": "String"
+  },
+  "Servicename": {
+    "Description": "Service name to create inetrafce endpoint",
+    "Type": "String"
+  }
+},
+"Resources": {
+  "LambdaRole": {
+    "Description": "IAM role to allow Lambda permissions to create interafce endpoint",
+    "Type": "AWS::IAM::Role",
+    "Properties": {
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [{
+          "Effect": "Allow",
+          "Principal": {"Service": ["lambda.amazonaws.com"]},
+          "Action": ["sts:AssumeRole"]
+        }]
+      },
+      "Path": "/",
+      "Policies": [{
+        "PolicyName": "root",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Action": ["ec2:CreateVpcEndpoint","ec2:DeleteVpcEndpoint","logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+            "Resource": "*"
+          }]
+        }
+      }]
+    }
+  },
+  "LambdaFunction": {
+    "Type": "AWS::Lambda::Function",
+    "Properties": {
+      "Code": {
+        "ZipFile": { "Fn::Join": ["\n", [
+          "import boto3",
+          "import json",
+          "import os",
+          "import cfnresponse",
+          "def lambda_handler(event, context):",
+          " client = boto3.client('ec2')",
+          " responseData = {}",
+          " responseValue = client.create_vpc_endpoint(",
+          "  VpcEndpointType = os.environ['endpointtype'],",
+          "  VpcId = os.environ['vpcid'],",
+          "  ServiceName = os.environ['servicename'],",
+          "  SubnetIds = [os.environ['subnet']],",
+          "  SecurityGroupIds = [os.environ['securitygroup']],",
+          "  PrivateDnsEnabled = True",
+          " )",
+          " responseData['Data'] = str(responseValue)",
+          " cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, \"CustomResourcePhysicalID\")"
+          ]]}
+        },
+        "Handler": "index.lambda_handler",
+        "Runtime": "python3.6",
+        "Timeout": "30",
+        "Role": { "Fn::GetAtt" : ["LambdaRole", "Arn"] },
+        "Environment": {
+          "Variables": {
+            "vpcid": {"Ref": "VPC"},
+            "subnet": {"Ref": "Subnet"},
+            "servicename": {"Ref": "Servicename"},
+            "securitygroup": {"Ref": "SecurityGroup"},
+            "endpointtype": "Interface"
+          }
+        }
+      }
+    },
+    "CreateVPCEInterface": {
+      "Type": "Custom::VPCEInterface",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt" : ["LambdaFunction", "Arn"] }
+      }
+    }
+  }
+}
