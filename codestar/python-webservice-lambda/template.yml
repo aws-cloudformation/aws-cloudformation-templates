@@ -58,11 +58,11 @@ Parameters:
 Mappings:
   DefaultGitConfig:
     CodeCommit:
-      Url:
-        Fn::Sub: "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${ProjectId}"
+      Url: asd
+#        Fn::Sub: "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${ProjectId}"
     GitHub:
-      Url:
-        Fn::Sub: "https://github.com/${RepositoryProviderUsername}/${ProjectId}.git"
+      Url: asd
+#        Fn::Sub: "https://github.com/${RepositoryProviderUsername}/${ProjectId}.git"
 
 Conditions:
   CreateCodeBuildResources:
@@ -476,14 +476,16 @@ Resources:
             - Fn::Ref: 'ProjectId'
             - Lambda
     Type: AWS::IAM::Role
+
   ProjectPipeline:
+    Type: AWS::CodePipeline::Pipeline
     DependsOn:
-    - SeedRepo
-    - LambdaTrustRole
-    - CodePipelineTrustRole
-    - S3Bucket
-    - CodeBuildProject
-    - CloudFormationTrustRole
+      - SeedRepo
+      - LambdaTrustRole
+      - CodePipelineTrustRole
+      - S3Bucket
+      - CodeBuildProject
+      - CloudFormationTrustRole
     Description: Creating a deployment pipeline for your project in AWS CodePipeline
     Properties:
       ArtifactStore:
@@ -500,134 +502,135 @@ Resources:
           - CodePipelineTrustRole
           - Arn
       Stages:
-      - Name: Source
-        Actions:
-        - Fn::If:
-            - Fn::Equals: [ Ref: RepositoryProvider, GitHub ]
+        - Name: Source
+          Actions:
+            - Fn::If:
+              - Fn::Equals: [ Ref: RepositoryProvider, GitHub ]
+              - ActionTypeId:
+                  Category: Source
+                  Owner: ThirdParty
+                  Provider: GitHub
+                  Version: 1
+                Configuration:
+                  Branch:
+                    Fn::Ref: 'RepositoryBranch'
+                  OAuthToken:
+                    Fn::Ref: 'RepositoryToken'
+                  Owner:
+                    Fn::Ref: 'RepositoryProviderUsername'
+                Repo:
+                  "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
+                InputArtifacts: [ ]
+                Name: ApplicationSource
+                OutputArtifacts:
+                  - Name:
+                      Fn::Join:
+                        - '-'
+                        - - Fn::Ref: 'ProjectId'
+                          - SourceArtifact
+                RunOrder: 1
+              - ActionTypeId: {Category: Source, Owner: AWS, Provider: CodeCommit, Version: 1}
+                Configuration:
+                  BranchName: master
+                  PollForSourceChanges: false
+                  RepositoryName:
+                    "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
+                InputArtifacts: []
+                Name: ApplicationSource
+                OutputArtifacts:
+                  - Name:
+                      Fn::Join:
+                        - '-'
+                        - - {Ref: ProjectId}
+                          - SourceArtifact
+                RunOrder: 1
+        - Name: Build
+          Actions:
             - ActionTypeId:
-                Category: Source
-                Owner: ThirdParty
-                Provider: GitHub
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
                 Version: 1
               Configuration:
-                Branch:
-                  Fn::Ref: 'RepositoryBranch'
-                OAuthToken:
-                  Fn::Ref: 'RepositoryToken'
-                Owner:
-                  Fn::Ref: 'RepositoryProviderUsername'
-              Repo:
-                "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
-              InputArtifacts: [ ]
-              Name: ApplicationSource
-              OutputArtifacts:
+                ProjectName:
+                  Fn::Ref: 'ProjectId'
+              InputArtifacts:
                 - Name:
-                  Fn::Join:
-                    - '-'
-                    - - Fn::Ref: 'ProjectId'
-                      - SourceArtifact
-              RunOrder: 1
-            - ActionTypeId: {Category: Source, Owner: AWS, Provider: CodeCommit, Version: 1}
-              Configuration:
-                BranchName: master
-                PollForSourceChanges: false
-                RepositoryName:
-                  "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
-              InputArtifacts: []
-              Name: ApplicationSource
+                    Fn::Join:
+                      - '-'
+                      - - Fn::Ref: 'ProjectId'
+                        - SourceArtifact
+              Name: PackageExport
               OutputArtifacts:
                 - Name:
                     Fn::Join:
                       - '-'
-                      - - {Ref: ProjectId}
-                        - SourceArtifact
+                      - - Fn::Ref: 'ProjectId'
+                        - BuildArtifact
               RunOrder: 1
-      - Actions:
-        - ActionTypeId:
-            Category: Build
-            Owner: AWS
-            Provider: CodeBuild
-            Version: 1
-          Configuration:
-            ProjectName:
-              Fn::Ref: 'ProjectId'
-          InputArtifacts:
-          - Name:
-            Fn::Join:
-              - '-'
-              - - Fn::Ref: 'ProjectId'
-                - SourceArtifact
-          Name: PackageExport
-          OutputArtifacts:
-          - Name:
-            Fn::Join:
-              - '-'
-              - - Fn::Ref: 'ProjectId'
-                - BuildArtifact
-          RunOrder: 1
-        Name: Build
-      - Actions:
-        - ActionTypeId:
-            Category: Deploy
-            Owner: AWS
-            Provider: CloudFormation
-            Version: 1
-          Configuration:
-            ActionMode: CHANGE_SET_REPLACE
-            Capabilities: CAPABILITY_IAM
-            ChangeSetName: pipeline-changeset
-            ParameterOverrides:
-              Fn::Join:
-                - ''
-                - - '{"ProjectId":"'
-                  - Fn::Ref: 'ProjectId'
-                  - '"}'
-            RoleArn:
-              Fn::GetAtt::
-                - CloudFormationTrustRole
-                - Arn
-            StackName:
-              Fn::Join:
-                - '-'
-                - - awscodestar
-                  - Fn::Ref: 'ProjectId'
-                  - lambda
-            TemplatePath:
-              Fn::Join:
-                - ''
-                - - Fn::Ref: 'ProjectId'
-                  - "-BuildArtifact"
-                  - ::template-export.yml
-          InputArtifacts:
-          - Name:
-            Fn::Join:
-              - '-'
-              - - Fn::Ref: 'ProjectId'
-                - BuildArtifact
-          Name: GenerateChangeSet
-          OutputArtifacts: [ ]
-          RunOrder: 1
-        - ActionTypeId:
-            Category: Deploy
-            Owner: AWS
-            Provider: CloudFormation
-            Version: 1
-          Configuration:
-            ActionMode: CHANGE_SET_EXECUTE
-            ChangeSetName: pipeline-changeset
-            StackName:
-              Fn::Join:
-                - '-'
-                - - awscodestar
-                  - Fn::Ref: 'ProjectId'
-                  - lambda
-          InputArtifacts: [ ]
-          Name: ExecuteChangeSet
-          OutputArtifacts: [ ]
-          RunOrder: 2
-        Name: Deploy
-    Type: AWS::CodePipeline::Pipeline
+        - Name: Deploy
+          Actions:
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                Capabilities: CAPABILITY_IAM
+                ChangeSetName: pipeline-changeset
+                ParameterOverrides:
+                  Fn::Join:
+                    - ''
+                    - - '{"ProjectId":"'
+                      - Fn::Ref: 'ProjectId'
+                      - '"}'
+                RoleArn:
+                  Fn::GetAtt::
+                    - CloudFormationTrustRole
+                    - Arn
+                StackName:
+                  Fn::Join:
+                    - '-'
+                    - - awscodestar
+                      - Fn::Ref: 'ProjectId'
+                      - lambda
+                TemplatePath:
+                  Fn::Join:
+                    - ''
+                    - - Fn::Ref: 'ProjectId'
+                      - "-BuildArtifact"
+                      - ::template-export.yml
+              InputArtifacts:
+                - Name:
+                    Fn::Join:
+                      - '-'
+                      - - Fn::Ref: 'ProjectId'
+                        - BuildArtifact
+              Name: GenerateChangeSet
+              OutputArtifacts: [ ]
+              RunOrder: 1
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: pipeline-changeset
+                StackName:
+                  Fn::Join:
+                    - '-'
+                    - - awscodestar
+                      - Fn::Ref: 'ProjectId'
+                      - lambda
+              InputArtifacts: [ ]
+              Name: ExecuteChangeSet
+              OutputArtifacts: [ ]
+              RunOrder: 2
+
   S3ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
     Description: Setting Amazon S3 bucket policy for AWS CodePipeline access
     Properties:
       Bucket:
@@ -663,7 +666,7 @@ Resources:
             - ''
             - - 'arn:aws:s3:::'
               - Fn::Ref: 'S3Bucket'
-              - /*
+              - "/*"
           Sid: WhitelistedGet
         - Action:
           - s3:PutObject
@@ -685,11 +688,12 @@ Resources:
             - ''
             - - 'arn:aws:s3:::'
               - Fn::Ref: 'S3Bucket'
-              - /*
+              - "/*"
           Sid: WhitelistedPut
         Version: 2012-10-17
-    Type: AWS::S3::BucketPolicy
+
   S3Bucket:
+    Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Description: Creating Amazon S3 bucket for AWS CodePipeline artifacts
     Properties:
@@ -703,16 +707,17 @@ Resources:
             - Fn::Ref: 'ProjectId'
             - pipe
       Tags:
-      - Key: Name
-        Value:
-          Fn::Join:
-            - '-'
-            - - Fn::Ref: 'ProjectId'
-              - S3Bucket
+        - Key: Name
+          Value:
+            Fn::Join:
+              - '-'
+              - - Fn::Ref: 'ProjectId'
+                - S3Bucket
       VersioningConfiguration:
         Status: Enabled
-    Type: AWS::S3::Bucket
+
   SeedRepo:
+    Type: AWS::CodeStar::SeedRepository
     DeletionPolicy: Retain
     Description: Adding application source code to the GitHub repository for the project.
     Properties:
@@ -732,28 +737,30 @@ Resources:
           - Fn::Equals: [ Ref: RepositoryURL, default ]
           - Fn::FindInMap: [ DefaultGitConfig, Ref: RepositoryProvider, Url ]
           - Ref: RepositoryURL
-    Type: AWS::CodeStar::SeedRepository
+
   SyncInitialResources:
+    Type: AWS::CodeStar::SyncResources
+    Version: 1.0
     DependsOn:
-    - SeedRepo
+      - SeedRepo
     Description: Getting GitHub issues tile settings for your AWS CodeStar project.
     Properties:
       ProjectId:
         Fn::Ref: 'ProjectId'
+
+  SyncResources:
     Type: AWS::CodeStar::SyncResources
     Version: 1.0
-  SyncResources:
     DependsOn:
-    - SeedRepo
-    - CodeBuildProject
-    - ProjectPipeline
-    - SyncInitialResources
+      - SeedRepo
+      - CodeBuildProject
+      - ProjectPipeline
+      - SyncInitialResources
     Description: Adding all created resources to your AWS CodeStar project
     Properties:
       ProjectId:
         Fn::Ref: 'ProjectId'
-    Type: AWS::CodeStar::SyncResources
-    Version: 1.0
+
   WebsiteS3Bucket:
     Condition: CreateWebSiteS3Bucket
     DeletionPolicy: Retain
