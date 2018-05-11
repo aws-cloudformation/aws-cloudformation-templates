@@ -15,6 +15,10 @@ Parameters:
     Type: Number
     Default: '6'
     Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -50,39 +54,6 @@ Mappings:
       CIDR: '10.0.2.0/24'
     PrivateTwo:
       CIDR: '10.0.3.0/24'
-  AWSRegionToAMI:
-    ap-northeast-1:
-      AMI: ami-872c4ae1
-    ap-northeast-2:
-      AMI: ami-c212b2ac
-    ap-south-1:
-      AMI: ami-00491f6f
-    ap-southeast-1:
-      AMI: ami-910d72ed
-    ap-southeast-2:
-      AMI: ami-58bb443a
-    ca-central-1:
-      AMI: ami-435bde27
-    cn-north-1:
-      AMI: ami-1300dd7e
-    eu-central-1:
-      AMI: ami-509a053f
-    eu-west-1:
-      AMI: ami-1d46df64
-    eu-west-2:
-      AMI: ami-67cbd003
-    eu-west-3:
-      AMI: ami-9aef59e7
-    sa-east-1:
-      AMI: ami-af521fc3
-    us-east-1:
-      AMI: ami-28456852
-    us-east-2:
-      AMI: ami-ce1c36ab
-    us-west-1:
-      AMI: ami-74262414
-    us-west-2:
-      AMI: ami-decc7fa6
 Resources:
   # VPC in which containers will be networked.
   # It has two public subnets, and two private subnets.
@@ -307,7 +278,7 @@ Resources:
   ContainerInstances:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: !FindInMap [AWSRegionToAMI, !Ref 'AWS::Region', AMI]
+      ImageId: !Ref 'ECSAMI'
       SecurityGroups: [!Ref 'EcsHostSecurityGroup']
       InstanceType: !Ref 'InstanceType'
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
