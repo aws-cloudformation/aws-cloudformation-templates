@@ -74,7 +74,7 @@ Conditions:
       - false
       - true
   BuildCloudCommitRepo:
-    Fn:And:
+    Fn::And:
       - Fn::Equals: [ Ref: RepositoryProvider, CodeCommit ]
       - Fn::Or:
         - Fn::Equals: [ Ref: UseExistingRepo, false ]
@@ -96,7 +96,7 @@ Metadata:
   IsWebsite: false
   ProjectTemplateId: webservice-pythonservice-lambda
   WebsiteS3Bucket:
-    Fn::Ref: 'WebsiteS3Bucket'
+    Ref: 'WebsiteS3Bucket'
 
 Outputs:
   LambdaTrustRole:
@@ -105,8 +105,8 @@ Outputs:
       Name:
         Fn::Join:
           - '-'
-          - - Fn::Ref: 'ProjectId'
-            - Fn::Ref: 'AWS::Region'
+          - - Ref: 'ProjectId'
+            - Ref: 'AWS::Region'
             - LambdaTrustRole
     Value:
       Fn::GetAtt: 'LambdaTrustRole.Arn'
@@ -135,11 +135,11 @@ Resources:
             - Fn::Join:
               - ''
               - - 'arn:aws:s3:::'
-                - Fn::Ref: 'S3Bucket'
+                - Ref: 'S3Bucket'
             - Fn::Join:
               - ''
               - - 'arn:aws:s3:::'
-                - Fn::Ref: 'S3Bucket'
+                - Ref: 'S3Bucket'
                 - /*
           - Action:
             - codestar:SyncResources
@@ -192,7 +192,7 @@ Resources:
         Fn::Join:
           - '-'
           - - CodeStarWorker
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'ProjectId'
             - CloudFormation
     Type: AWS::IAM::Role
   CodeBuildPolicy:
@@ -216,30 +216,30 @@ Resources:
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
               - /*
         - Fn::If:
-          - CreateWebSiteS3Bucket
-          - Action:
-            - s3:PutObject*
-            - s3:GetObject
-            - s3:GetObjectVersion
-            Effect: Allow
-            Resource:
-            - Fn::Join:
-              - ''
-              - - 'arn:aws:s3:::'
-                - Fn::Ref: 'WebsiteS3Bucket'
-            - Fn::Join:
-              - ''
-              - - 'arn:aws:s3:::'
-                - Fn::Ref: 'WebsiteS3Bucket'
-                - /*
-          - Fn::Ref: 'AWS::NoValue'
+            - CreateWebSiteS3Bucket
+            - Action:
+              - s3:PutObject*
+              - s3:GetObject
+              - s3:GetObjectVersion
+              Effect: Allow
+              Resource:
+              - Fn::Join:
+                - ''
+                - - 'arn:aws:s3:::'
+                  - Ref: 'WebsiteS3Bucket'
+              - Fn::Join:
+                - ''
+                - - 'arn:aws:s3:::'
+                  - Ref: 'WebsiteS3Bucket'
+                  - /*
+            - Ref: 'AWS::NoValue'
         - Action:
           - kms:GenerateDataKey*
           - kms:Encrypt
@@ -249,15 +249,15 @@ Resources:
           - Fn::Join:
             - ':'
             - - arn:aws:kms
-              - Fn::Ref: 'AWS::Region'
-              - Fn::Ref: 'AWS::AccountId'
+              - Ref: 'AWS::Region'
+              - Ref: 'AWS::AccountId'
               - Fn::Join:
                 - /
                 - - alias
                   - aws/s3
       PolicyName: CodeStarWorkerCodeBuildPolicy
       Roles:
-      - Fn::Ref: 'CodeBuildRole'
+      - Ref: 'CodeBuildRole'
     Type: AWS::IAM::Policy
   CodeBuildProject:
     Condition: CreateCodeBuildResources
@@ -271,13 +271,13 @@ Resources:
         Fn::Join:
           - ''
           - - 'AWS CodeStar created CodeBuild Project for '
-            - Fn::Ref: ProjectId
+            - Ref: ProjectId
       Environment:
         ComputeType: small
         EnvironmentVariables:
         - Name: S3_BUCKET
           Value:
-            Fn::Ref: 'S3Bucket'
+            Ref: 'S3Bucket'
         - Name: WEBSITE_S3_PREFIX
           Value:
             Fn::If:
@@ -285,20 +285,20 @@ Resources:
               - Fn::Join:
                 - ''
                 - - https://s3-us-west-2.amazonaws.com/
-                  - Fn::Ref: 'WebsiteS3Bucket'
+                  - Ref: 'WebsiteS3Bucket'
               - NoVal
         - Name: WEBSITE_S3_BUCKET
           Value:
             Fn::If:
               - CreateWebSiteS3Bucket
-              - Fn::Ref: 'WebsiteS3Bucket'
+              - Ref: 'WebsiteS3Bucket'
               - NoVal
         Image: aws/codebuild/eb-nodejs-6.10.0-amazonlinux-64:4.0.0
         Type: container
       Name:
-        Fn::Ref: 'ProjectId'
+        Ref: 'ProjectId'
       ServiceRole:
-        Fn::Ref: 'CodeBuildRole'
+        Ref: 'CodeBuildRole'
       Source:
         Type: codepipeline
     Type: AWS::CodeBuild::Project
@@ -317,7 +317,7 @@ Resources:
         Fn::Join:
           - '-'
           - - CodeStarWorker
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'ProjectId'
             - CodeBuild
     Type: AWS::IAM::Role
 
@@ -359,11 +359,11 @@ Resources:
             - Fn::Join:
                 - ''
                 - - 'arn:aws:s3:::'
-                  - Fn::Ref: 'S3Bucket'
+                  - Ref: 'S3Bucket'
             - Fn::Join:
                 - ''
                 - - 'arn:aws:s3:::'
-                  - Fn::Ref: 'S3Bucket'
+                  - Ref: 'S3Bucket'
                   - "/*"
           - Action:
             - codebuild:StartBuild
@@ -385,15 +385,15 @@ Resources:
                 - - arn
                   - aws
                   - cloudformation
-                  - Fn::Ref: 'AWS::Region'
-                  - Fn::Ref: 'AWS::AccountId'
+                  - Ref: 'AWS::Region'
+                  - Ref: 'AWS::AccountId'
                   - Fn::Join:
                     - /
                     - - stack
                       - Fn::Join:
                         - '-'
                         - - awscodestar
-                          - Fn::Ref: 'ProjectId'
+                          - Ref: 'ProjectId'
                           - lambda
                       - '*'
           - Action:
@@ -408,7 +408,7 @@ Resources:
         Fn::Join:
           - '-'
           - - CodeStarWorker
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'ProjectId'
             - CodePipeline
     Type: AWS::IAM::Role
   CodeStarProject:
@@ -416,18 +416,18 @@ Resources:
     Properties:
       ProjectDescription: AWS CodeStar created project
       ProjectId:
-        Fn::Ref: ProjectId
+        Ref: ProjectId
       ProjectName:
-        Fn::Ref: ProjectId
+        Ref: ProjectId
       ProjectTemplateId: arn:aws:codestar:us-west-2::project-template/github/webservice-pythonservice-lambda
       StackId:
-        Fn::Ref: 'AWS::StackId'
+        Ref: 'AWS::StackId'
     Type: AWS::CodeStar::Project
     Version: 1.0
 
   EnvironmentEC23fd7af6a4f1411e882fb290aa2a9d512:
     Type: AWS::Cloud9::EnvironmentEC2
-    Conditions: BuildDevEnvironment
+    Condition: BuildDevEnvironment
     Properties:
       AutomaticStopTimeMinutes: '30'
       Description: Created from CodeStar.
@@ -473,7 +473,7 @@ Resources:
         Fn::Join:
           - '-'
           - - CodeStarWorker
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'ProjectId'
             - Lambda
     Type: AWS::IAM::Role
 
@@ -490,12 +490,12 @@ Resources:
     Properties:
       ArtifactStore:
         Location:
-          Fn::Ref: 'S3Bucket'
+          Ref: 'S3Bucket'
         Type: S3
       Name:
         Fn::Join:
           - '-'
-          - - Fn::Ref: 'ProjectId'
+          - - Ref: 'ProjectId'
             - Pipeline
       RoleArn:
         Fn::GetAtt:
@@ -505,45 +505,45 @@ Resources:
         - Name: Source
           Actions:
             - Fn::If:
-              - Fn::Equals: [ Ref: RepositoryProvider, GitHub ]
-              - ActionTypeId:
-                  Category: Source
-                  Owner: ThirdParty
-                  Provider: GitHub
-                  Version: 1
-                Configuration:
-                  Branch:
-                    Fn::Ref: 'RepositoryBranch'
-                  OAuthToken:
-                    Fn::Ref: 'RepositoryToken'
-                  Owner:
-                    Fn::Ref: 'RepositoryProviderUsername'
-                Repo:
-                  "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
-                InputArtifacts: [ ]
-                Name: ApplicationSource
-                OutputArtifacts:
-                  - Name:
-                      Fn::Join:
-                        - '-'
-                        - - Fn::Ref: 'ProjectId'
-                          - SourceArtifact
-                RunOrder: 1
-              - ActionTypeId: {Category: Source, Owner: AWS, Provider: CodeCommit, Version: 1}
-                Configuration:
-                  BranchName: master
-                  PollForSourceChanges: false
-                  RepositoryName:
+                - Fn::Equals: [ Ref: RepositoryProvider, GitHub ]
+                - ActionTypeId:
+                    Category: Source
+                    Owner: ThirdParty
+                    Provider: GitHub
+                    Version: 1
+                  Configuration:
+                    Branch:
+                      Ref: 'RepositoryBranch'
+                    OAuthToken:
+                      Ref: 'RepositoryToken'
+                    Owner:
+                      Ref: 'RepositoryProviderUsername'
+                  Repo:
                     "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
-                InputArtifacts: []
-                Name: ApplicationSource
-                OutputArtifacts:
-                  - Name:
-                      Fn::Join:
-                        - '-'
-                        - - {Ref: ProjectId}
-                          - SourceArtifact
-                RunOrder: 1
+                  InputArtifacts: [ ]
+                  Name: ApplicationSource
+                  OutputArtifacts:
+                    - Name:
+                        Fn::Join:
+                          - '-'
+                          - - Ref: 'ProjectId'
+                            - SourceArtifact
+                  RunOrder: 1
+                - ActionTypeId: {Category: Source, Owner: AWS, Provider: CodeCommit, Version: 1}
+                  Configuration:
+                    BranchName: master
+                    PollForSourceChanges: false
+                    RepositoryName:
+                      "Fn::If" : [ { "Fn::Equals" : [ { "Ref" : "RepositoryName" }, "default" ] }, { "Ref" : "ProjectId" }, { "Ref" : "RepositoryName" } ]
+                  InputArtifacts: []
+                  Name: ApplicationSource
+                  OutputArtifacts:
+                    - Name:
+                        Fn::Join:
+                          - '-'
+                          - - {Ref: ProjectId}
+                            - SourceArtifact
+                  RunOrder: 1
         - Name: Build
           Actions:
             - ActionTypeId:
@@ -553,19 +553,19 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName:
-                  Fn::Ref: 'ProjectId'
+                  Ref: 'ProjectId'
               InputArtifacts:
                 - Name:
                     Fn::Join:
                       - '-'
-                      - - Fn::Ref: 'ProjectId'
+                      - - Ref: 'ProjectId'
                         - SourceArtifact
               Name: PackageExport
               OutputArtifacts:
                 - Name:
                     Fn::Join:
                       - '-'
-                      - - Fn::Ref: 'ProjectId'
+                      - - Ref: 'ProjectId'
                         - BuildArtifact
               RunOrder: 1
         - Name: Deploy
@@ -583,7 +583,7 @@ Resources:
                   Fn::Join:
                     - ''
                     - - '{"ProjectId":"'
-                      - Fn::Ref: 'ProjectId'
+                      - Ref: 'ProjectId'
                       - '"}'
                 RoleArn:
                   Fn::GetAtt::
@@ -593,19 +593,19 @@ Resources:
                   Fn::Join:
                     - '-'
                     - - awscodestar
-                      - Fn::Ref: 'ProjectId'
+                      - Ref: 'ProjectId'
                       - lambda
                 TemplatePath:
                   Fn::Join:
                     - ''
-                    - - Fn::Ref: 'ProjectId'
+                    - - Ref: 'ProjectId'
                       - "-BuildArtifact"
                       - ::template-export.yml
               InputArtifacts:
                 - Name:
                     Fn::Join:
                       - '-'
-                      - - Fn::Ref: 'ProjectId'
+                      - - Ref: 'ProjectId'
                         - BuildArtifact
               Name: GenerateChangeSet
               OutputArtifacts: [ ]
@@ -622,7 +622,7 @@ Resources:
                   Fn::Join:
                     - '-'
                     - - awscodestar
-                      - Fn::Ref: 'ProjectId'
+                      - Ref: 'ProjectId'
                       - lambda
               InputArtifacts: [ ]
               Name: ExecuteChangeSet
@@ -634,7 +634,7 @@ Resources:
     Description: Setting Amazon S3 bucket policy for AWS CodePipeline access
     Properties:
       Bucket:
-        Fn::Ref: 'S3Bucket'
+        Ref: 'S3Bucket'
       PolicyDocument:
         Id: SSEAndSSLPolicy
         Statement:
@@ -661,11 +661,11 @@ Resources:
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
               - "/*"
           Sid: WhitelistedGet
         - Action:
@@ -683,11 +683,11 @@ Resources:
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
           - Fn::Join:
             - ''
             - - 'arn:aws:s3:::'
-              - Fn::Ref: 'S3Bucket'
+              - Ref: 'S3Bucket'
               - "/*"
           Sid: WhitelistedPut
         Version: 2012-10-17
@@ -702,16 +702,16 @@ Resources:
           - '-'
           - - aws
             - codestar
-            - Fn::Ref: 'AWS::Region'
-            - Fn::Ref: 'AWS::AccountId'
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'AWS::Region'
+            - Ref: 'AWS::AccountId'
+            - Ref: 'ProjectId'
             - pipe
       Tags:
         - Key: Name
           Value:
             Fn::Join:
               - '-'
-              - - Fn::Ref: 'ProjectId'
+              - - Ref: 'ProjectId'
                 - S3Bucket
       VersioningConfiguration:
         Status: Enabled
@@ -722,16 +722,16 @@ Resources:
     Description: Adding application source code to the GitHub repository for the project.
     Properties:
       DefaultBranchName:
-        Fn::Ref: 'RepositoryBranch'
+        Ref: 'RepositoryBranch'
       ProjectId:
-        Fn::Ref: 'ProjectId'
+        Ref: 'ProjectId'
       ProjectTemplateId: arn:aws:codestar:us-west-2::project-template/github/webservice-pythonservice-lambda
       RepositoryProvider:
-        Fn::Ref: 'RepositoryProvider'
+        Ref: 'RepositoryProvider'
       RepositoryProviderUsername:
-        Fn::Ref: 'RepositoryProviderUsername'
+        Ref: 'RepositoryProviderUsername'
       RepositoryToken:
-        Fn::Ref: 'RepositoryToken'
+        Ref: 'RepositoryToken'
       RepositoryURL:
         Fn::If:
           - Fn::Equals: [ Ref: RepositoryURL, default ]
@@ -746,7 +746,7 @@ Resources:
     Description: Getting GitHub issues tile settings for your AWS CodeStar project.
     Properties:
       ProjectId:
-        Fn::Ref: 'ProjectId'
+        Ref: 'ProjectId'
 
   SyncResources:
     Type: AWS::CodeStar::SyncResources
@@ -759,7 +759,7 @@ Resources:
     Description: Adding all created resources to your AWS CodeStar project
     Properties:
       ProjectId:
-        Fn::Ref: 'ProjectId'
+        Ref: 'ProjectId'
 
   WebsiteS3Bucket:
     Condition: CreateWebSiteS3Bucket
@@ -771,16 +771,16 @@ Resources:
           - '-'
           - - aws
             - codestar
-            - Fn::Ref: 'AWS::Region'
-            - Fn::Ref: 'AWS::AccountId'
-            - Fn::Ref: 'ProjectId'
+            - Ref: 'AWS::Region'
+            - Ref: 'AWS::AccountId'
+            - Ref: 'ProjectId'
             - app
       Tags:
       - Key: Name
         Value:
           Fn::Join:
             - '-'
-            - - Fn::Ref: 'ProjectId'
+            - - Ref: 'ProjectId'
               - WebsiteS3Bucket
       VersioningConfiguration:
         Status: Enabled
