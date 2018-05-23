@@ -1,0 +1,5 @@
+.application.json
+*.zip
+__*
+*.pyc
+.DS_Store

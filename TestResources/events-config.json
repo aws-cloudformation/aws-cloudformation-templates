@@ -1,0 +1,27 @@
+{
+  "Parameters" : [
+    {
+      "ParameterKey": "ReadCapacity",
+      "ParameterValue": "20"
+    },
+    {
+      "ParameterKey": "WriteCapacity",
+      "ParameterValue": "20"
+    }
+  ],
+  "Tags" : [
+    {
+      "Key": "Environment",
+      "Value": "Dev"
+    }
+  ],
+  "StackPolicy" : {
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : "*",
+        "Principal": "*",
+        "Resource" : "*"
+      }    ]
+  }
+}
