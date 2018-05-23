@@ -1,0 +1,65 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Let's build a StackSet
+Parameters:
+  StackSetName:
+    Type: String
+    Description: "[Optional] Unique name for this StackSet"
+  StackSetDescription:
+    Type: String
+    Description: "[Optional] Description for this StackSet"
+  TemplateURL:
+    Type: String
+    Description: "S3 URL for the CloudFormation template to associate with this StackSet"
+    AllowedPattern: ^https://s3(.+)\.amazonaws.com/.+$
+    ConstraintDescription: "must be a valid S3 URL to a template object"
+    Default: "https://s3.us-east-2.amazonaws.com/cloudformation-pipeline/events.yaml"
+  Capabilities:
+    Type: String
+    AllowedValues: [ "CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "" ]
+    Description: "Include capabilities if your template contains IAM resources (see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-template.html#using-iam-capabilities)"
+    Default: ""
+
+Conditions:
+  HasStackSetName: !Not [!Equals [!Ref StackSetName, ""]]
+  HasStackSetDescription: !Not [!Equals [!Ref StackSetDescription, ""]]
+  HasCapabilities: !Not [!Equals [!Ref Capabilities, ""]]
+
+Resources:
+  StackSet:
+    Type: Custom::StackSet
+    Properties:
+      ServiceToken:
+        Fn::ImportValue: StackSetCustomResource
+      loglevel: "debug"
+      StackSetName: !If [HasStackSetName, !Ref StackSetName, !Ref "AWS::NoValue"]
+      StackSetDescription: !If [HasStackSetDescription, !Ref StackSetDescription, !Ref "AWS::NoValue"]
+      TemplateURL: !Ref TemplateURL
+      Capabilities: !If [HasCapabilities, [ !Ref Capabilities ], [!Ref "AWS::NoValue"]]
+      OperationPreferences: {
+        "RegionOrder": !Ref "AWS::NoValue",
+        "FailureToleranceCount": 0,
+        "MaxConcurrentCount": 3
+      }
+      Parameters:
+        - ReadCapacity: 20
+        - WriteCapacity: 20
+      Tags:
+        - Environment: Testing
+        - Creator: Chuck
+      StackInstances:
+        # Dev
+        - Regions:
+            - us-east-2
+          Accounts:
+            - 225704381548
+        # Production
+        - Regions:
+            - us-east-2
+            - us-west-2
+            - eu-west-2
+          Accounts:
+            - 888049286042
+          ParameterOverrides:
+            - ReadCapacity: 50
+            - WriteCapacity: 50
