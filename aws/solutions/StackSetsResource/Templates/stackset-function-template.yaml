@@ -1,0 +1,83 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Deploy required components for StackSet custom resources in this region.  Lambda ARN is exported as StackSetCustomResource"
+Parameters:
+  ModuleName:
+    Type: String
+    Default: "lambda_function"
+
+Resources:
+  StackSetResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Path: "/"
+        Policies:
+          -
+            PolicyName: "CloudFormationPermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: cloudformation:*
+                  Resource: "*"
+          -
+            PolicyName: "LambdaPermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: logs:CreateLogGroup
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                -
+                  Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+          -
+            PolicyName: "S3Permissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action:
+                  - s3:Get*
+                  - s3:List*
+                  Resource: "*"
+
+  StackSetResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code: ../FunctionCode
+      Handler: !Sub "${ModuleName}.handler"
+      Runtime: python3.6
+      Timeout: 300
+      Role: !GetAtt StackSetResourceRole.Arn
+
+  StackSetResourceLogGroup:
+    DependsOn: StackSetResourceFunction
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StackSetResourceFunction}'
+      RetentionInDays: 7
+Outputs:
+  StackSetFunctionArn:
+    Description: "Resource ARN for the StackSetCustom resource Lambda function"
+    Value:
+      Fn::GetAtt:
+        - "StackSetResourceFunction"
+        - "Arn"
+    Export:
+        Name: "StackSetCustomResource"

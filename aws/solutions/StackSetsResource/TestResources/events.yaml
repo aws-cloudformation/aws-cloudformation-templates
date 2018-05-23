@@ -1,0 +1,39 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: A simple NoSQL event database
+
+Parameters:
+  ReadCapacity:
+    Type: Number
+    Default: 20
+    Description: Read Capacity Units
+  WriteCapacity:
+    Type: Number
+    Default: 20
+    Description: Write Capacity Units
+    
+Resources:
+  Events:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      KeySchema:
+        -
+          AttributeName: EventId
+          KeyType: HASH
+      AttributeDefinitions:
+        -
+          AttributeName: EventId
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacity
+        WriteCapacityUnits: !Ref WriteCapacity
+  EventQueue:
+    Type: "AWS::SQS::Queue"
+
+Outputs:
+  EventTableARN:
+    Value:
+      Fn::GetAtt: [ "Events", "Arn" ]
+    Description: ARN for the DynamoDB table
+...
