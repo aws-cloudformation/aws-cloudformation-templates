@@ -57,7 +57,7 @@ def send(event, context, responseStatus, responseData, physicalResourceId,
         responseBody['Reason'] = msg
     else:
         responseBody['Reason'] = str(reason)[0:255] + '... ' + msg
-    responseBody['PhysicalResourceId'] = physicalResourceId or context.log_stream_name
+    responseBody['PhysicalResourceId'] = physicalResourceId or event['PhysicalResourceId'] or context.log_stream_name
     responseBody['StackId'] = event['StackId']
     responseBody['RequestId'] = event['RequestId']
     responseBody['LogicalResourceId'] = event['LogicalResourceId']
