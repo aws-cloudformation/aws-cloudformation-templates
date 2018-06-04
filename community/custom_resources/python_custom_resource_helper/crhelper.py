@@ -26,7 +26,7 @@ def log_config(event, loglevel=None, botolevel=None):
         if 'loglevel' in event['ResourceProperties'] and not loglevel:
             loglevel = event['ResourceProperties']['loglevel']
         if 'botolevel' in event['ResourceProperties'] and not botolevel:
-            loglevel = event['ResourceProperties']['botolevel']
+            botolevel = event['ResourceProperties']['botolevel']
     if not loglevel:
         loglevel = 'warning'
     if not botolevel:
