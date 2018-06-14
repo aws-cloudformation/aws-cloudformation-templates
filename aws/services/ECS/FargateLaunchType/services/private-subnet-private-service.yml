@@ -129,7 +129,7 @@ Resources:
       HealthyThresholdCount: 2
       TargetType: ip
       Name: !Ref 'ServiceName'
-      Port: 80
+      Port: !Ref 'ContainerPort'
       Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId:
