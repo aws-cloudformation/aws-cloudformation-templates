@@ -175,7 +175,7 @@
         "DBClusterParameterGroupName" : { "Ref" : "AuroraClusterParameterGroup" },
         "DBSubnetGroupName" : { "Ref" : "AuroraDBSubnetGroup" },
         "Engine" : "aurora",
-        "SnapshotIdentifier" : "arn:aws:rds:us-east-1:886940966721:cluster-snapshot:dms-sampledb-snapshot",
+        "SnapshotIdentifier" : "arn:aws:rds:us-east-1:343299325021:cluster-snapshot:dms-sampledb-snapshot",
         "VpcSecurityGroupIds"  : [ { "Ref" : "AuroraSecurityGroup" } ]
       }
     },
