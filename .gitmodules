@@ -1,0 +1,3 @@
+[submodule "community/solutions/staticwebsite"]
+	path = community/solutions/staticwebsite
+	url = https://github.com/grstavares/AWSStaticWebSiteStack.git
