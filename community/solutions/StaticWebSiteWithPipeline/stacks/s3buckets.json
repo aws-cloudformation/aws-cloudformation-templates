@@ -1,0 +1,72 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Cloud Formation Template for Site and Log Buckets for StaticWebSite on S3",
+  
+    "Parameters" : {
+        "HostedZoneName" : {
+          "Type" : "String",
+          "Description" : "The DNS name of an existing Amazon Route 53 hosted zone"
+        },
+        "HostName" : {
+          "Type" : "String",
+          "Description" : "The hostname that will be appended to HostZone to create the Site",
+          "AllowedPattern" : "(?!-)[a-zA-Z0-9-.]{1,63}(?<!-)",
+          "ConstraintDescription" : "must be a valid host name."
+        }
+    },
+  
+    "Resources" : {
+  
+      "S3BucketForWebsiteLog" : {
+        "Type" : "AWS::S3::Bucket",
+        "DeletionPolicy" : "Retain",
+        "Properties" : {
+          "BucketName" : { "Fn::Join" : [ "", [ "", "logs.", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },
+          "AccessControl" : "LogDeliveryWrite"
+        }
+      },
+  
+      "S3BucketForWebsiteContent" : {
+        "Type" : "AWS::S3::Bucket",
+        "DeletionPolicy" : "Retain",
+        "DependsOn": ["S3BucketForWebsiteLog"],
+        "Properties" : {
+          "BucketName" : { "Fn::Join" : [ "", [ "", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },
+          "AccessControl" : "PublicRead",
+          "LoggingConfiguration" : { "DestinationBucketName" : { "Fn::Join" : [ "", [ "", "logs.", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] }, "LogFilePrefix" : "bucket/"},
+          "WebsiteConfiguration" : {"IndexDocument" : "index.html", "ErrorDocument" : "error.html"}
+        }
+      }
+
+    },
+  
+    "Outputs" : {
+      
+      "LogBucketUrl" : {
+        "Value" : { "Fn::Join" : [ "", [ "logs.", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }, ".s3.amazonaws.com" ] ] },
+        "Description" : "S3 Bucket Name for logging",
+        "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-LogBucket" }}
+      },
+
+      "SiteBucketUrl" : {
+        "Value" : { "Fn::Join" : ["", [ { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }, ".s3.amazonaws.com"]]},
+        "Description" : "S3 Bucket configured to host content as a website",
+        "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-SiteBucket" }}
+      },
+
+      "SiteBucketName" : {
+        "Value" : { "Fn::Join" : [ "", [ "", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },
+        "Description" : "S3 Bucket configured to host content as a website",
+        "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-SiteBucketName" }}
+      },
+
+      "LogBucketName" : {
+        "Value" : { "Fn::Join" : [ "", [ "logs.", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },
+        "Description" : "S3 Bucket Name for logging",
+        "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-LogBucketName" }}
+      }
+
+    }
+  }
+  
