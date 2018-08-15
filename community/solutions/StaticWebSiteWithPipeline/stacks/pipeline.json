@@ -1,0 +1,287 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "Cloud Formation Template for Pipeline/Build/Deploy StaticWebSite on S3",
+
+        "Parameters" : {
+
+            "S3BucketForWebSite" : {
+                "Type" : "String",
+                "Description" : "The S3 address of Stack Resources and Files"
+            }
+        },
+
+        "Resources": {
+    
+            "S3BucketForArtifacts" : {
+                "Type" : "AWS::S3::Bucket",
+                "Properties" : {
+                  "AccessControl" : "Private"
+                }
+            },
+    
+            "CodeRepository" : {
+                "Type" : "AWS::CodeCommit::Repository",
+                "Properties" : {
+                    "RepositoryName" : { "Fn::Sub": [ "${Stack}-Repo", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                    "RepositoryDescription" : "Repository for S3 Static Web Site"
+                }
+            },
+    
+            "BuildRole" : {
+                "Type": "AWS::IAM::Role",
+                "Properties": {
+                    "RoleName": { "Fn::Sub": [ "${Stack}-CodeBuildExecRole", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                    "AssumeRolePolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [{ "Effect": "Allow", "Principal": {"Service": ["codebuild.amazonaws.com"]}, "Action": ["sts:AssumeRole"] }]
+                    },
+                    "Path": "/",
+                    "Policies": [ {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "WriteOnWebSiteBucket",
+                                    "Action": ["s3:*"],
+                                    "Resource": [
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}", { "BucketName": {"Ref" : "S3BucketForWebSite" }} ]},
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}/*", { "BucketName": {"Ref" : "S3BucketForWebSite" }} ]}
+                                    ],
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Sid": "CreateLogGroups",
+                                    "Effect": "Allow",
+                                    "Action": ["logs:CreateLogGroup"],
+                                    "Resource": ["*"]
+                                },
+                                {
+                                    "Sid": "CreateStreamAndPutLogs",
+                                    "Effect": "Allow",
+                                    "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                                    "Resource": ["arn:aws:logs:*"]
+                                },
+                                {
+                                    "Sid": "CheckBuketsInS3",
+                                    "Effect": "Allow",
+                                    "Action": ["s3:ListAllMyBuckets", "s3:HeadBucket"],
+                                    "Resource": ["*"]
+                                },
+                                {
+                                    "Sid": "GetAndPutObjectsInS3ArtifactStore",
+                                    "Effect": "Allow",
+                                    "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:GetObjectVersion", "s3:GetBucketAcl", "s3:PutBucketAcl", "s3:PutObjectAcl", "s3:GetObjectVersion"],
+                                    "Resource": [
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}", { "BucketName": {"Ref" : "S3BucketForArtifacts" }} ]},
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}/*", { "BucketName": {"Ref" : "S3BucketForArtifacts" }} ]}
+                                    ]
+                                }
+                            ]
+                        }
+                    } ]
+                }
+            },
+    
+            "CodeBuild" : {
+                "Type" : "AWS::CodeBuild::Project",
+                "Properties" : {
+                    "Artifacts" : {
+                            "Type": "CODEPIPELINE",
+                            "Name": { "Fn::Sub": [ "${Stack}-Build", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                            "Packaging": "NONE"
+                        },
+                    "BadgeEnabled" : false,
+                    "Cache" : {"Type": "NO_CACHE"},
+                    "Description" : { "Fn::Sub": [ "StaticWebSite Build for ${Stack}", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                    "Environment" : {
+                        "Type": "LINUX_CONTAINER",
+                        "Image": "aws/codebuild/nodejs:10.1.0",
+                        "ComputeType": "BUILD_GENERAL1_SMALL",
+                        "EnvironmentVariables": [],
+                        "PrivilegedMode": false
+                    },
+                    "Name" : {"Ref" : "AWS::StackName" },
+                    "ServiceRole" : { "Fn::GetAtt" : ["BuildRole", "Arn"] },
+                    "Source" : {
+                        "Type": "CODEPIPELINE",
+                        "InsecureSsl": false
+                    },
+                    "TimeoutInMinutes" : 60
+                }
+            },
+    
+            "PipelineRole": {
+               "Type": "AWS::IAM::Role",
+               "Properties": {
+                    "RoleName": { "Fn::Sub": [ "${Stack}-CodePipeLineExecRole", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                    "AssumeRolePolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [{ "Effect": "Allow", "Principal": {"Service": ["codepipeline.amazonaws.com"]}, "Action": ["sts:AssumeRole"] }]
+                    },
+                    "Path": "/",
+                    "Policies": [ {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "WriteOnWebSiteBucket",
+                                    "Action": ["s3:*"],
+                                    "Resource": [
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}", { "BucketName": {"Ref" : "S3BucketForWebSite" }} ]},
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}/*", { "BucketName": {"Ref" : "S3BucketForWebSite" }} ]}
+                                    ],
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Sid": "InterfaceWithBucketsInS3",
+                                    "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketVersioning"],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Sid": "InterfaceWithArtifactStoreInS3",
+                                    "Effect": "Allow",
+                                    "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:GetObjectVersion", "s3:GetBucketAcl", "s3:PutBucketAcl", "s3:PutObjectAcl", "s3:GetObjectVersion"],
+                                    "Resource": [
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}", { "BucketName": {"Ref" : "S3BucketForArtifacts" }} ]},
+                                        { "Fn::Sub": [ "arn:aws:s3:::${BucketName}/*", { "BucketName": {"Ref" : "S3BucketForArtifacts" }} ]}
+                                    ]
+                                },
+                                {
+                                    "Sid": "InterfaceWithCodeCommit",
+                                    "Action": ["codecommit:CancelUploadArchive", "codecommit:GetBranch", "codecommit:GetCommit", "codecommit:GetUploadArchiveStatus", "codecommit:UploadArchive"],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Sid": "InterfaceWithCodeBuild",
+                                    "Action": ["codebuild:BatchGetBuilds", "codebuild:StartBuild"],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }            
+                    } ]
+               }
+            },
+    
+            "CodePipeline" : {
+                "Type" : "AWS::CodePipeline::Pipeline",
+                "Properties" : {
+                  "ArtifactStore" : {
+                    "Location" : {"Ref": "S3BucketForArtifacts"},
+                    "Type" : "S3"
+                  },
+                  "RestartExecutionOnUpdate" : false,
+                  "RoleArn" : { "Fn::GetAtt" : ["PipelineRole", "Arn"] },
+                  "Stages" : [
+                    {
+                        "Name": "Source",
+                        "Actions": [
+                            {
+                                "Name": "Source",
+                                "ActionTypeId": {"Category": "Source", "Owner": "AWS", "Provider": "CodeCommit", "Version": "1"},
+                                "RunOrder": 1,
+                                "Configuration": { "BranchName": "master", "PollForSourceChanges": "false", "RepositoryName": { "Fn::Sub": [ "${Stack}-Repo", { "Stack": {"Ref" : "AWS::StackName" }} ]}},
+                                "OutputArtifacts": [ { "Name" : {"Ref" : "AWS::StackName"} } ],
+                                "InputArtifacts": []
+                            }
+                        ]
+                    },
+    
+                    {
+                        "Name": "Build",
+                        "Actions": [
+                            {
+                                "Name": "CodeBuild",
+                                "ActionTypeId": { "Category": "Build", "Owner": "AWS", "Provider": "CodeBuild", "Version": "1" },
+                                "RunOrder": 1,
+                                "Configuration": { "ProjectName": {"Ref" : "AWS::StackName" } },
+                                "InputArtifacts": [ { "Name" : {"Ref" : "AWS::StackName"} } ],
+                                "OutputArtifacts": [ { "Name": { "Fn::Sub": [ "${Stack}-builded", { "Stack": {"Ref" : "AWS::StackName" }} ]} } ]
+                            }
+                        ]
+                    }
+    
+                ]
+                }
+            },
+    
+            "CloudWathEventRole": {
+    
+                "Type": "AWS::IAM::Role",
+                "Properties": {
+                     "RoleName": { "Fn::Sub": [ "${Stack}-CloudWatchEventRole", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                     "AssumeRolePolicyDocument": {
+                         "Version": "2012-10-17",
+                         "Statement": [{ "Effect": "Allow", "Principal": {"Service": ["events.amazonaws.com"]}, "Action": ["sts:AssumeRole"] }]
+                     },
+                     "Path": "/",
+                     "Policies": [ {
+                         "PolicyName": "root",
+                         "PolicyDocument": {
+                             "Version": "2012-10-17",
+                             "Statement": [
+                                 {
+                                     "Action": ["codepipeline:StartPipelineExecution"],
+                                     "Resource": { "Fn::Sub": [ "arn:aws:codepipeline:${Region}:${Account}:${PipelineName}", { "Region": { "Ref" : "AWS::Region" }, "Account": { "Ref" : "AWS::AccountId" }, "PipelineName": {"Ref" : "CodePipeline" }} ]},
+                                     "Effect": "Allow"
+                                 }
+                             ]
+                         }            
+                     } ]
+                }
+    
+            },
+    
+            "CloudWatchEventRule" : {
+                "Type" : "AWS::Events::Rule",
+                "Properties" : {
+    
+                    "Name" : { "Fn::Sub": [ "${Stack}-Repo-Changes", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                    "Description" : "Check CodeCommit Repo Changes",
+    
+                    "EventPattern" : {
+                        "detail-type": ["CodeCommit Repository State Change"],
+                        "source": ["aws.codecommit"],
+                        "resources": [{ "Fn::GetAtt" : [ "CodeRepository", "Arn" ] }],
+                        "detail": { "referenceType": ["branch"], "referenceName": ["master"]}
+                    },
+                    
+                    "Targets" : [ {
+                            "Id" : "codepipeline",
+                            "Arn" : { "Fn::Sub": [ "arn:aws:codepipeline:${Region}:${Account}:${PipelineName}", { "Region": { "Ref" : "AWS::Region" }, "Account": { "Ref" : "AWS::AccountId" }, "PipelineName": {"Ref" : "CodePipeline" }} ]},
+                            "RoleArn" : { "Fn::GetAtt" : ["CloudWathEventRole", "Arn"] }
+                    } ]
+    
+                }
+            }
+    
+        },
+        
+        "Outputs": {
+            "RepoName" : {
+                "Value" : { "Fn::Sub": [ "${Stack}-Repo", { "Stack": {"Ref" : "AWS::StackName" }} ]},
+                "Description" : "CodeCommit Repository Name",
+                "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-RepoName" }}
+            },
+            "RepoArn" : {
+                "Value" : { "Fn::GetAtt" : [ "CodeRepository", "Arn" ] },
+                "Description" : "CodeCommit Repository Arn",
+                "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-RepoArn" }}
+            },
+            "RepoCloneSSHUrl" : {
+                "Value" : { "Fn::GetAtt" : [ "CodeRepository", "CloneUrlSsh" ] },
+                "Description" : "CodeCommit Repository SSH Url to be cloned",
+                "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-RepoCloneSSHUrl" }}
+            },
+            "RepoCloneHttpUrl" : {
+                "Value" : { "Fn::GetAtt" : [ "CodeRepository", "CloneUrlHttp" ] },
+                "Description" : "CodeCommit Repository Http Url to be cloned",
+                "Export" : {"Name" : {"Fn::Sub": "${AWS::StackName}-RepoCloneHttpUrl" }}
+            }
+
+        }
+    }

@@ -1,0 +1,122 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "Cloud Formation Template for CDN and Route53 resource records pointing to S3 origin.",
+  
+    "Parameters" : {
+      "HostedZoneName" : {
+        "Type" : "String",
+        "Description" : "The DNS name of an existing Amazon Route 53 hosted zone"
+      },
+      "HostName" : {
+        "Type" : "String",
+        "Description" : "The hostname that will be appended to HostZone to create the Site",
+        "AllowedPattern" : "(?!-)[a-zA-Z0-9-.]{1,63}(?<!-)",
+        "ConstraintDescription" : "must be a valid host name."
+      },
+      "HostBucket" : {
+        "Type" : "String",
+        "Description" : "The URL of static content hosted on S3"
+      },
+      "LogBucket" : {
+        "Type" : "String",
+        "Description" : "The Bucket name for Distribution logging"
+      },
+      "certificateARN" : {
+        "Type" : "String",
+        "Description" : "The ARN for Valid Public Certificate emited by ACM"
+      }
+    },
+  
+    "Mappings" : {
+      "Region2S3WebsiteSuffix": {
+        "us-east-1"      : { "Suffix": ".s3-website-us-east-1.amazonaws.com" },
+        "us-west-1"      : { "Suffix": ".s3-website-us-west-1.amazonaws.com" },
+        "us-west-2"      : { "Suffix": ".s3-website-us-west-2.amazonaws.com" },
+        "eu-west-1"      : { "Suffix": ".s3-website-eu-west-1.amazonaws.com" },
+        "eu-west-2"      : { "Suffix": ".s3-website-eu-west-2.amazonaws.com" },
+        "eu-west-3"      : { "Suffix": ".s3-website-eu-west-3.amazonaws.com" },
+        "ap-northeast-1" : { "Suffix": ".s3-website-ap-northeast-1.amazonaws.com" },
+        "ap-northeast-2" : { "Suffix": ".s3-website-ap-northeast-2.amazonaws.com" },
+        "ap-northeast-3" : { "Suffix": ".s3-website-ap-northeast-3.amazonaws.com" },
+        "ap-southeast-1" : { "Suffix": ".s3-website-ap-southeast-1.amazonaws.com" },
+        "ap-southeast-2" : { "Suffix": ".s3-website-ap-southeast-2.amazonaws.com" },
+        "ap-south-1"     : { "Suffix": ".s3-website-ap-south-1.amazonaws.com" },
+        "us-east-2"      : { "Suffix": ".s3-website-us-east-2.amazonaws.com" },
+        "ca-central-1"   : { "Suffix": ".s3-website-ca-central-1.amazonaws.com" },
+        "sa-east-1"      : { "Suffix": ".s3-website-sa-east-1.amazonaws.com" },
+        "cn-north-1"     : { "Suffix": ".s3-website.cn-north-1.amazonaws.com.cn" },
+        "cn-northwest-1" : { "Suffix": ".s3-website.cn-northwest-1.amazonaws.com.cn" },
+        "eu-central-1"   : { "Suffix": ".s3-website-eu-central-1.amazonaws.com" }
+      }
+  
+    },
+  
+    "Resources" : {
+  
+      "WebsiteCDN" : {
+        "Type" : "AWS::CloudFront::Distribution",
+        "Properties" : {
+           "DistributionConfig" : {
+             "Aliases" : [{ "Fn::Join" : [ "", [{ "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }]]}],
+             "PriceClass" : "PriceClass_All",
+             "IPV6Enabled" : true,
+             "Comment" : "CDN for S3-backed website",
+             "Enabled" : true,
+             "Logging":{
+                "Bucket" : { "Ref" : "LogBucket" },
+                "IncludeCookies" : true,
+                "Prefix" : "cdn/"
+            },
+              "DefaultCacheBehavior" : {"ForwardedValues" : { "QueryString" : true }, "TargetOriginId" : "S3StaticSite", "ViewerProtocolPolicy" : "redirect-to-https"},
+              "DefaultRootObject" : "index.html",
+              "ViewerCertificate" : {
+                "AcmCertificateArn" : { "Ref" : "certificateARN" },
+                "SslSupportMethod" : "sni-only"
+              },
+              "Origins" : [{
+                "DomainName" : { "Ref" : "HostBucket" },
+                "S3OriginConfig" : {"OriginAccessIdentity" : ""},
+                "Id" : "S3StaticSite"}]
+              }
+        } 
+      },
+
+      "WebsiteDNS" : {
+        "Type" : "AWS::Route53::RecordSetGroup",
+        "Properties" : {
+          "HostedZoneName" : { "Fn::Join" : [ "", [{ "Ref" : "HostedZoneName" }, "."]]},
+          "RecordSets" : [{
+              "Name" : { "Fn::Join" : [ "", [{ "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }]]},
+              "Type" : "A",
+              "AliasTarget" : {
+                  "HostedZoneId" : "Z2FDTNDATAQYW2",
+                  "DNSName" : { "Fn::GetAtt" : [ "WebsiteCDN", "DomainName" ] }
+              }
+          },
+          {
+            "Name" : { "Fn::Join" : [ "", [{ "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }]]},
+            "Type" : "AAAA",
+            "AliasTarget" : {
+                "HostedZoneId" : "Z2FDTNDATAQYW2",
+                "DNSName" : { "Fn::GetAtt" : [ "WebsiteCDN", "DomainName" ] }
+            }
+          }]
+        }
+      }
+  
+    },
+  
+  
+    "Outputs" : {
+      "WebsiteURL" : {
+        "Value" : { "Fn::Join" : [ "", [{ "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" }]]},
+        "Description" : "The URL of the newly created website"
+      },
+      "DistributionEndpoint" : {
+        "Value" : { "Fn::GetAtt" : [ "WebsiteCDN", "DomainName" ] },
+        "Description" : "Distribution Endpoint"
+      }
+    }
+  }
+  
