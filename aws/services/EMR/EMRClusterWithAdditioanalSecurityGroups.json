@@ -11,7 +11,7 @@
       "Description": "Must be an existing Keyname",
       "Type": "String"
     },
-    "MasterInstacneType": {
+    "MasterInstanceType": {
       "Description": "Instance type to be used for the master instance.",
       "Type": "String",
       "Default": "m3.xlarge"
@@ -27,7 +27,7 @@
       "Default": 2
     },
     "SubnetID": {
-      "Description": "Must be Valid public subnet ID",
+      "Description": "Must be a valid public subnet ID",
       "Default": "subnet-dba430ad",
       "Type": "String"
     },
@@ -37,17 +37,17 @@
       "Type": "String"
     },
     "S3DataUri": {
-      "Description": "Must be a valid S3 bucket URL ",
+      "Description": "Must be a valid S3 bucket URL",
       "Default": "s3://emrclusterdatabucket/",
       "Type": "String"
     },
     "ReleaseLabel": {
-      "Description": "Must be a valid EMR release  version",
+      "Description": "Must be a valid EMR release version",
       "Default": "emr-5.7.0",
       "Type": "String"
     },
     "Applications": {
-      "Description": "Please select which application will be installed on the cluster this would be either Ganglia and spark, or Ganglia and s3 acked Hbase",
+      "Description": "Please select which application will be installed on the cluster. This would be either Ganglia and spark, or Ganglia and s3 backed Hbase",
       "Type": "String",
       "AllowedValues": [
         "Spark",
@@ -136,7 +136,7 @@
           "MasterInstanceGroup": {
             "InstanceCount": 1,
             "InstanceType": {
-              "Ref": "MasterInstacneType"
+              "Ref": "MasterInstanceType"
             },
             "Market": "ON_DEMAND",
             "Name": "Master"
