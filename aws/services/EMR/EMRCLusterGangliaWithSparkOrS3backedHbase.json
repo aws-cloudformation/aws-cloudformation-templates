@@ -11,7 +11,7 @@
       "Description": "Must be an existing Keyname",
       "Type": "String"
     },
-    "MasterInstacneType": {
+    "MasterInstanceType": {
       "Description": "Instance type to be used for the master instance.",
       "Type": "String",
       "Default": "m3.xlarge"
@@ -134,7 +134,7 @@
           "MasterInstanceGroup": {
             "InstanceCount": 1,
             "InstanceType": {
-              "Ref": "MasterInstacneType"
+              "Ref": "MasterInstanceType"
             },
             "Market": "ON_DEMAND",
             "Name": "Master"

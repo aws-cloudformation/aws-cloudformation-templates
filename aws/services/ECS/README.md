@@ -7,7 +7,7 @@ Several combinations of template are available in this folder. You can deploy co
 
 You can choose two different options for hosting the containers:
 
-- AWS Fargate for hands-off container execution without managing EC2 isntances
+- AWS Fargate for hands-off container execution without managing EC2 instances
 - Self managed cluster of EC2 hosts for control over instance type, or to use reserved or spot instances for savings
 
 You can also choose between two different ways of sending traffic to the container:
