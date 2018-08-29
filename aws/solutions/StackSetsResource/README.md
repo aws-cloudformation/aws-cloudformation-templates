@@ -50,6 +50,8 @@ Resources:
         - ReadCapacity: 20
         - WriteCapacity: 20
       Capabilities: !Ref "AWSS::NoValue"
+      AdministrationRoleARN: MyStackSetAdministrationRoleARN
+      ExecutionRoleName: MyStackSetExecutionRoleName
       OperationPreferences: {
         "RegionOrder": , [ "us-east-2", "us-west-2" ]
         "FailureToleranceCount": 0,
