@@ -20,6 +20,15 @@ Resources:
         Path: "/"
         Policies:
           -
+            PolicyName: "IAMPassRolePermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: iam:PassRole
+                  Resource: "*"
+          -
             PolicyName: "CloudFormationPermissions"
             PolicyDocument:
               Version: '2012-10-17'
@@ -60,6 +69,7 @@ Resources:
   StackSetResourceFunction:
     Type: AWS::Lambda::Function
     Properties:
+      Description: Custom CloudFormation resource for managing Stack Sets
       Code: ../FunctionCode
       Handler: !Sub "${ModuleName}.handler"
       Runtime: python3.6

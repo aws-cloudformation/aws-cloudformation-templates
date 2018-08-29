@@ -4,7 +4,6 @@ StackSet via CloudFormation
 
 # Next ToDo:
 # Allow for stack Retention
-# Support for custom Admin Role
 
 import boto3
 from time import sleep
@@ -346,9 +345,24 @@ def create(event, context):
     else:
         set_capabilities = ''
 
-    # required
+    if 'AdministrationRoleARN' in event['ResourceProperties']:
+        set_admin_role_arn = event['ResourceProperties']['AdministrationRoleARN']
+    else:
+        set_admin_role_arn = ''
+    
+    if 'ExecutionRoleName' in event['ResourceProperties']:
+        set_exec_role_name = event['ResourceProperties']['ExecutionRoleName']
+    else:
+        set_exec_role_name = ''
+
+    if 'Parameters' in event['ResourceProperties']:
+        set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
+    else:
+        set_parameters = []
+
+    # Required
     set_template = event['ResourceProperties']['TemplateURL']
-    set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
+    
 
     # Create the StackSet
     try:
@@ -361,7 +375,9 @@ def create(event, context):
             # TemplateBody='string',
             Parameters=set_parameters,
             Capabilities=set_capabilities,
-            Tags=set_tags
+            Tags=set_tags,
+            AdministrationRoleARN=set_admin_role_arn,
+            ExecutionRoleName=set_exec_role_name
             # ClientRequestToken='string'
         )
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -468,6 +484,14 @@ def update(event, context):
             set_tags = []
         logger.debug("Tags: %s" % set_tags)
 
+        if 'Parameters' in event['ResourceProperties']:
+            set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
+        elif 'Parameters' in event['OldResourceProperties']:
+            set_parameters = expand_parameters(event['OldResourceProperties']['Parameters'])
+        else:
+            set_parameters = []
+        logger.debug("Parameters: %s" % set_parameters)
+
         # Required properties
         logger.info("Evaluating required properties")
         if 'TemplateURL' in event['ResourceProperties']:
@@ -477,14 +501,6 @@ def update(event, context):
         else:
             raise Exception('Template URL not found during update event')
         logger.debug("TemplateURL: %s" % set_template)
-
-        if 'Parameters' in event['ResourceProperties']:
-            set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
-        elif 'Parameters' in event['OldResourceProperties']:
-            set_parameters = expand_parameters(event['OldResourceProperties']['Parameters'])
-        else:
-            raise Exception('Parameters not found during update event')
-        logger.debug("Parameters: %s" % set_parameters)
 
         # Update the StackSet
         logger.info("Updating StackSet resource %s" % set_id)
