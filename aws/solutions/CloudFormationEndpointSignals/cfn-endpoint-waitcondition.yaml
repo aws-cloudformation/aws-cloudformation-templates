@@ -236,7 +236,7 @@ Resources:
               Statement:
                 -
                   Effect: "Allow"
-                  Action: "*"
+                  Action: "cloudformation:*"
                   Resource: "*"
 
     BastionInstance:
@@ -278,6 +278,7 @@ Resources:
           - !Ref RootRole
 
     PrivateInstance:
+      DependsOn: CfnEndpoint
       Type: AWS::EC2::Instance
       Properties:
         KeyName: !Ref KeyName
