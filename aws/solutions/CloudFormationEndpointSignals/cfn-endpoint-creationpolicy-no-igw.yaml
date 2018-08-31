@@ -30,10 +30,6 @@ Parameters:
         Default: 10.192.21.0/24
         AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
 
-    KeyName:
-        Description: Key pair for EC2 access
-        Type: AWS::EC2::KeyPair::KeyName
-
     LinuxAMI:
         Description: Managed AMI ID for Amazon Linux
         Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
@@ -115,41 +111,15 @@ Resources:
             RouteTableId: !Ref PrivateRouteTable2
             SubnetId: !Ref PrivateSubnet2
 
-    RootRole:
-      Type: "AWS::IAM::Role"
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: "Allow"
-              Principal:
-                Service:
-                  - "ec2.amazonaws.com"
-              Action:
-                - "sts:AssumeRole"
-        Path: "/"
-        Policies:
-          -
-            PolicyName: "root"
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                -
-                  Effect: "Allow"
-                  Action: "*"
-                  Resource: "*"
-
     PrivateInstance:
+      DependsOn: CfnEndpoint
       Type: AWS::EC2::Instance
       Properties:
-        KeyName: !Ref KeyName
         InstanceType: t3.micro
         SecurityGroupIds:
         - !Ref PrivateSG
         SubnetId: !Ref PrivateSubnet1
         ImageId: !Ref LinuxAMI
-        IamInstanceProfile: !Ref PrivateProfile
         UserData:
           Fn::Base64:
             !Sub |
@@ -181,13 +151,6 @@ Resources:
           -
             Key: Name
             Value: PrivateSG
-
-    PrivateProfile:
-      Type: AWS::IAM::InstanceProfile
-      Properties:
-        Path: "/"
-        Roles:
-          - !Ref RootRole
 
     EndpointSG:
       Type: AWS::EC2::SecurityGroup
