@@ -256,6 +256,7 @@ Resources:
             IpProtocol: -1
   PublicLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: GatewayAttachement
     Properties:
       Scheme: internet-facing
       LoadBalancerAttributes:
