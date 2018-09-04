@@ -48,7 +48,7 @@ This architecture deploys your container into a private subnet. The containers d
 ### Run in AWS Fargate
 
 1. Launch the [public + private](FargateLaunchType/clusters/private-vpc.yml) cluster template
-2. Launch the [public facing service template](FargateLaunchType/services/public-service.yml).
+2. Launch the [public facing, private subnet service template](FargateLaunchType/services/private-subnet-public-service.yml).
 
 ### Run on EC2
 
