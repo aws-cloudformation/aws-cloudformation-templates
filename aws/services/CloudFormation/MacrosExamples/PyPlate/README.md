@@ -33,7 +33,7 @@ Transform: [PyPlate]
 ```
 
 ## Author
-Jay McConnell
-Partner Solutions Architect
-Amazon Web Services
 
+[Jay McConnell](https://github.com/jaymccon)  
+Partner Solutions Architect  
+Amazon Web Services
