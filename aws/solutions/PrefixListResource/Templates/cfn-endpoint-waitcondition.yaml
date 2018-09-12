@@ -1,0 +1,392 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+    This template deploys a VPC with a pair of public and private subnets spread
+    across two Availabilty Zones. It deploys an Internet Gateway, with a default
+    route on the public subnets and a bastion server. It deploys VPC Endpoints
+    for CloudFormation and S3 so an instance in the private subnet can use
+    cfn-signal for a WaitCondition. **WARNING** You will be billed for the AWS
+    resources used if you create a stack from this template.
+
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+    VpcCIDR:
+        Description: Please enter the IP range (CIDR notation) for this VPC
+        Type: String
+        Default: 10.192.0.0/16
+        AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+    PublicSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+        Type: String
+        Default: 10.192.10.0/24
+        AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+    PublicSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+        Type: String
+        Default: 10.192.11.0/24
+        AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+    PrivateSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+        Type: String
+        Default: 10.192.20.0/24
+        AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+    PrivateSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+        Type: String
+        Default: 10.192.21.0/24
+        AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+    KeyName:
+        Description: Key pair for EC2 access
+        Type: AWS::EC2::KeyPair::KeyName
+
+    LinuxAMI:
+        Description: Managed AMI ID for Amazon Linux
+        Type : 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+        Default: '/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2'
+
+Resources:
+    VPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            EnableDnsSupport: true
+            EnableDnsHostnames: true
+            CidrBlock: !Ref VpcCIDR
+            Tags:
+                - Key: Name
+                  Value: !Ref EnvironmentName
+
+    InternetGateway:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+                - Key: Name
+                  Value: !Ref EnvironmentName
+
+    InternetGatewayAttachment:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+            InternetGatewayId: !Ref InternetGateway
+            VpcId: !Ref VPC
+
+    # This is the interface endpoint for CloudFormation. You can only deploy this
+    # once per region since it will consume the unique DNS entry for the endpoint.
+    CfnEndpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: !Ref VPC
+        ServiceName: !Sub "com.amazonaws.${AWS::Region}.cloudformation"
+        VpcEndpointType: "Interface"
+        PrivateDnsEnabled: true
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        SecurityGroupIds:
+          - !Ref EndpointSG
+
+    # This is the gateway endpoint for S3. WaitConditions and CustomResources
+    # need to access self-signed URLs in the following buckets to signal back
+    # to the stack.
+    S3Endpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        VpcId: !Ref VPC
+        ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+        VpcEndpointType: "Gateway"
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action:
+                - "s3:PutObject"
+              Resource:
+                - !Sub "arn:aws:s3:::cloudformation-waitcondition-${AWS::Region}/*"
+        RouteTableIds:
+          - !Ref PrivateRouteTable1
+          - !Ref PrivateRouteTable2
+
+    PublicSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 0, !GetAZs ]
+            CidrBlock: !Ref PublicSubnet1CIDR
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+    PublicSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 1, !GetAZs ]
+            CidrBlock: !Ref PublicSubnet2CIDR
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+    PrivateSubnet1:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 0, !GetAZs ]
+            CidrBlock: !Ref PrivateSubnet1CIDR
+            MapPublicIpOnLaunch: false
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+    PrivateSubnet2:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 1, !GetAZs ]
+            CidrBlock: !Ref PrivateSubnet2CIDR
+            MapPublicIpOnLaunch: false
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref VPC
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Public Routes
+
+    DefaultPublicRoute:
+        Type: AWS::EC2::Route
+        DependsOn: InternetGatewayAttachment
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            DestinationCidrBlock: 0.0.0.0/0
+            GatewayId: !Ref InternetGateway
+
+    PublicSubnet1RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref PublicSubnet1
+
+    PublicSubnet2RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref PublicSubnet2
+
+    PrivateRouteTable1:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref VPC
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+
+    PrivateSubnet1RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable1
+            SubnetId: !Ref PrivateSubnet1
+
+    PrivateRouteTable2:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref VPC
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+    PrivateSubnet2RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PrivateRouteTable2
+            SubnetId: !Ref PrivateSubnet2
+
+    RootRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - "ec2.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Path: "/"
+        Policies:
+          -
+            PolicyName: "root"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action: "cloudformation:*"
+                  Resource: "*"
+
+    BastionInstance:
+      Type: AWS::EC2::Instance
+      Properties:
+        KeyName: !Ref KeyName
+        InstanceType: t3.micro
+        SecurityGroupIds:
+        - !Ref BastionSG
+        SubnetId: !Ref PublicSubnet1
+        ImageId: !Ref LinuxAMI
+        IamInstanceProfile: !Ref BastionProfile
+        Tags:
+          -
+            Key: Name
+            Value: Bastion
+
+    BastionSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: "Inbound Bastion Traffic"
+        SecurityGroupIngress:
+        -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: "0.0.0.0/0"
+        VpcId: !Ref VPC
+        Tags:
+          -
+            Key: Name
+            Value: BastionSG
+
+    BastionProfile:
+      Type: AWS::IAM::InstanceProfile
+      Properties:
+        Path: "/"
+        Roles:
+          - !Ref RootRole
+
+    PrivateInstance:
+      DependsOn: CfnEndpoint
+      Type: AWS::EC2::Instance
+      Properties:
+        KeyName: !Ref KeyName
+        InstanceType: t3.micro
+        SecurityGroupIds:
+        - !Ref PrivateSG
+        SubnetId: !Ref PrivateSubnet1
+        ImageId: !Ref LinuxAMI
+        IamInstanceProfile: !Ref PrivateProfile
+        UserData:
+          Fn::Base64:
+            !Sub |
+              #!/bin/bash -x
+              date > /tmp/datefile
+              cat /tmp/datefile
+              # Signal the status from instance
+              /opt/aws/bin/cfn-signal -e $? -d "This was all private." -r "Build Process Complete" '${PrivateWaitHandle}'
+
+        Tags:
+          -
+            Key: Name
+            Value: Private
+
+    PrivateSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: "Traffic from Bastion"
+        SecurityGroupIngress:
+        -
+            IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            SourceSecurityGroupId: !Ref BastionSG
+        SecurityGroupEgress:
+        -
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            DestinationPrefixListId: !GetAtt S3PrefixListID.PrefixListID
+        VpcId: !Ref VPC
+        Tags:
+          -
+            Key: Name
+            Value: PrivateSG
+
+    PrivateProfile:
+      Type: AWS::IAM::InstanceProfile
+      Properties:
+        Path: "/"
+        Roles:
+          - !Ref RootRole
+
+    EndpointSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: "Traffic into CloudFormation Endpoint"
+        SecurityGroupIngress:
+        -
+            IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: "0.0.0.0/0"
+        VpcId: !Ref VPC
+        Tags:
+          -
+            Key: Name
+            Value: EndpointSG
+
+    PrivateWaitHandle:
+      Type: AWS::CloudFormation::WaitConditionHandle
+
+    PrivateWaitCondition:
+      DependsOn: PrivateInstance
+      Type: AWS::CloudFormation::WaitCondition
+      Properties:
+        Handle: !Ref PrivateWaitHandle
+        Timeout: '3600'
+        Count: 1
+
+    S3PrefixListID:
+      DependsOn: S3Endpoint
+      Type: Custom::GetPL
+      Properties:
+        ServiceToken:
+          Fn::ImportValue: GetPLCustomResource
+        loglevel: "debug"
+        PrefixListName: !Sub "com.amazonaws.${AWS::Region}.s3"
+
+Outputs:
+    VPC:
+        Description: A reference to the created VPC
+        Value: !Ref VPC
+
+    PublicSubnets:
+        Description: A list of the public subnets
+        Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+
+    PrivateSubnets:
+        Description: A list of the private subnets
+        Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+
+    CfnEndpoint:
+        Description: A reference to the CloudFormation Endpoint used for signaling from the private instance
+        Value: !Ref CfnEndpoint
+
+    S3Endpoint:
+        Description: A reference to the S3 Endpoint used for signaling from the private instance
+        Value: !Ref S3Endpoint
+
+    S3PrefixListID:
+        Description: PrefixListID to use for security group egress to the S3 endpoint
+        Value: !GetAtt S3PrefixListID.PrefixListID
