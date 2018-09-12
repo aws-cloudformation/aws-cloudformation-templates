@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Deploy required components for GetPL custom resources in this region.  Lambda ARN is exported as GetPLCustomResource"
+Parameters:
+  ModuleName:
+    Type: String
+    Default: "lambda_function"
+
+Resources:
+  GetPLResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+        Path: "/"
+        Policies:
+          -
+            PolicyName: "IAMPassRolePermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: iam:PassRole
+                  Resource: "*"
+          -
+            PolicyName: "EC2Permissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: ec2:DescribePrefixLists
+                  Resource: "*"
+          -
+            PolicyName: "LambdaPermissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action: logs:CreateLogGroup
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                -
+                  Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+          -
+            PolicyName: "S3Permissions"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                -
+                  Effect: Allow
+                  Action:
+                  - s3:Get*
+                  - s3:List*
+                  Resource: "*"
+
+  GetPLResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: CloudFormation Custom resource for getting endpoint prefix list ID
+      Code: ../FunctionCode
+      Handler: !Sub "${ModuleName}.handler"
+      Runtime: python3.6
+      Timeout: 300
+      Role: !GetAtt GetPLResourceRole.Arn
+      Environment: 
+        Variables:
+          Logging: Debug
+          
+  GetPLResourceLogGroup:
+    DependsOn: GetPLResourceFunction
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${GetPLResourceFunction}'
+      RetentionInDays: 7
+
+Outputs:
+  GetPLFunctionArn:
+    Description: "Resource ARN for the GetPL Custom resource Lambda function"
+    Value:
+      Fn::GetAtt:
+        - "GetPLResourceFunction"
+        - "Arn"
+    Export:
+        Name: "GetPLCustomResource"
