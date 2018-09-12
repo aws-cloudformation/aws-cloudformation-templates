@@ -1,5 +1,5 @@
 # PrefixListResource
-AWS CloudFormation Lambda-backed Custom Resource for retreiving the PrefixListID associated with a Gateway VPC Endpoint (S3/DynamoDB).  This can be used to define egress rules for the Security Groups associated with private EC2 instances.
+AWS CloudFormation Lambda-backed Custom Resource for retrieving the PrefixListID associated with a Gateway VPC Endpoint (S3/DynamoDB).  This can be used to define egress rules for the Security Groups associated with private EC2 instances.
 
 The lambda function is written in Python and based on the  [crhelper.py](https://github.com/awslabs/aws-cloudformation-templates/tree/master/community/custom_resources/python_custom_resource_helper) Custom Resource framework.
 
@@ -25,7 +25,7 @@ aws cloudformation package \
 ```
 aws cloudformation deploy \
   --template-file Templates/packaged-function-template.yaml \
-  --stack-name StackSetCustomResource \
+  --stack-name GetPLCustomResource \
   --capabilities CAPABILITY_IAM
 ```
 
