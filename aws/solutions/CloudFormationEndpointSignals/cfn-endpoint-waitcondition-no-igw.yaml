@@ -78,8 +78,7 @@ Resources:
               Action:
                 - "s3:PutObject"
               Resource:
-                - !Sub "arn:aws:s3:::cloudformation-waitcondition-${AWS::Region}/*"
-                - !Sub "arn:aws:s3:::cloudformation-custom-resource-response-${AWS::Region}/*"
+                - !Sub "arn:${AWS::Partition}:s3:::cloudformation-waitcondition-${AWS::Region}/*"
         RouteTableIds:
           - !Ref PrivateRouteTable1
           - !Ref PrivateRouteTable2
@@ -147,6 +146,8 @@ Resources:
           Fn::Base64:
             !Sub |
               #!/bin/bash -x
+              date > /tmp/datefile
+              cat /tmp/datefile
               # Signal the status from instance
               /opt/aws/bin/cfn-signal -e $? -d "This was all private." -r "Build Process Complete" '${PrivateWaitHandle}'
 
@@ -191,6 +192,7 @@ Resources:
       Type: AWS::CloudFormation::WaitConditionHandle
 
     PrivateWaitCondition:
+      DependsOn: PrivateInstance
       Type: AWS::CloudFormation::WaitCondition
       Properties:
         Handle: !Ref PrivateWaitHandle

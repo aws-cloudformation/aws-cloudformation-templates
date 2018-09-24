@@ -259,7 +259,7 @@ Resources:
       Type: AWS::EC2::Instance
       Properties:
         KeyName: !Ref KeyName
-        InstanceType: t3.micro
+        InstanceType: t2.micro
         SecurityGroupIds:
         - !Ref PrivateSG
         SubnetId: !Ref PrivateSubnet1
@@ -269,6 +269,8 @@ Resources:
           Fn::Base64:
             !Sub |
               #!/bin/bash -x
+              date > /tmp/datefile
+              cat /tmp/datefile
               # Signal the status from instance
               /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PrivateInstance --region ${AWS::Region}
 
