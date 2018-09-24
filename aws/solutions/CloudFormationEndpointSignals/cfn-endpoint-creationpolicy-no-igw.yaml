@@ -124,6 +124,8 @@ Resources:
           Fn::Base64:
             !Sub |
               #!/bin/bash -x
+              date > /tmp/datefile
+              cat /tmp/datefile
               # Signal the status from instance
               /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PrivateInstance --region ${AWS::Region}
 
