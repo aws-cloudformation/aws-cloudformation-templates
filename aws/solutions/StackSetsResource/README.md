@@ -29,6 +29,16 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_IAM
 ```
 
+Alternatively, if you'd like to override one or more of the function stack template parameters:
+
+```
+aws cloudformation deploy \
+  --template-file Templates/packaged-stackset-function-template.yaml \
+  --stack-name StackSetCustomResource \
+  --parameter-overrides RoleName=custom-resource-stacksets RolePath=/company/ \
+  --capabilities CAPABILITY_IAM
+```
+
 CloudFormation will package up the python files, upload them to your S3 bucket, create the lambda function with appropriate permissions and export the Lambda function ARN as `StackSetCustomResource` for use in other stacks.
 
 

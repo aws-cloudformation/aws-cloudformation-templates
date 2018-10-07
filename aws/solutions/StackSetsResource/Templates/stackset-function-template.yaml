@@ -1,15 +1,31 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
+
 Description: "Deploy required components for StackSet custom resources in this region.  Lambda ARN is exported as StackSetCustomResource"
+
 Parameters:
   ModuleName:
     Type: String
     Default: "lambda_function"
 
+  RoleName:
+    Type: String
+    Default: ""
+
+  RolePath:
+    Type: String
+    Default: ""
+
+Conditions:
+  UseRoleName: !Not [!Equals [!Ref RoleName, ""]]
+  UseRolePath: !Not [!Equals [!Ref RolePath, ""]]
+
 Resources:
   StackSetResourceRole:
     Type: AWS::IAM::Role
     Properties:
+        RoleName: !If [UseRoleName, !Ref RoleName, !Ref "AWS::NoValue"]
+        Path: !If [UseRolePath, !Ref RolePath, "/"]
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -17,7 +33,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-        Path: "/"
         Policies:
           -
             PolicyName: "IAMPassRolePermissions"
@@ -82,6 +97,7 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${StackSetResourceFunction}'
       RetentionInDays: 7
+
 Outputs:
   StackSetFunctionArn:
     Description: "Resource ARN for the StackSetCustom resource Lambda function"
