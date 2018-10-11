@@ -1,0 +1,31 @@
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ContentBucket:
+    Type: AWS::S3::Bucket
+
+  ResourceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python2.7
+      CodeUri: lambda
+      Handler: resource.handler
+      Policies: AmazonS3FullAccess
+
+  MacroFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.6
+      CodeUri: lambda
+      Handler: macro.handler
+      Policies: AmazonS3FullAccess
+      Environment:
+        Variables:
+          LAMBDA_ARN: !GetAtt ResourceFunction.Arn
+          BUCKET: !Ref ContentBucket
+
+  Macro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: S3Objects
+      FunctionName: !GetAtt MacroFunction.Arn
