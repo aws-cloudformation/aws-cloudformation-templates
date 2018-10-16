@@ -76,23 +76,9 @@ Resources:
       FunctionName: !GetAtt TransformFunction.Arn
       Principal: 'cloudformation.amazonaws.com'
   Transform:
-    Type: AWS::CloudFormation::Transform
+    Type: AWS::CloudFormation::Macro
     Properties:
-      Name: !Sub '${AWS::AccountId}::PyPlate'
-      Description: Provides various string processing functions
-      RoutingTable:
-        '*': 0_1
-      Versions:
-        - VersionName: 0_1
-          Description: Version 0_1 of the PyPlate transform
-          FunctionName: !GetAtt TransformFunction.Arn
-      ExecutionPolicy:
-        Version: 2012-10-17
-        Id: AllowOtherAccountPolicy
-        Statement:
-          - Sid: AllowExecution
-            Effect: Allow
-            Principal:
-              AWS: !Sub '${AWS::AccountId}'
-            Action: 'cloudformation:CreateChangeSet'
-            Resource: !Sub 'arn:*:cloudformation:${AWS::Region}:${AWS::AccountId}:transform/PyPlate'
+      Name: !Sub 'PyPlate'
+      Description: Processes inline python in templates
+      FunctionName: !GetAtt TransformFunction.Arn
+
