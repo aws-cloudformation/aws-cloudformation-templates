@@ -97,6 +97,20 @@ The following sub-properties also apply if you are creating a new object (but no
 
 The `Body` property simply takes a string which will be used to populate the new object.
 
+### Creating a new S3 object from binary data
+
+You can create a binary file by using the `Base64Body` property and supplying your content base64-encoded. For example:
+
+```yaml
+SinglePixel:
+  Type: AWS::S3::Object
+  Properties:
+    Target:
+      Bucket: !Ref TargetBucket
+      Key: 1pixel.gif
+    Base64Body: R0lGODdhAQABAIABAP///0qIbCwAAAAAAQABAAACAkQBADs=
+```
+
 ### Copying an S3 object from another bucket
 
 To copy an S3 object, you need to specify the `Source` property as well as the `Target`. For example:
