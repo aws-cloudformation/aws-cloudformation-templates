@@ -15,7 +15,6 @@ import boto3
 import os
 
 LAMBDA_ARN = os.environ["LAMBDA_ARN"]
-BUCKET = os.environ["BUCKET"]
 
 s3_client = boto3.client("s3")
 
@@ -26,48 +25,33 @@ def handle_template(request_id, template):
         if resource["Type"] == "AWS::S3::Object":
             props = resource["Properties"]
 
+            if len([prop for prop in resource["Properties"] if prop in ["Body", "Base64Body", "Source"]]) != 1:
+                raise Exception("You must specify exactle one of: Body, Base64Body, Source")
+
             target = props["Target"]
 
-            target_bucket = target["Bucket"]
-            target_key = target["Key"]
-            target_acl = target.get("ACL", "private")
+            if "ACL" not in target:
+                target["ACL"] = "private"
 
-            no_delete = False
+            resource_props = {
+                "ServiceToken": LAMBDA_ARN,
+                "Target": target,
+            }
 
             if "Body" in props:
-                source_bucket = BUCKET
-                source_key = "{}/{}".format(request_id, target_key)
+                resource_props["Body"] = props["Body"]
 
-                target.update({
-                    "Bucket": source_bucket,
-                    "Key": source_key,
-                    "ACL": "private",
-                    "Body": props["Body"].encode("utf-8"),
-                })
-
-                s3_client.put_object(**target)
+            elif "Base64Body" in props:
+                resource_props["Base64Body"] = props["Base64Body"]
 
             elif "Source" in props:
-                source_bucket = props["Source"]["Bucket"]
-                source_key = props["Source"]["Key"]
-
-                no_delete = True
+                resource_props["Source"] = props["Source"]
 
             new_resources[name] = {
                 "Type": "Custom::S3Object",
                 "Version": "1.0",
-                "Properties": {
-                    "ServiceToken": LAMBDA_ARN,
-                    "SourceBucket": source_bucket,
-                    "SourceKey": source_key,
-                    "TargetBucket": target_bucket,
-                    "TargetKey": target_key,
-                    "ACL": target_acl,
-                },
+                "Properties": resource_props,
             }
-
-            if no_delete:
-                new_resources[name]["Properties"]["NoDelete"] = "true"
 
     for name, resource in new_resources.items():
         template["Resources"][name] = resource
@@ -75,8 +59,17 @@ def handle_template(request_id, template):
     return template
 
 def handler(event, context):
+    try:
+        template = handle_template(event["requestId"], event["fragment"])
+    except Exception as e:
+        return {
+            "requestId": event["requestId"],
+            "status": "failure",
+            "fragment": event["fragment"],
+        }
+
     return {
         "requestId": event["requestId"],
         "status": "success",
-        "fragment": handle_template(event["requestId"], event["fragment"]),
+        "fragment": template,
     }

@@ -1,9 +1,6 @@
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  ContentBucket:
-    Type: AWS::S3::Bucket
-
   ResourceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -22,7 +19,6 @@ Resources:
       Environment:
         Variables:
           LAMBDA_ARN: !GetAtt ResourceFunction.Arn
-          BUCKET: !Ref ContentBucket
 
   Macro:
     Type: AWS::CloudFormation::Macro

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 from urllib2 import build_opener, HTTPHandler, Request
+import base64
 import boto3
 import httplib
 import json
@@ -19,19 +20,19 @@ import json
 s3_client = boto3.client("s3")
 
 def sendResponse(event, context, status, message):
+    bucket = event["ResourceProperties"].get("Target", {}).get("Bucket")
+    key = event["ResourceProperties"].get("Target", {}).get("Key")
+
     body = json.dumps({
         "Status": status,
         "Reason": message,
         "StackId": event['StackId'],
         "RequestId": event['RequestId'],
         "LogicalResourceId": event['LogicalResourceId'],
-        "PhysicalResourceId": "s3://{}/{}".format(
-            event["ResourceProperties"].get("TargetBucket"),
-            event["ResourceProperties"].get("TargetKey"),
-        ),
+        "PhysicalResourceId": "s3://{}/{}".format(bucket, key),
         "Data": {
-            "Bucket": event["ResourceProperties"].get("TargetBucket"),
-            "Key": event["ResourceProperties"].get("TargetKey"),
+            "Bucket": bucket,
+            "Key": key,
         },
     })
 
@@ -49,34 +50,52 @@ def handler(event, context):
     request = event["RequestType"]
     properties = event["ResourceProperties"]
 
-    if any(key not in properties for key in ("SourceBucket", "SourceKey", "TargetBucket", "TargetKey")):
+    if "Target" not in properties or all(prop not in properties for prop in ["Body", "Base64Body", "Source"]):
         return sendResponse(event, context, "FAILED", "Missing required parameters")
 
-    if request in ("Create", "Update"):
-        s3_client.copy_object(
-            CopySource={
-                "Bucket": properties["SourceBucket"],
-                "Key": properties["SourceKey"],
-            },
-            Bucket=properties["TargetBucket"],
-            Key=properties["TargetKey"],
-            MetadataDirective="COPY",
-            TaggingDirective="COPY",
-            ACL=properties["ACL"],
-        )
+    target = properties["Target"]
 
-        if not properties.get("NoDelete"):
-            s3_client.delete_object(
-                Bucket=properties["SourceBucket"],
-                Key=properties["SourceKey"],
+    if request in ("Create", "Update"):
+        if "Body" in properties:
+            target.update({
+                "Body": properties["Body"],
+            })
+
+            s3_client.put_object(**target)
+
+        elif "Base64Body" in properties:
+            try:
+                body = base64.b64decode(properties["Base64Body"])
+            except:
+                return sendResponse(event, context, "FAILED", "Malformed Base64Body")
+
+            target.update({
+                "Body": body
+            })
+
+            s3_client.put_object(**target)
+
+        elif "Source" in properties:
+            source = properties["Source"]
+
+            s3_client.copy_object(
+                CopySource=source,
+                Bucket=target["Bucket"],
+                Key=target["Key"],
+                MetadataDirective="COPY",
+                TaggingDirective="COPY",
+                ACL=target["ACL"],
             )
+
+        else:
+            return sendResponse(event, context, "FAILED", "Malformed body")
 
         return sendResponse(event, context, "SUCCESS", "Created")
 
     if request == "Delete":
         s3_client.delete_object(
-            Bucket=properties["TargetBucket"],
-            Key=properties["TargetKey"],
+            Bucket=target["Bucket"],
+            Key=target["Key"],
         )
 
         return sendResponse(event, context, "SUCCESS", "Deleted")
