@@ -15,7 +15,7 @@ Parameters:
   ECSAMI:
     Description: AMI ID
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
   InstanceType:
     Description: EC2 instance type
     Type: String
