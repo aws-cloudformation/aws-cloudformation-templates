@@ -154,14 +154,14 @@ def aggregate_instances(account_list, flat_stacks):
     return(instances)
 
 
-def launch_stacks(set_region, set_name, accts, regions, param_overrides,
+def create_stacks(set_region, set_name, accts, regions, param_overrides,
                   ops_prefs):
     # Wrapper for create_stack_instances
     sleep_time = 15
-    retries = 20
+    retries = 60
     this_try = 0
 
-    logger.info("Creating stacks with op prefs %s" % ops_prefs)
+    logger.info("Creating stack instances with op prefs %s" % ops_prefs)
     logger.debug("StackSetName: %s, Accounts: %s, Regions: %s, ParameterOverrides: %s" % (set_name, accts, regions, param_overrides))
 
     while True:
@@ -180,25 +180,35 @@ def launch_stacks(set_region, set_name, accts, regions, param_overrides,
             if e.response['Error']['Code'] == 'OperationInProgressException':
                 this_try += 1
                 if this_try == retries:
-                    return("Failed to launch stacks after %s tries" % this_try)
+                    logger.warning("Failed to create stack instances after %s tries" % this_try)
+                    raise Exception("Error creating stack instances: %s" % e)
                 else:
-                    logger.warning("Operation in progress for %s in %s. Sleeping for %i seconds." % (set_name, set_region, sleep_time))
+                    logger.warning("Create stack instances operation in progress for %s in %s. Sleeping for %i seconds." % (set_name, set_region, sleep_time))
+                    sleep(sleep_time)
+                    continue
+            elif e.response['Error']['Code'] == 'Throttling':
+                this_try += 1
+                if this_try == retries:
+                    logger.warning("Failed to create stack instances after %s tries" % this_try)
+                    raise Exception("Error creating stack instances: %s" % e)
+                else:
+                    logger.warning("Throttling exception encountered while creating stack instances. Backing off and retyring. Sleeping for %i seconds." % (sleep_time))
                     sleep(sleep_time)
                     continue
             elif e.response['Error']['Code'] == 'StackSetNotFoundException':
-                raise Exception("No StackSet matching %s found in %s. You must create before launching stacks." % (set_name, set_region))
+                raise Exception("No StackSet matching %s found in %s. You must create before creating stack instances." % (set_name, set_region))
             else:
-                raise Exception("Error launching stack instance: %s" % e)
+                raise Exception("Error creating stack instances: %s" % e)
 
 
 def update_stacks(set_region, set_name, accts, regions, param_overrides,
                   ops_prefs):
     # Wrapper for update_stack_instances
     sleep_time = 15
-    retries = 20
+    retries = 60
     this_try = 0
 
-    logger.info("Updating stacks with op prefs %s" % ops_prefs)
+    logger.info("Updating stack instances with op prefs %s" % ops_prefs)
 
     # UpdateStackInstance only allows stackSetName, not stackSetId,
     # so we need to truncate.
@@ -221,13 +231,23 @@ def update_stacks(set_region, set_name, accts, regions, param_overrides,
             if e.response['Error']['Code'] == 'OperationInProgressException':
                 this_try += 1
                 if this_try == retries:
-                    return("Failed to update stacks after %s tries" % this_try)
+                    logger.warning("Failed to update stack instances after %s tries" % this_try)
+                    raise Exception("Error updating stack instances: %s" % e)
                 else:
-                    logger.warning("Operation in progress for %s in %s. Sleeping for %i seconds." % (set_name, set_region, sleep_time))
+                    logger.warning("Update stack instances operation in progress for %s in %s. Sleeping for %i seconds." % (set_name, set_region, sleep_time))
+                    sleep(sleep_time)
+                    continue
+            elif e.response['Error']['Code'] == 'Throttling':
+                this_try += 1
+                if this_try == retries:
+                    logger.warning("Failed to update stack instances after %s tries" % this_try)
+                    raise Exception("Error updating stack instances: %s" % e)
+                else:
+                    logger.warning("Throttling exception encountered while updating stack instances. Backing off and retyring. Sleeping for %i seconds." % (sleep_time))
                     sleep(sleep_time)
                     continue
             elif e.response['Error']['Code'] == 'StackSetNotFoundException':
-                raise Exception("No StackSet matching %s found in %s. You must create before launching stacks." % (set_name, set_region))
+                raise Exception("No StackSet matching %s found in %s. You must create before updating stack instances." % (set_name, set_region))
             else:
                 raise Exception("Unexpected error: %s" % e)
 
@@ -235,10 +255,10 @@ def update_stacks(set_region, set_name, accts, regions, param_overrides,
 def delete_stacks(set_region, set_id, accts, regions, ops_prefs):
     # Wrapper for delete_stack_instances
     sleep_time = 15
-    retries = 20
+    retries = 60
     this_try = 0
 
-    logger.info("Deleting stacks with op prefs %s" % ops_prefs)
+    logger.info("Deleting stack instances with op prefs %s" % ops_prefs)
     logger.debug("StackSetName: %s, Accounts: %s, Regions: %s" % (set_id, accts, regions))
 
     while True:
@@ -257,13 +277,23 @@ def delete_stacks(set_region, set_id, accts, regions, ops_prefs):
             if e.response['Error']['Code'] == 'OperationInProgressException':
                 this_try += 1
                 if this_try == retries:
-                    return("Failed to delete stacks after %s tries" % this_try)
+                    logger.warning("Failed to delete stack instances after %s tries" % this_try)
+                    raise Exception("Error deleting stack instances: %s" % e)
                 else:
-                    logger.warning("Operation in progress for %s in %s. Sleeping for %i seconds." % (set_id, set_region, sleep_time))
+                    logger.warning("Delete stack instances operation in progress for %s in %s. Sleeping for %i seconds." % (set_id, set_region, sleep_time))
+                    sleep(sleep_time)
+                    continue
+            elif e.response['Error']['Code'] == 'Throttling':
+                this_try += 1
+                if this_try == retries:
+                    logger.warning("Failed to delete stack instances after %s tries" % this_try)
+                    raise Exception("Error deleting stack instances: %s" % e)
+                else:
+                    logger.warning("Throttling exception encountered while deleting stack instances. Backing off and retyring. Sleeping for %i seconds." % (sleep_time))
                     sleep(sleep_time)
                     continue
             elif e.response['Error']['Code'] == 'StackSetNotFoundException':
-                return("No StackSet matching %s found in %s. You must create before launching stacks." % (set_id, set_region))
+                return("No StackSet matching %s found in %s. You must create before deleting stack instances." % (set_id, set_region))
             else:
                 return("Unexpected error: %s" % e)
 
@@ -272,7 +302,7 @@ def update_stack_set(set_region, set_id, set_description, set_template,
                      set_parameters, set_capabilities, set_tags, ops_prefs):
     # Set up for retries
     sleep_time = 15
-    retries = 20
+    retries = 60
     this_try = 0
 
     client = boto3.client('cloudformation', region_name=set_region)
@@ -300,9 +330,9 @@ def update_stack_set(set_region, set_id, set_description, set_template,
             if e.response['Error']['Code'] == 'OperationInProgressException':
                 this_try += 1
                 if this_try == retries:
-                    raise Exception("Failed to delete StackSet after %s tries." % this_try)
+                    raise Exception("Failed to update StackSet after %s tries." % this_try)
                 else:
-                    logger.warning("Operation in progress for %s. Sleeping for %i seconds." % (set_id, sleep_time))
+                    logger.warning("Update StackSet operation in progress for %s. Sleeping for %i seconds." % (set_id, sleep_time))
                     sleep(sleep_time)
                     continue
             elif e.response['Error']['Code'] == 'StackSetNotEmptyException':
@@ -412,8 +442,8 @@ def create(event, context):
         elif instance['Regions'][0] == '' and instance['Accounts'][0] != '':
             raise Exception("You must specify at least one region with a list of accounts.")
         elif instance['Regions'][0] != '' and instance['Accounts'][0] != '':
-            logger.info("Launching stacks in accounts: %s and regions: %s" % (instance['Accounts'], instance['Regions']))
-            response = launch_stacks(
+            logger.info("Creating stacks in accounts: %s and regions: %s" % (instance['Accounts'], instance['Regions']))
+            response = create_stacks(
                     os.environ['AWS_REGION'],
                     set_id,
                     instance['Accounts'],
@@ -542,7 +572,7 @@ def update(event, context):
             else:
                 param_overrides = []
 
-            response = launch_stacks(
+            response = create_stacks(
                     os.environ['AWS_REGION'],
                     set_id,
                     instance['accounts'],
@@ -616,7 +646,7 @@ def delete(event, context):
     """
     # Set up for retries
     sleep_time = 15
-    retries = 20
+    retries = 60
     this_try = 0
 
     # Collect everything we need to delete the stack set
@@ -670,7 +700,7 @@ def delete(event, context):
                 if this_try == retries:
                     raise Exception("Failed to delete StackSet after %s tries." % this_try)
                 else:
-                    logger.warning("Operation in progress for %s. Sleeping for %i seconds." % (set_id, sleep_time))
+                    logger.warning("Delete StackSet operation in progress for %s. Sleeping for %i seconds." % (set_id, sleep_time))
                     sleep(sleep_time)
                     continue
             elif e.response['Error']['Code'] == 'StackSetNotEmptyException':
