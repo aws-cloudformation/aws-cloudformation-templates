@@ -26,7 +26,7 @@ def handle_template(request_id, template):
             props = resource["Properties"]
 
             if len([prop for prop in resource["Properties"] if prop in ["Body", "Base64Body", "Source"]]) != 1:
-                raise Exception("You must specify exactle one of: Body, Base64Body, Source")
+                raise Exception("You must specify exactly one of: Body, Base64Body, Source")
 
             target = props["Target"]
 
