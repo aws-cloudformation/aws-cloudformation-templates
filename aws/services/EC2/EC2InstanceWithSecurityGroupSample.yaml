@@ -16,7 +16,8 @@ Parameters:
     Description: WebServer EC2 instance type
     Type: String
     Default: t2.small
-    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large, m1.small,
+    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large,
+      t3.nano, t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge, m1.small,
       m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge, m3.medium,
       m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
       m4.10xlarge, c1.medium, c1.xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge,
@@ -46,6 +47,20 @@ Mappings:
     t2.medium:
       Arch: HVM64
     t2.large:
+      Arch: HVM64
+    t3.nano:
+      Arch: HVM64
+    t3.micro:
+      Arch: HVM64
+    t3.small:
+      Arch: HVM64
+    t3.medium:
+      Arch: HVM64
+    t3.large:
+      Arch: HVM64
+    t3.xlarge:
+      Arch: HVM64
+    t3.2xlarge:
       Arch: HVM64
     m1.small:
       Arch: PV64
@@ -154,6 +169,20 @@ Mappings:
       Arch: NATHVM64
     t2.large:
       Arch: NATHVM64
+    t3.nano:
+      Arch: NATHVM64
+    t3.micro:
+      Arch: NATHVM64
+    t3.small:
+      Arch: NATHVM64
+    t3.medium:
+      Arch: NATHVM64
+    t3.large:
+      Arch: NATHVM64
+    t3.xlarge:
+      Arch: NATHVM64
+    t3.2xlarge:
+      Arch: NATHVM64
     m1.small:
       Arch: NATPV64
     m1.medium:
@@ -251,51 +280,63 @@ Mappings:
   AWSRegionArch2AMI:
     us-east-1:
       PV64: ami-2a69aa47
-      HVM64: ami-6869aa05
+      HVM64: ami-013be31976ca2c322
       HVMG2: ami-50b4f047
     us-west-2:
       PV64: ami-7f77b31f
-      HVM64: ami-7172b611
+      HVM64: ami-061e7ebbc234015fe
       HVMG2: ami-002bf460
     us-west-1:
       PV64: ami-a2490dc2
-      HVM64: ami-31490d51
+      HVM64: ami-01beb64058d271bc4
       HVMG2: ami-699ad409
     eu-west-1:
       PV64: ami-4cdd453f
-      HVM64: ami-f9dd458a
+      HVM64: ami-0a5e707736615003c
       HVMG2: ami-f0e0a483
+    eu-west-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-017b0e29fac27906b
+      HVMG2: NOT_SUPPORTED
+    eu-west-3:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-04992646d54c69ef4
+      HVMG2: NOT_SUPPORTED
     eu-central-1:
       PV64: ami-6527cf0a
-      HVM64: ami-ea26ce85
+      HVM64: ami-02ea8f348fa28c108
       HVMG2: ami-d9d62ab6
     ap-northeast-1:
       PV64: ami-3e42b65f
-      HVM64: ami-374db956
+      HVM64: ami-00f9d04b3b3092052
       HVMG2: ami-78ba6619
     ap-northeast-2:
       PV64: NOT_SUPPORTED
-      HVM64: ami-2b408b45
+      HVM64: ami-0c764df09c35858b8
       HVMG2: NOT_SUPPORTED
     ap-southeast-1:
       PV64: ami-df9e4cbc
-      HVM64: ami-a59b49c6
+      HVM64: ami-085fd1bd447be68e8
       HVMG2: ami-56e84c35
     ap-southeast-2:
       PV64: ami-63351d00
-      HVM64: ami-dc361ebf
+      HVM64: ami-0b8dea0e70b969adc
       HVMG2: ami-2589b946
     ap-south-1:
       PV64: NOT_SUPPORTED
-      HVM64: ami-ffbdd790
+      HVM64: ami-00796998f258969fd
       HVMG2: ami-f7354198
     us-east-2:
       PV64: NOT_SUPPORTED
-      HVM64: ami-f6035893
+      HVM64: ami-0350c5670171b5391
       HVMG2: NOT_SUPPORTED
     sa-east-1:
       PV64: ami-1ad34676
-      HVM64: ami-6dd04501
+      HVM64: ami-0160a8b6087883cb6
+      HVMG2: NOT_SUPPORTED
+    ca-central-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-05cac140c6a1fb960
       HVMG2: NOT_SUPPORTED
     cn-north-1:
       PV64: ami-77559f1a
