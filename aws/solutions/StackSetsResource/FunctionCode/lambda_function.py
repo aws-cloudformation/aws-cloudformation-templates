@@ -54,7 +54,7 @@ def get_stack_from_arn(arn):
         resourceparts = resourcepart.split('/')
         resource = resourceparts[1]
     else:
-        (resource) = resourcepart
+        resource = resourcepart
     return resource
 
 
@@ -419,12 +419,12 @@ def create(event, context):
     if 'AdministrationRoleARN' in event['ResourceProperties']:
         set_admin_role_arn = event['ResourceProperties']['AdministrationRoleARN']
     else:
-        set_admin_role_arn = ''
+        set_admin_role_arn = 'arn:aws:iam:::role/AWSCloudFormationStackSetAdministrationRole'
 
     if 'ExecutionRoleName' in event['ResourceProperties']:
         set_exec_role_name = event['ResourceProperties']['ExecutionRoleName']
     else:
-        set_exec_role_name = ''
+        set_exec_role_name = 'AWSCloudFormationStackSetExecutionRole'
 
     if 'Parameters' in event['ResourceProperties']:
         set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
