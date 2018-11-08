@@ -110,7 +110,7 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
     logger.debug("EVENT: {}".format(event))
     # handle init failures
     if init_failed:
-        send(event, context, "FAILED", response_data, physical_resource_id, logger=logger,  reason=init_failed)
+        send(event, context, "FAILED", response_data, physical_resource_id, init_failed, logger=logger)
         raise Exception('FAILED')
 
     # Setup timer to catch timeouts

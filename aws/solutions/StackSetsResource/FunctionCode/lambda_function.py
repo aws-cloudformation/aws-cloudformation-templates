@@ -419,12 +419,12 @@ def create(event, context):
     if 'AdministrationRoleARN' in event['ResourceProperties']:
         set_admin_role_arn = event['ResourceProperties']['AdministrationRoleARN']
     else:
-        set_admin_role_arn = 'arn:aws:iam:::role/AWSCloudFormationStackSetAdministrationRole'
+        set_admin_role_arn = ''
 
     if 'ExecutionRoleName' in event['ResourceProperties']:
         set_exec_role_name = event['ResourceProperties']['ExecutionRoleName']
     else:
-        set_exec_role_name = 'AWSCloudFormationStackSetExecutionRole'
+        set_exec_role_name = ''
 
     if 'Parameters' in event['ResourceProperties']:
         set_parameters = expand_parameters(event['ResourceProperties']['Parameters'])
