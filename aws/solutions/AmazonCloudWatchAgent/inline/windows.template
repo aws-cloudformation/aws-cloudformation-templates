@@ -42,6 +42,8 @@ Resources:
           UpdateEnvironment:
             - 02_config-amazon-cloudwatch-agent
             - 03_restart_amazon-cloudwatch-agent
+        # Cfn-hup setting, it is to monitor the change of metadata.
+        # When there is change in the contents of json file in the metadata section, cfn-hup will call cfn-init to restart the AmazonCloudWatchAgent.
         00_setupCfnHup:
           files:
              "c:\\cfn\\cfn-hup.conf":
@@ -65,6 +67,7 @@ Resources:
                 files:
                   - "c:\\cfn\\cfn-hup.conf"
                   - "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+        # Definition of json configuration of AmazonCloudWatchAgent, you can change the configuration below.
         02_config-amazon-cloudwatch-agent:
           files:
             "C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json":
@@ -96,10 +99,12 @@ Resources:
                     }
                   }
                 }
-
+        # Invoke amazon-cloudwatch-agent-ctl to restart the AmazonCloudWatchAgent.
         03_restart_amazon-cloudwatch-agent:
           commands:
-            configure_cloudwatch:
+            01_stop_service:
+              command: powershell -Command "C:\\'Program Files'\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent-ctl.ps1 -a stop"
+            02_start_service:
               command: powershell -Command "C:\\'Program Files'\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent-ctl.ps1 -a fetch-config -m ec2 -c file:C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json -s"
 
     Properties:
