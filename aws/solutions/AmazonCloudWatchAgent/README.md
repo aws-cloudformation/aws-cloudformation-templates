@@ -1,11 +1,9 @@
-# Deploy AmazonCloudWatchAgent to Ec2 instance by CloudFormation
+# Deploy the Amazon CloudWatch agent to Amazon EC2 instances using AWS CloudFormation
+The /inline and /ssm directories include templates to help you install the Amazon CloudWatch agent on Amazon EC2 instances using AWS CloudFormation. You can also use the templates to update the agent configuration after deployment. For more information, see https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-CloudFormation-Templates.html.
 
-## issues
-Some customers do not know how to install AmazonCloudWatchAgent with cloudformation or how to upgrade the configuration in cloudformation.
-This module provides several example templates which explain how to install AmazonCloudWatchAgent and how to upgrade configuration.
 
-### inline
-The templates in inline directory give an example about how to embed the json configuration to the metadata.
+## /inline directory
+The templates in the /inline directory have the CloudWatch agent configuration embedded into the AWS CloudFormation template. You can modify your CloudWatch agent configuration by modifying the template.
 
-### ssm
-The templates in ssm directory give an example about how to integrate the retrieve the json configuration stored in SSM parameter store.
+## /ssm directory
+The templates in the /ssm directory load the agent configuration from Parameter Store. To use these templates, you must first create a configuration file and upload it to Parameter Store.
