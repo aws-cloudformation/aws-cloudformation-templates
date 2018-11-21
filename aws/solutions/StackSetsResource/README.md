@@ -44,7 +44,7 @@ CloudFormation will package up the python files, upload them to your S3 bucket, 
 
 ## Sample CloudFormation snippet:
 
-The following YAML snippet demonstrates how to define a StackSet within your template using the experted ARN of the lambda function:
+The following YAML snippet demonstrates how to define a StackSet within your template using the exported ARN of the lambda function:
 
 ```yaml
 Resources:
