@@ -74,6 +74,7 @@ Parameters:
       joined to the directory without having to enter their
       credentials separately. If you don't specify a value,
       AWS CloudFormation disables single sign-on by default.
+      If enabling SSO, then "Create Alias" need to be set to true.
     Type: String
     AllowedValues:
     - 'true'
@@ -101,18 +102,18 @@ Parameters:
       A subnet within the selected VPC. Each subnet must be in
       different Availability Zones (AZs). AWS Directory Service
       creates a directory server and a DNS server in each subnet.
-    Type: List<AWS::EC2::Subnet::Id>
+    Type: AWS::EC2::Subnet::Id
   pPrivateSubnet2:
     Description: >
       A second subnet in same VPC that is in different AZ.
       Each subnet must be in different Availability Zones (AZs).
       AWS Directory Service creates a directory server and a DNS
       server in each subnet.
-    Type: List<AWS::EC2::Subnet::Id>
+    Type: AWS::EC2::Subnet::Id
   pVPCID:
     Description: >
       The VPC ID in which to create the Microsoft Active Directory server.
-    Type: List<AWS::EC2::VPC::Id>
+    Type: AWS::EC2::VPC::Id
 
 Conditions:
   cAlias: !Equals [ !Ref pCreateAlias, 'true' ]
