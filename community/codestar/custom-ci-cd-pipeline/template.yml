@@ -23,10 +23,38 @@ Resources:
       AssumeRolePolicyDocument:
         Statement:
         - Effect: Allow
-          Action: ['sts:AssumeRole']
+          Action: 'sts:AssumeRole'
           Principal:
-            Service: [codebuild.amazonaws.com]
+            Service: codebuild.amazonaws.com
         Version: 2012-10-17
+      Policies:
+        - PolicyName: CanLog
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}*:log-stream:*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
+                  - !Sub '${PipelineS3Bucket.Arn}/*'
+        - PolicyName: CanAccessS3
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
 
   StagingBuild:
     Type: AWS::CodeBuild::Project
@@ -112,7 +140,6 @@ Resources:
   PipelineRole:
     Type: AWS::IAM::Role
     Properties: 
-      RoleName: !Ref AWS::StackName
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement: 
@@ -121,19 +148,52 @@ Resources:
               Service: [codepipeline.amazonaws.com]
             Action: ['sts:AssumeRole']
       Policies:
-        - PolicyName: CanAccessS3
+        - PolicyName: CanAccessCodeCommit
           PolicyDocument: 
             Version: 2012-10-17
             Statement: 
               - Effect: Allow
                 Action:
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:UploadArchive
+                  - codecommit:GetUploadArchiveStatus
+                Resource:
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}'
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}/*'
+        - PolicyName: CanAccessS3
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - s3:GetObject
-                Resource: [!GetAtt PipelineS3Bucket.Arn]
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                  - s3:PutObject
+                  - s3:GetBucketPolicy
+                  - s3:GetObjectAcl
+                  - s3:PutObjectAcl
+                  - s3:DeleteObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
+                  - !Sub '${PipelineS3Bucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt StagingBuild.Arn
+                  - !GetAtt StagingDeploy.Arn
+                  - !GetAtt ProductionBuild.Arn
+                  - !GetAtt ProductionDeploy.Arn
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Ref AWS::StackName
       ArtifactStore:
         Type: S3
         Location: !Ref PipelineS3Bucket
