@@ -1,0 +1,140 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Stack with SQS subscribing to SNS from another stack",
+  "Parameters": {
+    "SnsStackName": {
+      "Type": "String",
+      "Default": "SNS-Stack"
+    }
+  },
+  "Resources": {
+    "externalSQS": {
+      "Type": "AWS::SQS::Queue"
+    },
+    "GetSNSTopicName": {
+      "Type": "Custom::GetSNSTopicName",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LambdaReturnSNSArn",
+            "Arn"
+          ]
+        },
+        "StackName": {
+          "Ref": "SnsStackName"
+        }
+      }
+    },
+    "LambdaReturnSNSArn": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "my-bucket-name",
+          "S3Key": "getsnstopic.zip"
+        },
+        "Handler": "app.handler",
+        "Runtime": "nodejs6.10",
+        "Timeout": "100",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudformation:*",
+                    "cloudwatch:*",
+                    "sns:*"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "SubscribeSNS": {
+      "Type": "Custom::SubscribeSNS",
+      "Version": "1.0",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LambdaSubscribeSNS",
+            "Arn"
+          ]
+        },
+        "SNSarn": {
+          "Fn::GetAtt": [
+            "GetSNSTopicName",
+            "SnsTopicName"
+          ]
+        },
+        "SQSarn": {
+          "Fn::GetAtt": [
+            "externalSQS",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "LambdaSubscribeSNS": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "my-bucket-name",
+          "S3Key": "subscribesnstosqs.zip"
+        },
+        "Handler": "app.handler",
+        "Runtime": "nodejs6.10",
+        "Timeout": "100",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {}
+}
