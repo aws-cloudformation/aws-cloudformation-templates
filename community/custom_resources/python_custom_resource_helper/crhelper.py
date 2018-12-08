@@ -139,3 +139,6 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
         logger.error(e, exc_info=True)
         send(event, context, "FAILED", response_data, physical_resource_id, logger=logger, reason=e)
         raise Exception('FAILED')
+    finally:
+        # Cancel timer before exit
+        t.cancel()
