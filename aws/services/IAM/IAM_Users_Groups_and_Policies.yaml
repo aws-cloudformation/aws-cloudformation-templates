@@ -71,4 +71,4 @@ Outputs:
     Description: AWSAccessKeyId of new user
   SecretKey:
     Value: !GetAtt [CFNKeys, SecretAccessKey]
-    Description: AWSSecretKey of new user
+    Description: AWSSecretAccessKey of new user
