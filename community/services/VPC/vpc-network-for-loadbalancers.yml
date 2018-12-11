@@ -1,0 +1,212 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  This CloudFormation will create the following:
+
+    - A VPC (Virtual Private Cloud) for the components to exist within
+    - A NAT Gateway to allow resources to reach resources outside of the VPC
+    - A route table for the NAT Gateway to send traffic appropriately
+    - Subnets within the VPC so that resources can have IP Addresses
+    - Exports to be used as imports for future CloudFormation stacks
+Parameters:
+
+  DesiredVPCCIDRBlock:
+    Type: String
+    Description: The CIDR Block for the entirety of the VPC
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Must be a valid IP CIDR range in the form x.x.x.x/x"
+    Default: 10.0.0.0/16
+
+  PrivateSubnet1CIDR:
+    Type: String
+    Description: The CIDR Block for the 1st Private Subnet
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Must be a valid IP CIDR range in the form x.x.x.x/x"
+    Default: 10.0.0.0/24
+
+  PrivateSubnet2CIDR:
+    Type: String
+    Description: The CIDR Block for the 2nd Private Subnet
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Must be a valid IP CIDR range in the form x.x.x.x/x"
+    Default: 10.0.1.0/24
+
+  PublicSubnet1CIDR:
+    Type: String
+    Description: The CIDR Block for the 1st public subnet - needed for NAT Gateway
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Must be a valid IP CIDR range in the form x.x.x.x/x"
+    Default: 10.0.2.0/24
+
+  PublicSubnet2CIDR:
+    Type: String
+    Description: The CIDR Block for the 2nd public subnet - needed for NAT Gateway
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Must be a valid IP CIDR range in the form x.x.x.x/x"
+    Default: 10.0.3.0/24
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref DesiredVPCCIDRBlock
+      EnableDnsHostnames: true
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  NATGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NATGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NATGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NATGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway1
+
+  PrivateSubnet1PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway2
+
+  PrivateSubnet2PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetOneRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetTwoRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+
+  PublicSubnet1ID:
+    Description: The subnet ID of the 1st public subnet
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PublicSubnet1ID']]
+
+  PublicSubnet2ID:
+    Description: The subnet ID of the 2nd public subnet
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PublicSubnet2ID']]
+
+  PrivateSubnet1ID:
+    Description: The subnet ID of the 1st private subnet
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateSubnet1ID']]
+
+  PrivateSubnet2ID:
+    Description: The subnet ID of the 2nd private subnet
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateSubnet2ID']]
+
+  VPCID:
+    Description: The ID of the created VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VPCID']]
