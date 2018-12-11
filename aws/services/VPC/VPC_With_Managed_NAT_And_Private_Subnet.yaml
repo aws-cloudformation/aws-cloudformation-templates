@@ -17,9 +17,12 @@
       Private1:
         CIDR: "10.0.3.0/24"
 
-    # This might seem repetitive but there are occasions when
-    # certain AZs are not available to use and they differ on
-    # a per account per customer basis.
+    # This mapping accounts for the scenario when certain AZs
+    # are not available to use (this differs on a per account
+    # per customer basis). E.g., if the 'b' AZ is not available
+    # in a specific region in one's account then updating the
+    # list contained in the mapping below here will allow a
+    # different AZ to be chosen.
     AZRegions:
       ap-northeast-1:
         AZs: ["a", "b"]
