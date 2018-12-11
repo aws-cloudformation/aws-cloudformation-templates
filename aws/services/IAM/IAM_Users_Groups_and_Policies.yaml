@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+Metadata:
   License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template IAM_Users_Groups_and_Policies: Sample
   template showing how to create IAM users, groups and policies. It creates a single
@@ -7,12 +7,12 @@ Description: 'AWS CloudFormation Sample Template IAM_Users_Groups_and_Policies: 
   different IAM policies associated with them. Note: This example also creates an
   AWSAccessKeyId/AWSSecretKey pair associated with the new user. The example is somewhat
   contrived since it creates all of the users and groups, typically you would be creating
-  policies, users and/or groups that contain referemces to existing users or groups
+  policies, users and/or groups that contain references to existing users or groups
   in your environment. Note that you will need to specify the CAPABILITY_IAM flag
   when you create the stack to allow this template to execute. You can do this through
   the AWS management console by clicking on the check box acknowledging that you understand
   this template creates IAM resources or by specifying the CAPABILITY_IAM flag to
-  the cfn-create-stack command line tool or CreateStack API call. '
+  the cfn-create-stack command line tool or CreateStack API call.'
 Parameters:
   Password:
     NoEcho: 'true'
