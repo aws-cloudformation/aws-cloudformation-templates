@@ -12,4 +12,4 @@ This video is based on the KC article:
 https://aws.amazon.com/premiumsupport/knowledge-center/sqs-sns-subscribe-cloudformation/
 
 The link to get the initial SNS Stack is also found in the above link.
-The Lambda functions in the folders here need to be zipped and uploaded in an S3 Bucket. Replace "my-bucket-name" with the Bucket's name in the template.
+The Lambda functions in the folders here need to be zipped and uploaded in an S3 Bucket after running "npm install". Replace "my-bucket-name" with the Bucket's name in the template.
