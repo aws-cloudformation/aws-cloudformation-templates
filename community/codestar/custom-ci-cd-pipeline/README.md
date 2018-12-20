@@ -3,7 +3,8 @@
 This template creates a custom CodePipeline pipeline for continuous integration and continuous delivery, for *two environments* named `staging` and `production`.
 
 ## Steps
-1. Source: fetches the a user-defined branch from a CodeCommit repository.
+
+1. Source: fetches the latest version of a branch from a CodeCommit repository.
 2. Build staging: builds the project using CodeBuild by executing the `buildspec.yml` file.
 3. Staging deployment: deploys the output of step 2 using CodeBuild by executing the `deployspec.yml` file.
 4. Manual approval.
@@ -32,3 +33,13 @@ artifacts:
     - ....
     - deployspec.yml
 ```
+
+## CodeBuild role
+
+If you need to perofm an action in your build or deployment phase which requires particular permissions you can add a [policy](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html) to the IAM role used by the CodeBuild projects. The role ARN is exported with this name: `${AWS::StackName}CodeBuildRoleArn`.
+
+## Author
+Egidio Caprino
+egidio.caprino@gmail.com
+[@EgidioCaprino](https://twitter.com/EgidioCaprino)
+[LinkedIn](https://www.linkedin.com/in/egidio-caprino-3042b476/)
