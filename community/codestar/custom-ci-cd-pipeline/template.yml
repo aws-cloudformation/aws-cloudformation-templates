@@ -17,6 +17,9 @@ Parameters:
     Description: Docker image to use for the deployment phase
 
 Resources:
+  PipelineS3Bucket:
+    Type: AWS::S3::Bucket
+  
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -133,9 +136,6 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: deployspec.yml
-
-  PipelineS3Bucket:
-    Type: AWS::S3::Bucket
 
   PipelineRole:
     Type: AWS::IAM::Role
@@ -273,3 +273,10 @@ Resources:
               InputArtifacts:
                 - Name: ProductionBuild
               RunOrder: 6
+
+Outputs:
+  CodeBuildRole:
+    Description: IAM Role associated with CodeBuild projects
+    Value: !GetAtt CodeBuildRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}CodeBuildRoleArn'
