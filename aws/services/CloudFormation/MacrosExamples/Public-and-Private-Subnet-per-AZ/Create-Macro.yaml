@@ -103,25 +103,9 @@ Resources:
             Runtime: python3.6
             Timeout: '60'
             Role: !GetAtt TransformExecutionRole.Arn
-
     Transform:
-        Type: AWS::CloudFormation::Transform
+        Type: AWS::CloudFormation::Macro
         Properties:
-            Name: !Sub '${AWS::AccountId}::CreateSubnetsPerAZ'
+            Name: CreateSubnetsPerAZ
             Description: Macro to create Subnets for every available AZ
-            RoutingTable:
-                '*': 1
-            Versions:
-                - VersionName: 1
-                  Description: Macro to create Subnets for every available AZ
-                  FunctionName: !GetAtt TransformFunction.Arn
-            ExecutionPolicy:
-                Version: 2012-10-17
-                Id: AllowOtherAccountPolicy
-                Statement:
-                    - Sid: AllowExecution
-                      Effect: Allow
-                      Principal:
-                        AWS: !Sub '${AWS::AccountId}'
-                      Action: 'cloudformation:CreateChangeSet'
-                      Resource: !Sub 'arn:*:cloudformation:${AWS::Region}:${AWS::AccountId}:transform/CreateSubnetsPerAZ'
+            FunctionName: !GetAtt TransformFunction.Arn
