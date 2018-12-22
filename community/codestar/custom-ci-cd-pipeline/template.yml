@@ -213,7 +213,6 @@ Resources:
                 BranchName: master
               OutputArtifacts:
                 - Name: Source
-              RunOrder: 1
         - Name: Staging
           Actions:
             - Name: Build
@@ -228,7 +227,7 @@ Resources:
                 - Name: Source
               OutputArtifacts:
                 - Name: StagingBuild
-              RunOrder: 2
+              RunOrder: 1
             - Name: Deploy
               ActionTypeId:
                 Category: Build
@@ -239,7 +238,7 @@ Resources:
                 ProjectName : !Ref StagingDeploy
               InputArtifacts:
                 - Name: StagingBuild
-              RunOrder: 3
+              RunOrder: 2
         - Name: Production
           Actions:
             - Name: Approval
@@ -248,7 +247,7 @@ Resources:
                 Owner: AWS
                 Provider: Manual
                 Version: 1
-              RunOrder: 4
+              RunOrder: 1
             - Name: Build
               ActionTypeId:
                 Category: Build
@@ -261,7 +260,7 @@ Resources:
                 - Name: Source
               OutputArtifacts:
                 - Name: ProductionBuild
-              RunOrder: 5
+              RunOrder: 2
             - Name: Deploy
               ActionTypeId:
                 Category: Build
@@ -272,7 +271,7 @@ Resources:
                 ProjectName : !Ref ProductionDeploy
               InputArtifacts:
                 - Name: ProductionBuild
-              RunOrder: 6
+              RunOrder: 3
 
 Outputs:
   CodeBuildRole:
