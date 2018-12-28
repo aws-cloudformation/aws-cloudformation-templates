@@ -274,8 +274,13 @@ Resources:
               RunOrder: 3
 
 Outputs:
-  CodeBuildRole:
-    Description: IAM Role associated with CodeBuild projects
+  CodeBuildRoleArn:
+    Description: IAM Role ARN associated with CodeBuild projects
     Value: !GetAtt CodeBuildRole.Arn
     Export:
       Name: !Sub '${AWS::StackName}CodeBuildRoleArn'
+  CodeBuildRoleName:
+    Description: IAM Role name associated with CodeBuild projects
+    Value: !Ref CodeBuildRole
+    Export:
+      Name: !Sub '${AWS::StackName}CodeBuildRoleName'
