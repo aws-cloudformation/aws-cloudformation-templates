@@ -398,8 +398,7 @@
       Value:
         Ref: "PublicSubnet1"
       Export:
-        Name:
-          Name: !Sub "${AWS::Region}-${AWS::StackName}-PublicSubnet1"
+        Name: !Sub "${AWS::Region}-${AWS::StackName}-PublicSubnet1"
 
     PrivateSubnet0:
       Description: "SubnetId of private subnet 0"
