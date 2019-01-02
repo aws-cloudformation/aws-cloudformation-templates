@@ -68,7 +68,7 @@ This architecture deploys your container in a private subnet, with no direct int
 ### Run in AWS Fargate
 
 1. Launch the [public + private](FargateLaunchType/clusters/private-vpc.yml) cluster template
-2. Launch the [private service template](FargateLaunchType/services/private-service.yml).
+2. Launch the [private service, private subnet template](FargateLaunchType/services/private-subnet-private-service.yml).
 
 ### Run on EC2
 
