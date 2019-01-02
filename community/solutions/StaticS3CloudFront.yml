@@ -152,3 +152,10 @@ Conditions:
   NoSSL: !Equals
     - !Ref CertificateArn
     - ''
+
+Outputs:
+  WebBucketArn:
+    Description: ARN of S3 bucket hosting the website
+    Value: !GetAtt WebBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}WebBucketArn'
