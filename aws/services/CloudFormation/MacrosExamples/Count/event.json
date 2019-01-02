@@ -1,0 +1,14 @@
+{
+  "requestId": 43242,
+  "fragment": {
+    "Resources": {
+      "HelloBucket": {
+        "Type": "AWS::S3::Bucket",
+        "Count": 2,
+        "Properties": {
+          "AccessControl": "PublicRead"
+        }
+      }
+    }
+  }
+}
