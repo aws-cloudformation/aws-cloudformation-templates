@@ -60,6 +60,6 @@ You cannot use Count on resources that use a hardcoded name (`Name:` property). 
 
 ## Author
 
-[Jose Ferraris](www.linkedin.com/in/jos%C3%A8-ferraris-384a324a/)
+[Jose Ferraris](https://github.com/j0lly)
 AWS ProServ DevOps Consultant
 Amazon Web Services
