@@ -12,7 +12,7 @@ This template creates a custom CodePipeline pipeline for continuous integration 
 6. Staging deployment: deploys the output of step 5 using CodeBuild by executing the `deployspec.yml` file.
 
 ## CodeCommit repository
-The CodeCommit repository must exists in the same region where you are creating the pipeline and the name it is provided as a parameter to the stack.
+You need to create the CodeCommit repository before creating the stack, in the same AWS region as where you are creating the pipeline. The repository name is given as a parameter to the stack.
 
 ## Environment variable
 
