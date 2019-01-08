@@ -1,4 +1,4 @@
-# custom-ci-cd-pipeline
+# A CodeBuild and CodePipeline template for Containerized Application
 
 This template creates a custom CodePipeline pipeline for continuous integration and continuous delivery, for *two environments* named `staging` and `production`.
 
