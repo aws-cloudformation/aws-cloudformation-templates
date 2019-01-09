@@ -1,15 +1,15 @@
-# custom-ci-cd-pipeline
+# A CodeBuild and CodePipeline template for Containerized Application
 
 This template creates a custom CodePipeline pipeline for continuous integration and continuous delivery, for *two environments* named `staging` and `production`.
 
 ## Steps
 
-1. Source: fetches the latest version of a branch from a CodeCommit repository.
+1. Retrieve source: fetches the latest version of a branch from a CodeCommit repository.
 2. Build staging: builds the project using CodeBuild by executing the `buildspec.yml` file.
-3. Staging deployment: deploys the output of step 2 using CodeBuild by executing the `deployspec.yml` file.
+3. Deploy staging: deploys the output of step 2 using CodeBuild by executing the `deployspec.yml` file.
 4. Manual approval.
 5. Build production: builds the project using CodeBuild by executing the `buildspec.yml` file.
-6. Staging deployment: deploys the output of step 5 using CodeBuild by executing the `deployspec.yml` file.
+6. Deploy production: deploys the output of step 5 using CodeBuild by executing the `deployspec.yml` file.
 
 ## CodeCommit repository
 You need to create the CodeCommit repository before creating the stack, in the same AWS region as where you are creating the pipeline. The repository name is given as a parameter to the stack.
@@ -28,7 +28,7 @@ fi
 
 Both `buildspec.yml` and `deployspec.yml` files are run in CodeBuild projects. Read [this page](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html) for more information about the syntax to use.
 
-*Important note:* in steps 2 and 5 you need to add `deployspec.yml` in `artifacts.files` section, among other output files.
+*Important note:* in steps 2 and 5 you need to add `deployspec.yml` in `artifacts.files` section of the `buildspec.yml` among other output files in order for deployments to function.
 
 ```
 artifacts:
