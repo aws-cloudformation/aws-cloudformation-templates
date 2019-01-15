@@ -3,7 +3,7 @@ Metadata:
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS CloudFormation Sample Template FindInMap_Inside_Sub.yaml
   This template shows a working example of using the new Fn::Sub function with
-  the Fn::FinInMap function embedded inside it.
+  the Fn::FindInMap function embedded inside it.
 
   This creates an EC2 instance with a customized UserData field.
   The instance itself is not the point of this example, just the UserData field.
