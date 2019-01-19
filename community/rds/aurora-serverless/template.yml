@@ -1,0 +1,63 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Aurora serverless cluster
+
+Parameters:
+  DatabaseName:
+    Type: String
+  MasterUserPassword:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Parameter Store name
+  VpcId:
+    Type: String
+  VpcSecurityGroupId:
+    Type: String
+  BastionKeyName:
+    Type: String
+    Description: EC2 key used to connect to the bastion host
+    Default: Default
+
+Resources:
+  Cluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora
+      EngineMode: serverless
+      EngineVersion: 5.6
+      DatabaseName: !Ref DatabaseName
+      MasterUsername: root
+      MasterUserPassword: !Ref MasterUserPassword
+      DBClusterIdentifier: !Ref AWS::StackName
+      BackupRetentionPeriod: 35
+      DeletionProtection: true
+      VpcSecurityGroupIds:
+        - !Ref VpcSecurityGroupId
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: !Sub 'Bastion for ${AWS::StackName}'
+      SecurityGroupEgress:
+        - DestinationSecurityGroupId: !Ref VpcSecurityGroupId
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+      SecurityGroupIngress: []
+      VpcId: !Ref VpcId
+
+  Bastion:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: true
+      ImageId: ami-035be7bafff33b6b6
+      InstanceType: t2.nano
+      KeyName: !Ref BastionKeyName
+      Monitoring: false
+      SecurityGroupIds:
+        - !Ref VpcSecurityGroupId
+      SecurityGroups:
+        - !Ref SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          ssh -L 3307:$(curl http://169.254.169.254/latest/meta-data/public-hostname):${Cluster.Endpoint.Port} ${Cluster.Endpoint.Address}
