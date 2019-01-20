@@ -58,3 +58,13 @@ Resources:
         - !Ref VpcSecurityGroupId
         - !Ref SecurityGroup
       UserData: !Base64 'yum install mysql --assumeyes'
+
+Outputs:
+  Host:
+    Value: !GetAtt Cluster.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}Host'
+  Name:
+    Value: !Ref DatabaseName
+    Export:
+      Name: !Sub '${AWS::StackName}Name'
