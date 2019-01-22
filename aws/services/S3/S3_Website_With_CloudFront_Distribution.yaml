@@ -82,7 +82,7 @@ Resources:
       Type: CNAME
       TTL: '900'
       ResourceRecords:
-      - !Join ['', ['http://', !GetAtt [WebsiteCDN, DomainName]]]
+      - !GetAtt [WebsiteCDN, DomainName]
 Outputs:
   WebsiteURL:
     Value: !Join ['', ['http://', !Ref 'WebsiteDNSName']]
