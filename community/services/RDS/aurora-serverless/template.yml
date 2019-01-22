@@ -88,3 +88,7 @@ Outputs:
     Value: !GetAtt Bastion.PublicIp
     Export:
       Name: !Sub '${AWS::StackName}BastionIp'
+  BastionSecurityGroupId:
+    Value: !GetAtt BastionSecurityGroup.GroupId
+    Export:
+      Name: !Sub '${AWS::StackName}BastionSecurityGroupId'
