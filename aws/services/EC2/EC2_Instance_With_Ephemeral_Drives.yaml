@@ -13,7 +13,7 @@ Parameters:
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
-    Default: t3.small
+    Default: t2.nano
     AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large, t2.xlarge, t2.2xlarge,
       t3.nano, t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge,
       m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
@@ -43,7 +43,7 @@ Resources:
       InstanceType: !Ref 'InstanceType'
       SecurityGroups: [!Ref 'EC2SecurityGroup']
       KeyName: !Ref 'KeyName'
-      ImageId: !Ref 'LatestAmid'
+      ImageId: !Ref 'LatestAmiId'
       BlockDeviceMappings:
       - DeviceName: /dev/sdc
         VirtualName: ephemeral0
