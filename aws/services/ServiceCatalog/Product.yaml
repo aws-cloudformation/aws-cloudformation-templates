@@ -1,0 +1,235 @@
+# /*
+# * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# *
+# * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# * software and associated documentation files (the "Software"), to deal in the Software
+# * without restriction, including without limitation the rights to use, copy, modify,
+# * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# * permit persons to whom the Software is furnished to do so.
+# *
+# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# */
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Product creation.
+             ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ###
+             **WARNING**
+             This template creates AWS Service Catalog Product, please make sure you review billing costs for AWS Service Catalog.'
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Service Catalog Product Tags"
+        Parameters:
+          - AppName
+          - Env
+          - Dept
+          - User
+          - Owner
+      -
+        Label:
+          default: "Service Catalog Portfolio Stack Name"
+        Parameters:
+          - ServiceCatalogPortfolioStackName
+      -
+        Label:
+          default: "Service Catalog Product Details"
+        Parameters:
+          - SCProductName
+          - SCProductDescription
+          - SCProductOwner
+          - SCProductSupport
+          - SCProductDistributor
+          - SCSupportEmail
+          - SCSupportUrl
+      -
+        Label:
+          default: "Service Catalog Portfolio Display Name"
+        Parameters:
+          - PortfolioDisplayName
+      -
+        Label:
+          default: "Service Catalog Product Details"
+        Parameters:
+          - S3Bucket
+          - ProvisioningArtifactNameParameter
+          - ProvisioningArtifactDescriptionParameter
+
+Parameters:
+
+# Enviornment type
+  Env:
+    Description:    Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type:           String
+    Default:        "dev"
+    AllowedValues:
+      - test
+      - dev
+      - prod
+
+# Application Name
+  AppName:
+    Description:    Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type:           String
+    Default:        "app"
+
+# Department
+  Dept:
+    Description:    Please specify the Department. Used for tagging
+    Type:           String
+    Default:        "1234"
+
+# User
+  User:
+    Description:    Please specify the User. Used for tagging
+    Type:           String
+    Default:        "User"
+
+# Owner
+  Owner:
+    Description:    Please specify the Owner. Used for tagging
+    Type:           String
+    Default:        "Owner"
+
+# Service Catalog Portfolio Stack Name
+  ServiceCatalogPortfolioStackName:
+    Description:    Please specify the Service Catalog Portfolio Stack Name.
+    Type:           String
+    Default:        ""
+
+# ServiceCatalog Product Name
+  SCProductName:
+    Description:    Please specify ServiceCatalog Product Name.
+    Type:           String
+    Default:        "ProductName"
+
+# ServiceCatalog Product Name Description
+  SCProductDescription:
+    Description:    Please specify ServiceCatalog Product Name Description.
+    Type:           String
+    Default:        "ProductDescription"
+
+# ServiceCatalog Product Name Owner
+  SCProductOwner:
+    Description:    Please specify ServiceCatalog Product Owner.
+    Type:           String
+    Default:        "ProductOwner"
+
+# ServiceCatalog Product Support
+  SCProductSupport:
+    Description:    Please specify ServiceCatalog Product Support.
+    Type:           String
+    Default:        "IT Support can be reached @support"
+
+# ServiceCatalog Product Distributor
+  SCProductDistributor:
+    Description:    Please specify ServiceCatalog Product Distributor.
+    Type:           String
+    Default:        "App Vendor"
+
+# ServiceCatalog Product Support Email
+  SCSupportEmail:
+    Description:    Please specify ServiceCatalog Product Support Email.
+    Type:           String
+    Default:        "support@example.com"
+
+# ServiceCatalog Product Support URL
+  SCSupportUrl:
+    Description:    Please specify ServiceCatalog Product Support URL.
+    Type:           String
+    Default:        "http://www.support.example.com"
+
+# ServiceCatalog Product S3 Bucket
+  S3Bucket:
+    Description:    Please specify ServiceCatalog Product S3 Bucket.
+    Type:           String
+    Default:        "mytestbucket"
+
+# ServiceCatalog Product Artifact Name
+  ProductArtifactName:
+    Description:    Please specify ServiceCatalog Product Artifact Name.
+    Type:           String
+    Default:        "productexample.yaml"
+
+# ServiceCatalog Product Artifact Name
+  ProvisioningArtifactNameParameter:
+    Description:    Please specify ServiceCatalog Product Artifact Name.
+    Type:           String
+    Default:        "ProductExample"
+
+# ServiceCatalog Product Artifact Description
+  ProvisioningArtifactDescriptionParameter:
+    Description:    Please specify ServiceCatalog Product Artifact Description.
+    Type:           String
+    Default:        "ProductExample"
+
+Resources:
+
+  ServiceCatalogCloudFormationProduct:
+    Type: "AWS::ServiceCatalog::CloudFormationProduct"
+    Properties:
+      Name: !Ref 'SCProductName'
+      Description: !Ref 'SCProductDescription'
+      Owner: !Ref 'SCProductOwner'
+      SupportDescription: !Ref 'SCProductSupport'
+      Distributor:  !Ref 'SCProductDistributor'
+      SupportEmail:  !Ref 'SCSupportEmail'
+      SupportUrl: !Sub '${SCSupportUrl}'
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${AppName}'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Dept
+          Value:  !Sub '${Dept}'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+      ProvisioningArtifactParameters:
+        -
+          Name: !Sub '${ProvisioningArtifactNameParameter}'
+          Description: !Sub '${ProvisioningArtifactDescriptionParameter}'
+          Info:
+            LoadTemplateFromURL: !Sub "https://s3-${AWS::Region}.amazonaws.com/${S3Bucket}/${ProductArtifactName}"
+
+  ServiceCatalogPortfolioProductAssociation:
+    Type: "AWS::ServiceCatalog::PortfolioProductAssociation"
+    DependsOn: ServiceCatalogCloudFormationProduct
+    Properties:
+      PortfolioId:
+          Fn::ImportValue: !Sub '${ServiceCatalogPortfolioStackName}-ServiceCatalogPortfolio'
+      ProductId: !Ref 'ServiceCatalogCloudFormationProduct'
+
+  ServiceCatalogCustomTagOptionsAssociation:
+    Type: "AWS::ServiceCatalog::TagOptionAssociation"
+    Properties:
+      TagOptionId:
+          Fn::ImportValue: !Sub '${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptions'
+      ResourceId: !Ref 'ServiceCatalogCloudFormationProduct'
+
+
+Outputs:
+
+  ServiceCatalogCloudFormationProductName:
+    Value:    !GetAtt 'ServiceCatalogCloudFormationProduct.ProductName'
+    Export:
+      Name:   !Sub '${AppName}-ServiceCatalogCloudFormationProductName'
+
+  ServiceCatalogProvisioningArtifactIds:
+    Value:    !GetAtt 'ServiceCatalogCloudFormationProduct.ProvisioningArtifactIds'
+    Export:
+      Name:   !Sub '${AppName}-ServiceCatalogCloudFormationProvisioningArtifactIds'
+
+  ServiceCatalogProvisioningArtifactNames:
+    Value:    !GetAtt 'ServiceCatalogCloudFormationProduct.ProvisioningArtifactNames'
+    Export:
+      Name:   !Sub '${AppName}-ServiceCatalogCloudFormationProvisioningArtifactNames'

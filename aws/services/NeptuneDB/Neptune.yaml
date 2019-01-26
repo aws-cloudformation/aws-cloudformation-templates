@@ -1,0 +1,692 @@
+# /*
+# * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# *
+# * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# * software and associated documentation files (the "Software"), to deal in the Software
+# * without restriction, including without limitation the rights to use, copy, modify,
+# * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# * permit persons to whom the Software is furnished to do so.
+# *
+# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# */
+
+
+# Notes
+# Specify necessary values for "UPDATE_HERE" respurces and properties for sucessiful deployment
+
+# Current limitations/considerations:
+# - Considereations around DBInstanceIdentifier resource properties should be reviewed
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template to automatically provision AWS Neptune Graph Database through optimized CI/CD method with AWS CloudWatch and AWS SNS.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Tags"
+        Parameters:
+          - Env
+          - AppName
+          - AppEnv
+          - Compliance
+          - Dept
+          - User
+          - Owner
+          - Tier
+          - Version
+          - Storage
+      -
+        Label:
+          default: "Neptune Database Parameters"
+        Parameters:
+          - DBInstanceClass
+          - DBClusterIdentifier
+          - MajorVersionUpgrade
+          - MinorVersionUpgrade
+          - NeptuneQueryTimeout
+          - StorageEncrypted
+          - NeptuneDBSubnetGroupName
+          - GremlinRequestsPerSecThreshold
+          - SparqlRequestsPerSecThreshold
+          - IAMAuthEnabled
+          - VPCStack
+      -
+        Label:
+          default: "Neptune Security Group Parameters"
+        Parameters:
+          - Port
+          - AttributeType
+      -
+        Label:
+          default: "Neptune Backup and Monitoring Parameters"
+        Parameters:
+          - HighCpuAlarmThreshold
+          - LowMemoryAlarmThreshold
+          - UploadAuditLogs
+          - NeptuneEnableAuditLog
+          - BackupRetentionPeriod
+          - NeptuneDBClusterPreferredMaintenanceWindow
+          - NeptuneDBInstancePreferredMaintenanceWindow
+          - NeptuneDBClusterPreferredBackupWindow
+      -
+        Label:
+          default: "Neptune Notifications Parameters"
+        Parameters:
+          - NeptuneSNSTopicArn
+          - SNSEmailSubscription
+
+Parameters:
+
+# Enviornment type
+  Env:
+    Description:    Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type:           String
+    Default:        "dev"
+    AllowedValues:
+      - test
+      - dev
+      - prod
+
+# Application Name
+  AppName:
+    Description:    Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type:           String
+    Default:        "appname"
+
+# Compliance Type
+  Compliance:
+    Description:    Please specify the Compliance Type. Used for tagging
+    Type:           String
+    Default:        "pci"
+    AllowedValues:
+      - 'itar'
+      - 'pci'
+
+# User
+  User:
+    Description:    Please specify the User. Used for tagging
+    Type:           String
+    Default:        "test"
+
+# Owner
+  Owner:
+    Description:    Please specify the Owner. Used for tagging
+    Type:           String
+    Default:        ""
+
+# Tier
+  Tier:
+    Description:    Please specify the Tier. Used for tagging
+    Type:           String
+    Default:        ""
+
+# Application Version
+  Version:
+    Description:    Please specify the Application Version. Used for tagging
+    Type:           String
+    Default:        ""
+
+# Storage Type
+  Storage:
+    Description:    Please specify the Storage Type. Used for tagging
+    Type:           String
+    Default:        "ebs"
+    AllowedValues:
+      - 'ebs'
+      - 'efs'
+      - 's3'
+
+# VPC Stack Name
+  VPCStack:
+    Description:    Please specify the VPC Stack Name.
+    Type:           String
+    Default:        "vpc"
+
+  # Supported Neptune DB instance class
+  DBInstanceClass:
+    Description:    Neptune DB instance class that will be used for primary and all replicas
+    Type:           String
+    Default:        db.r4.large
+    AllowedValues:
+    - db.r4.large
+    - db.r4.xlarge
+    - db.r4.2xlarge
+    - db.r4.4xlarge
+    - db.r4.8xlarge
+
+  # Neptune DB cluster identifier
+  DBClusterIdentifier:
+    Description:    Neptune DB cluster identifier. Must contain from 1 to 63 alphanumeric characters or hyphens.
+                    First character must be a letter. Cannot end with a hyphen or contain two consecutive hyphens.
+    Type:           String
+
+  # Neptune DB instance identifier
+#  DBInstanceIdentifier:
+#    Description:   Neptune DB instance identifier. This is the unique key that identifies a DB instance.
+#                   This parameter is stored as a lowercase string (e.g. mydbinstance).
+#    Type:          String
+
+  # Port used to connect to the Neptune cluster
+  Port:
+   Description:     Port used to connect to the Neptune cluster. Must be a valid port number between
+   Type:            String
+   Default:         8182
+
+  # Neptune DB parameter group query timeout
+  NeptuneQueryTimeout:
+    Description:    Neptune DB parameters. Allowed values "10-2147483647"
+    Type:           String
+    Default:        120000
+
+  # Data at rest encryption
+  StorageEncrypted:
+    Description:    Data-at-rest encryption
+    Type:           String
+    Default:        false
+    AllowedValues:
+      - true
+      - false
+
+  # Neptune DB Subnet Group Name
+  NeptuneDBSubnetGroupName:
+    Description:    The name for the DB Subnet Group. This value is stored as a lowercase string.
+                    Constraints, Must contain no more than 255 letters, numbers, periods, underscores, spaces, or hyphens.
+                    Must not be default.
+    Type:           String
+
+  # Custom SNS topic alarm
+  NeptuneSNSTopicArn:
+    Description:    Custom SNS topic alarm. Optional. If not provided, an new SNS topic will be created for you
+    Type:           String
+
+  # SNS Email subscription
+  SNSEmailSubscription:
+    Description:    SNS Email subscription. Optional. If not provided, no alarm subscriptions will be created
+    Type:           String
+    AllowedPattern: "^[\\w-\\+]+(\\.[\\w]+)*@[\\w-]+(\\.[\\w]+)*(\\.[a-z]{2,})$|^$"
+
+  # High CPU alarm threshold
+  HighCpuAlarmThreshold:
+    Description:    High CPU alarm threshold. Alert when CPU goes above this value.  In percentage used
+    Type:           String
+    AllowedPattern: (100|[1-9]?[0-9])$
+    Default:        80
+
+  # Low memory alarm threshold
+  LowMemoryAlarmThreshold:
+    Description:    Low memory alarm threshold. Alert when memory falls below this value.  In bytes
+    Type:           Number
+    Default:        700000000
+
+  # Gremlin Requests Per Sec alarm threshold
+  GremlinRequestsPerSecThreshold:
+    Description:    Gremlin Requests Per Sec alarm threshold. Alert when Gremlin Requests Per Sec goes above this value.
+                    In percentage used
+    Type:           String
+    Default:        10000
+
+  # Sparql Requests Per Sec alarm threshold
+  SparqlRequestsPerSecThreshold:
+    Description:    Sparql Requests Per Sec alarm threshold. Alert when Sparql Requests Per Sec goes above this value.
+                    In percentage used
+    Type:           String
+    Default:        10000
+
+  # Enable upload of audit logs?
+  UploadAuditLogs:
+    Description:    Enable upload of audit logs?
+    Type:           String
+    Default:        Yes
+    AllowedValues:
+      - Yes
+      - No
+
+  # Neptune DB audit logs
+  NeptuneEnableAuditLog:
+    Description:    Neptune DB parameters. Allowed values "0, 1"
+    Type:           String
+    Default:        0
+    AllowedValues:
+      - 0
+      - 1
+
+  # Backup retention period (in days)
+  BackupRetentionPeriod:
+    Description:    Backup retention period (in days).  Must be between 1 - 35
+    Type:           String
+    AllowedPattern: ([1-9]|[12][0-9]|3[0-5])
+    Default:        31
+
+  # Neptune DB cluster maintenace window
+  NeptuneDBClusterPreferredMaintenanceWindow:
+    Description:    Neptune DB cluster preferred maintenance window. Format - ddd:hh24:mi-ddd:hh24:mi.
+                    Valid Days - Mon, Tue, Wed, Thu, Fri, Sat, Sun. Constraints - Minimum 30-minute window.
+    Type:           String
+    Default:        mon:03:00-mon:04:00
+
+  # Neptune DB instance maintenace window
+  NeptuneDBInstancePreferredMaintenanceWindow:
+    Description:    Neptune DB instance preferred maintenance window. Format - ddd:hh24:mi-ddd:hh24:mi.
+                    Valid Days - Mon, Tue, Wed, Thu, Fri, Sat, Sun. Constraints - Minimum 30-minute window.
+    Type:           String
+    Default:        mon:03:00-mon:04:00
+
+  # Neptune DB cluster backup window
+  NeptuneDBClusterPreferredBackupWindow:
+    Description:    Neptune DB cluster preferred backup window. Constrains - Must be in the format hh24:mi-hh24:mi.
+                    Must be in Universal Coordinated Time (UTC). Must not conflict with the preferred maintenance window.
+                    Must be at least 30 minutes.
+    Type:           String
+    Default:        02:00-03:00
+
+  # Maintenance - Major version upgrade
+  MajorVersionUpgrade:
+    Description:    Neptune DB major version upgrade
+    Type:           String
+    Default:        true
+    AllowedValues:
+      - true
+      - false
+
+  # Maintenance - Minor version upgrade
+  MinorVersionUpgrade:
+    Description:    Neptune DB minor version upgrade
+    Type:           String
+    Default:        true
+    AllowedValues:
+      - true
+      - false
+
+  # Enable IAM Neptune DB authentication
+  IAMAuthEnabled:
+    Description:    Neptune DB IAM authentication
+    Type:           String
+    Default:        false
+    AllowedValues:
+      - true
+      - false
+
+Conditions:
+  # Enable audit log uploads to CloudWatch Logs?
+  EnableAuditLogUpload: !Equals [ !Ref UploadAuditLogs, Yes ]
+
+  # Create an SNS topic?
+  CreateSnsTopic: !Equals [ !Ref NeptuneSNSTopicArn, "" ]
+
+  # Create an SNS subscription?
+  CreateSnsSubscription: !Not [ !Equals [!Ref SNSEmailSubscription, "" ] ]
+
+
+Resources:
+
+  NeptuneDBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG of Neptune DB
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStack}-VPCID'
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${AWS::StackName}-neptune-sg'
+
+### Neptune DB setup ###
+
+  # Neptune DB Cluster
+  NeptuneDBCluster:
+    Type: "AWS::Neptune::DBCluster"
+    DependsOn: NeptuneDBSG
+    Properties:
+#      AvailabilityZones: !GetAZs ''
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      DBClusterIdentifier: !Ref DBClusterIdentifier
+      DBClusterParameterGroupName: !Ref NeptuneDBClusterParameterGroup
+      DBSubnetGroupName: !Ref NeptuneDBSubnetGroup
+      IamAuthEnabled: !Ref IAMAuthEnabled
+      Port: !Ref Port
+      PreferredBackupWindow: !Ref NeptuneDBClusterPreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref NeptuneDBClusterPreferredMaintenanceWindow
+#      SnapshotIdentifier: # Enable for the DB cluster snapshot from which you want to restore
+      StorageEncrypted: !Ref StorageEncrypted
+#      KmsKeyId:
+#          Fn::ImportValue: !Sub 'UPDATE_HERE"
+      VpcSecurityGroupIds:
+        - !Ref 'NeptuneDBSG'
+      #  - Fn::ImportValue: !Sub 'UPDATE_HERE"  # Valid [list] of security groups (IDs) must be spceified, Otherwise stack deployment will fail.
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${Env}-${AppName}-Cluster'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Compliance
+          Value:  !Sub 'Compliance'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+        - Key:    Tier
+          Value:  !Sub '${Tier}'
+        - Key:    Version
+          Value:  !Sub '${Version}'
+        - Key:    Storage
+          Value:  !Sub '${Storage}'
+
+  # Neptune DB instance
+  NeptuneDBInstance:
+    Type: "AWS::Neptune::DBInstance"
+    Properties:
+      AllowMajorVersionUpgrade: !Ref MajorVersionUpgrade
+      AutoMinorVersionUpgrade: !Ref MinorVersionUpgrade
+      DBClusterIdentifier: !Ref NeptuneDBCluster #Note: If you specify this property, the default deletion policy is Delete. Otherwise, the default deletion policy is Snapshot.
+      DBInstanceClass: !Ref DBInstanceClass
+#      DBInstanceIdentifier: !Ref DBInstanceIdentifier #Note: If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.
+      DBParameterGroupName: !Ref NeptuneDBParameterGroup
+#      DBSnapshotIdentifier: # Enable for the DB cluster snapshot from which you want to restore
+      DBSubnetGroupName: !Ref NeptuneDBSubnetGroup
+      PreferredMaintenanceWindow: !Ref NeptuneDBInstancePreferredMaintenanceWindow
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${Env}-${AppName}-Instance'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Compliance
+          Value:  !Sub 'Compliance'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+        - Key:    Tier
+          Value:  !Sub '${Tier}'
+        - Key:    Version
+          Value:  !Sub '${Version}'
+        - Key:    Storage
+          Value:  !Sub '${Storage}'
+
+  # Neptune DB cluster parameter group
+  NeptuneDBClusterParameterGroup:
+    Type: "AWS::Neptune::DBClusterParameterGroup"
+    Properties:
+      Description: !Sub "CloudFormation managed Neptune DB Cluster Parameter Group - ${Env}-${AppName}-cluster-parameter-group"
+      Parameters:
+        neptune_enable_audit_log: !If [ EnableAuditLogUpload, 1, 0]
+      Family : neptune1
+      Name : !Sub ${Env}-${AppName}-neptune-cluster-parameter-group
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${Env}-${AppName}-cluster-parameter-group'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Compliance
+          Value:  !Sub 'Compliance'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+        - Key:    Tier
+          Value:  !Sub '${Tier}'
+        - Key:    Version
+          Value:  !Sub '${Version}'
+        - Key:    Storage
+          Value:  !Sub '${Storage}'
+
+  # Neptune DB parameter group
+  NeptuneDBParameterGroup:
+    Type: "AWS::Neptune::DBParameterGroup"
+    Properties:
+      Description: !Sub "CloudFormation managed Neptune DB Parameter Group - ${Env}-${AppName}-parameter-group"
+      Parameters:
+        neptune_query_timeout: !Ref NeptuneQueryTimeout
+      Family : neptune1
+      Name : !Sub ${Env}-${AppName}-parameter-group
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${Env}-${AppName}-parameter-group'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Compliance
+          Value:  !Sub 'Compliance'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+        - Key:    Tier
+          Value:  !Sub '${Tier}'
+        - Key:    Version
+          Value:  !Sub '${Version}'
+        - Key:    Storage
+          Value:  !Sub '${Storage}'
+
+  # Neptune DB subnet group
+  NeptuneDBSubnetGroup:
+    Type: "AWS::Neptune::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: !Sub "CloudFormation managed Neptune DB Subnet Group - ${Env}-${AppName}-subnet-group"
+      DBSubnetGroupName: !Ref NeptuneDBSubnetGroupName
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStack}-PrivateSubnet1'
+        - Fn::ImportValue: !Sub '${VPCStack}-PrivateSubnet2'
+      Tags:
+        - Key:    Name
+          Value:  !Sub '${Env}-${AppName}-subnet-group'
+        - Key:    App
+          Value:  !Sub '${AppName}'
+        - Key:    Compliance
+          Value:  !Sub 'Compliance'
+        - Key:    Env
+          Value:  !Sub '${Env}'
+        - Key:    User
+          Value:  !Sub '${User}'
+        - Key:    Owner
+          Value:  !Sub '${Owner}'
+        - Key:    Tier
+          Value:  !Sub '${Tier}'
+        - Key:    Version
+          Value:  !Sub '${Version}'
+        - Key:    Storage
+          Value:  !Sub '${Storage}'
+
+### SNS Topic setup ###
+
+  # Optional SNS topic for alarms
+  NeptuneAlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: CreateSnsTopic
+    Properties:
+      DisplayName: !Sub ${AWS::StackName} alarm topic
+
+  # Optional SNS subscription for alarms
+  NeptuneAlarmSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: CreateSnsSubscription
+    Properties:
+      Endpoint: !Ref SNSEmailSubscription
+      Protocol: email
+      TopicArn: !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+
+### IAM Role ###
+
+  # Neptune IAM role - allows access to CloudWatch Logs and S3
+  NeptuneRole:
+    Type: AWS::IAM::Role
+    Condition: EnableAuditLogUpload
+    Properties:
+      RoleName:   !Sub '${Env}-${AppName}-neptune-iam-role-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - monitoring.rds.amazonaws.com
+            - rds.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref NeptuneCloudWatchPolicy
+        - !Ref NeptuneS3Policy
+
+  # Neptune CloudWatch policy
+  NeptuneCloudWatchPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Default policy for CloudWatch logs
+      ManagedPolicyName: !Sub "${Env}-${AppName}-neptune-cw-policy-${AWS::Region}"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: "EnableLogGroups"
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:PutRetentionPolicy
+            Resource:
+              - !Sub arn:${AWS::Partition}:logs:*:*:log-group:/aws/neptune/*
+          - Sid: "EnableLogStreams"
+            Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescriptLogStreams
+            - logs:GetLogEvents
+            Resource:
+              - !Sub arn:${AWS::Partition}:logs:*:*:log-group:/aws/neptune/*:log-stream:*
+
+  # Neptune S3 policy for acess to the data sets
+  NeptuneS3Policy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      Description: Neptune default policy for S3 access for data load
+      ManagedPolicyName: !Sub "${Env}-${AppName}-neptune-s3-policy-${AWS::Region}"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: "AllowNeptuneAccessToS3"
+            Effect: Allow
+            Action:
+              - 's3:Get*'
+              - 's3:List*'
+            Resource:
+              - !Sub 'arn:aws:s3:::*' # S3 Bucket needs to be added here
+
+### CloudWatch Alarms setup ###
+
+  # Neptune DB Primary Instance - CPU alarm
+  NeptunePrimaryCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub ${Env}-${AppName} primary DB CPU over ${HighCpuAlarmThreshold}%
+      Namespace: AWS/Neptune
+      MetricName: CPUUtilization
+      Unit: Percent
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !Ref HighCpuAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: DBClusterIdentifier
+        Value: !Ref NeptuneDBCluster
+      AlarmActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+      InsufficientDataActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+
+  # Neptune DB Primary Instance - memory alarm
+  NeptunePrimaryMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub ${Env}-${AppName} primary DB memory under ${LowMemoryAlarmThreshold} bytes
+      Namespace: AWS/Neptune
+      MetricName: FreeableMemory
+      Unit: Bytes
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !Ref LowMemoryAlarmThreshold
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+      - Name: DBClusterIdentifier
+        Value: !Ref NeptuneDBCluster
+      AlarmActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+      InsufficientDataActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+
+  # Neptune DB Primary Instance - Gremlin Requests Per Second alarm
+  NeptunePrimaryGremlinRequestsPerSecAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub ${Env}-${AppName} primary DB Gremlin Requests Per Second
+      Namespace: AWS/Neptune
+      MetricName: GremlinRequestsPerSec
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !Ref GremlinRequestsPerSecThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: DBClusterIdentifier
+        Value: gremlin-cluster
+      AlarmActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+      InsufficientDataActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+
+  # Neptune DB Primary Instance - Sparql Requests Per Second alarm
+  NeptunePrimarySparqlRequestsPerSecAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub ${Env}-${AppName} primary DB Sparql Requests Per Second
+      Namespace: AWS/Neptune
+      MetricName: SparqlRequestsPerSec
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !Ref SparqlRequestsPerSecThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: DBClusterIdentifier
+        Value: !Ref NeptuneDBCluster
+      AlarmActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+      InsufficientDataActions:
+      - !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+
+Outputs:
+
+  NeptuneEndpointAddress:
+    Description:  Neptune DB endpoint address
+    Value:        !GetAtt NeptuneDBCluster.Endpoint
+    Export:
+      Name:       !Sub '${Env}-${AppName}-neptune-endpoint-address'
+
+  NeptuneReadEndpointAddress:
+    Description:  Neptune DB read-only endpoint address
+    Value:        !GetAtt NeptuneDBCluster.ReadEndpoint
+    Export:
+      Name:       !Sub '${Env}-${AppName}-neptune-read-endpoint-address'
+
+  NeptuneSnsTopic:
+    Description:  Neptune SNS Topic for alarms
+    Value:        !If [ CreateSnsTopic, !Ref NeptuneAlarmTopic, !Ref NeptuneSNSTopicArn ]
+    Export:
+      Name:       !Sub '${Env}-${AppName}-neptune-sns-topic'
+
+  NeptuneEndpointPort:
+    Description:  Endpoint port
+    Value:        !GetAtt NeptuneDBCluster.Port
+    Export:
+      Name:       !Sub '${Env}-${AppName}-neptune-endpoint-port'

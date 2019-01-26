@@ -5,7 +5,7 @@ Provides string transformation utility functions.
 ## Basic Usage
 
 Place the transform where you would like the output to be placed and provide the input string as the value for the
-InputString Parameter. The example below shows converting an input parameter to lower case and setting it as the value
+InputString Parameter. The example below shows converting an input parameter to upper case and setting it as the value
 for a tag on an s3 bucket.
 
 ```yaml

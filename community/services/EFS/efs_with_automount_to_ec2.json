@@ -1,10 +1,7 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-
     "Description": "Multi-AZ EFS with automount EFS.",
-
     "Mappings": {
-
         "EC2RegionMap": {
             "ap-northeast-1": {
                 "64": "ami-d85e7fbf"
@@ -50,9 +47,7 @@
             }
         }
     },
-
     "Outputs": {
-
         "AutoScalingGroup": {
             "Description": "AutoScaling Group Name",
             "Export": {
@@ -64,14 +59,12 @@
                 "Ref": "AutoScalingGroup"
             }
         },
-
         "StackName": {
             "Description": "Stack Name",
             "Value": {
                 "Ref": "AWS::StackName"
             }
         },
-
         "URL": {
             "Description": "The URL of the website",
             "Value": {
@@ -90,9 +83,7 @@
             }
         }
     },
-
     "Parameters": {
-
         "InstanceType": {
             "AllowedValues": [
                 "t1.micro",
@@ -155,69 +146,123 @@
             "Description": "EC2 instance type",
             "Type": "String"
         },
-
         "KeyName": {
             "ConstraintDescription": "must be the name of an existing EC2 KeyPair.",
             "Description": "The EC2 Key Pair to allow SSH access to the instances",
             "Type": "AWS::EC2::KeyPair::KeyName"
         },
-
-		"Subnets": {
-          "Type": "CommaDelimitedList",
-          "Description": "The list of SubnetIds, for at least two Availability Zones in the region in your Virtual Private Cloud (VPC) Defaults: "
+        "Subnets": {
+            "Type": "CommaDelimitedList",
+            "Description": "The list of SubnetIds, for at least two Availability Zones in the region in your Virtual Private Cloud (VPC) Defaults: "
         },
-
         "VPC": {
             "Description": "VPC ID for EC2 and Elastic Load Balancer",
             "Type": "AWS::EC2::VPC::Id"
         }
     },
-
     "Resources": {
-
-		"EFSFileSystem": {
-			"Type" : "AWS::EFS::FileSystem",
-			"Properties" : {
-				"PerformanceMode" : "generalPurpose"
-			}
-		},
-
-		"EFSMountTarget1": {
-			"Type" : "AWS::EFS::MountTarget",
-			"Properties" : {
-				"FileSystemId" : { "Ref": "EFSFileSystem" },
-				"SecurityGroups" : [ { "Fn::GetAtt": [ "EFSSecurityGroup", "GroupId" ] } ],
-				"SubnetId" : { "Fn::Select" : [ 0, { "Ref": "Subnets" } ] }
-			}
-		},
-
-		"EFSMountTarget2": {
-			"Type" : "AWS::EFS::MountTarget",
-			"Properties" : {
-				"FileSystemId" : { "Ref": "EFSFileSystem" },
-				"SecurityGroups" : [ { "Fn::GetAtt": [ "EFSSecurityGroup", "GroupId" ] } ],
-				"SubnetId" : { "Fn::Select" : [ 1, { "Ref": "Subnets" } ] }
-			}
-		},
-
-		"EFSMountTarget3": {
-			"Type" : "AWS::EFS::MountTarget",
-			"Properties" : {
-				"FileSystemId" : { "Ref": "EFSFileSystem" },
-				"SecurityGroups" : [ { "Fn::GetAtt": [ "EFSSecurityGroup", "GroupId" ] } ],
-				"SubnetId" : { "Fn::Select" : [ 2, { "Ref": "Subnets" } ] }
-			}
-		},
-
-		"EFSMountTarget4": {
-			"Type" : "AWS::EFS::MountTarget",
-			"Properties" : {
-				"FileSystemId" : { "Ref": "EFSFileSystem" },
-				"SecurityGroups" : [ { "Fn::GetAtt": [ "EFSSecurityGroup", "GroupId" ] } ],
-				"SubnetId" : { "Fn::Select" : [ 3, { "Ref": "Subnets" } ] }
-			}
-		},
-
+        "EFSFileSystem": {
+            "Type": "AWS::EFS::FileSystem",
+            "Properties": {
+                "PerformanceMode": "generalPurpose"
+            }
+        },
+        "EFSMountTarget1": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget2": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget3": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget4": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
         "CPUAlarmHigh": {
             "Properties": {
                 "AlarmActions": [
@@ -244,7 +289,6 @@
             },
             "Type": "AWS::CloudWatch::Alarm"
         },
-
         "CPUAlarmLow": {
             "Properties": {
                 "AlarmActions": [
@@ -271,7 +315,6 @@
             },
             "Type": "AWS::CloudWatch::Alarm"
         },
-
         "AutoScalingGroup": {
             "Properties": {
                 "LaunchConfigurationName": {
@@ -284,13 +327,12 @@
                 ],
                 "MaxSize": "3",
                 "MinSize": "1",
-				"VPCZoneIdentifier": {
-					"Ref": "Subnets"
-				}
+                "VPCZoneIdentifier": {
+                    "Ref": "Subnets"
+                }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup"
         },
-
         "InstanceProfile": {
             "Properties": {
                 "InstanceProfileName": {
@@ -311,7 +353,6 @@
             },
             "Type": "AWS::IAM::InstanceProfile"
         },
-
         "ScaleDownPolicy": {
             "Properties": {
                 "AdjustmentType": "ChangeInCapacity",
@@ -323,7 +364,6 @@
             },
             "Type": "AWS::AutoScaling::ScalingPolicy"
         },
-
         "ScaleUpPolicy": {
             "Properties": {
                 "AdjustmentType": "ChangeInCapacity",
@@ -335,12 +375,13 @@
             },
             "Type": "AWS::AutoScaling::ScalingPolicy"
         },
-
         "ElasticLoadBalancer": {
             "Properties": {
-				"SecurityGroups" : [
-					{ "Ref" : "ELBSecurityGroup" }
-				],
+                "SecurityGroups": [
+                    {
+                        "Ref": "ELBSecurityGroup"
+                    }
+                ],
                 "Subnets": {
                     "Ref": "Subnets"
                 },
@@ -353,8 +394,8 @@
                             "",
                             [
                                 "HTTP:",
-								"80",
-								"/"
+                                "80",
+                                "/"
                             ]
                         ]
                     },
@@ -371,7 +412,6 @@
             },
             "Type": "AWS::ElasticLoadBalancing::LoadBalancer"
         },
-
         "IAMAssumeInstanceRole": {
             "Properties": {
                 "AssumeRolePolicyDocument": {
@@ -443,7 +483,6 @@
             },
             "Type": "AWS::IAM::Role"
         },
-
         "InstanceSecurityGroup": {
             "Properties": {
                 "GroupDescription": "Enable SSH public access and HTTP from the load balancer only",
@@ -466,13 +505,12 @@
                         "ToPort": "80"
                     }
                 ],
-				"VpcId": {
-					"Ref": "VPC"
-				}
+                "VpcId": {
+                    "Ref": "VPC"
+                }
             },
             "Type": "AWS::EC2::SecurityGroup"
         },
-
         "ELBSecurityGroup": {
             "Properties": {
                 "GroupDescription": "Enable public access HTTP and HTTPS",
@@ -483,26 +521,25 @@
                         "IpProtocol": "tcp",
                         "ToPort": "80"
                     },
-					{
+                    {
                         "CidrIp": "0.0.0.0/0",
                         "FromPort": "443",
                         "IpProtocol": "tcp",
                         "ToPort": "443"
                     }
                 ],
-				"VpcId": {
-					"Ref": "VPC"
-				}
+                "VpcId": {
+                    "Ref": "VPC"
+                }
             },
             "Type": "AWS::EC2::SecurityGroup"
         },
-
-		"EFSSecurityGroup": {
-		  "Type": "AWS::EC2::SecurityGroup",
-		  "Properties": {
+        "EFSSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
                 "GroupDescription": "Enable NFS access from EC2",
-				"SecurityGroupIngress": [
-					{
+                "SecurityGroupIngress": [
+                    {
                         "FromPort": "2049",
                         "IpProtocol": "tcp",
                         "ToPort": "2049",
@@ -514,12 +551,11 @@
                         }
                     }
                 ],
-				"VpcId": {
-					"Ref": "VPC"
-				}
-		  }
-		},
-
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
         "LaunchConfig": {
             "Properties": {
                 "IamInstanceProfile": {
@@ -541,12 +577,12 @@
                     "Ref": "KeyName"
                 },
                 "SecurityGroups": [
-					{
-						"Fn::GetAtt": [
-							"InstanceSecurityGroup",
-							"GroupId"
-						]
-					}
+                    {
+                        "Fn::GetAtt": [
+                            "InstanceSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
                 ],
                 "UserData": {
                     "Fn::Base64": {
@@ -558,21 +594,21 @@
                                 "export LC_ALL=en_US.UTF-8\n",
                                 "apt-get update\n",
                                 "apt-get install -y curl nfs-common\n",
-								"EC2_REGION=",
-								{
-										"Ref": "AWS::Region"
-								},
-								"\n",
-								"DIR_TGT=/mnt/efs/",
-								"\n",
-								"EFS_FILE_SYSTEM_ID=",
-								{
-									"Ref" : "EFSFileSystem"
-								},
-								"\n",
-								"mkdir -p $DIR_TGT\n",
-								"DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com\n",
-								"mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 $DIR_SRC:/ $DIR_TGT"
+                                "EC2_REGION=",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "DIR_TGT=/mnt/efs/",
+                                "\n",
+                                "EFS_FILE_SYSTEM_ID=",
+                                {
+                                    "Ref": "EFSFileSystem"
+                                },
+                                "\n",
+                                "mkdir -p $DIR_TGT\n",
+                                "DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com\n",
+                                "mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 $DIR_SRC:/ $DIR_TGT"
                             ]
                         ]
                     }

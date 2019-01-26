@@ -1,0 +1,286 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: CodePipeline for continuous integration and continuous deployment
+
+Parameters:
+  RepositoryName:
+    Type: String
+    Description: Name of the CodeCommit repository
+  BuildDockerImage:
+    Type: String
+    Default: aws/codebuild/ubuntu-base:14.04
+    Description: Docker image to use for the build phase
+  DeployDockerImage:
+    Type: String
+    Default: aws/codebuild/ubuntu-base:14.04
+    Description: Docker image to use for the deployment phase
+
+Resources:
+  PipelineS3Bucket:
+    Type: AWS::S3::Bucket
+  
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'sts:AssumeRole'
+          Principal:
+            Service: codebuild.amazonaws.com
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: CanLog
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}*:log-stream:*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
+                  - !Sub '${PipelineS3Bucket.Arn}/*'
+        - PolicyName: CanAccessS3
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
+
+  StagingBuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub '${AWS::StackName}StagingBuild'
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: ENVIRONMENT
+            Type: PLAINTEXT
+            Value: staging
+        Image: !Ref BuildDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+
+  StagingDeploy:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub '${AWS::StackName}StagingDeployment'
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: ENVIRONMENT
+            Type: PLAINTEXT
+            Value: staging
+        Image: !Ref DeployDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deployspec.yml
+
+  ProductionBuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub '${AWS::StackName}ProductionBuild'
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: ENVIRONMENT
+            Type: PLAINTEXT
+            Value: production
+        Image: !Ref BuildDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+
+  ProductionDeploy:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub '${AWS::StackName}ProductionDeployment'
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: ENVIRONMENT
+            Type: PLAINTEXT
+            Value: production
+        Image: !Ref DeployDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deployspec.yml
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: [codepipeline.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: CanAccessCodeCommit
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:UploadArchive
+                  - codecommit:GetUploadArchiveStatus
+                Resource:
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}'
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}/*'
+        - PolicyName: CanAccessS3
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                  - s3:PutObject
+                  - s3:GetBucketPolicy
+                  - s3:GetObjectAcl
+                  - s3:PutObjectAcl
+                  - s3:DeleteObject
+                Resource:
+                  - !GetAtt PipelineS3Bucket.Arn
+                  - !Sub '${PipelineS3Bucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt StagingBuild.Arn
+                  - !GetAtt StagingDeploy.Arn
+                  - !GetAtt ProductionBuild.Arn
+                  - !GetAtt ProductionDeploy.Arn
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineS3Bucket
+      RestartExecutionOnUpdate: false
+      RoleArn: !GetAtt PipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              Configuration:
+                RepositoryName: !Ref RepositoryName
+                BranchName: master
+              OutputArtifacts:
+                - Name: Source
+        - Name: Staging
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName : !Ref StagingBuild
+              InputArtifacts:
+                - Name: Source
+              OutputArtifacts:
+                - Name: StagingBuild
+              RunOrder: 1
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName : !Ref StagingDeploy
+              InputArtifacts:
+                - Name: StagingBuild
+              RunOrder: 2
+        - Name: Production
+          Actions:
+            - Name: Approval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: 1
+              RunOrder: 1
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName : !Ref ProductionBuild
+              InputArtifacts:
+                - Name: Source
+              OutputArtifacts:
+                - Name: ProductionBuild
+              RunOrder: 2
+            - Name: Deploy
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName : !Ref ProductionDeploy
+              InputArtifacts:
+                - Name: ProductionBuild
+              RunOrder: 3
+
+Outputs:
+  CodeBuildRoleArn:
+    Description: IAM Role ARN associated with CodeBuild projects
+    Value: !GetAtt CodeBuildRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}CodeBuildRoleArn'
+  CodeBuildRoleName:
+    Description: IAM Role name associated with CodeBuild projects
+    Value: !Ref CodeBuildRole
+    Export:
+      Name: !Sub '${AWS::StackName}CodeBuildRoleName'
