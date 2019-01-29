@@ -1,0 +1,114 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Transform: AWS::Serverless-2016-10-31
+
+Description: GitHub Flow in AWS CodeStar
+
+Parameters:
+  RepositoryName:
+    Type: String
+  CodeBuildImage:
+    Type: String
+    Default: aws/codebuild/ubuntu-base:14.04
+
+Resources:
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'sts:AssumeRole'
+          Principal:
+            Service: codebuild.amazonaws.com
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: CanLog
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}*:log-stream:*'
+        - PolicyName: CanAccessGitRepository
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - codecommit:Get*
+                  - codecommit:BatchGet*
+                  - codecommit:List*
+                  - codecommit:Describe*
+                  - codecommit:GitPull
+                Resource:
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}'
+                  - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}/*'
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref AWS::StackName
+      Description: !Sub '${RepositoryName} CI'
+      Artifacts:
+        Type: NO_ARTIFACTS
+      BadgeEnabled: true
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Location: !Sub 'https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${RepositoryName}'
+        Type: CODECOMMIT
+      TimeoutInMinutes: 5
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildImage
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      TopicName: !Sub '${RepositoryName}PullRequestUpdated'
+      DisplayName: Pull Request Updated
+
+  SnsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SnsTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: codecommit.amazonaws.com
+          Action: sns:Publish
+          Resource: !Ref SnsTopic
+
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs8.10
+      CodeUri: ./lambda
+      Events:
+        PullRequestUpdated:
+          Type: SNS
+          Properties:
+            Topic: !Ref SnsTopic
+      Environment:
+        Variables:
+          CODE_BUILD_PROJECT_NAME: !Ref CodeBuildProject
+      Policies:
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Action: codecommit:Get*
+            Resource:
+              - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}'
+              - !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepositoryName}/*'
+          - Effect: Allow
+            Action: codebuild:StartBuild
+            Resource: !GetAtt CodeBuildProject.Arn
