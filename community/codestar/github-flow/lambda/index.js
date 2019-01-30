@@ -1,7 +1,7 @@
 'use strict';
 const { CodeCommit, CodeBuild } = require('aws-sdk');
 
-const { AWS_REGION, CODEBUILD_PROJECT_NAME } = process.env;
+const { AWS_REGION, CODE_BUILD_PROJECT_NAME } = process.env;
 
 const pullRequestIdRegExp = /pull-request\/([0-9]+)/;
 const codeCommit = new CodeCommit({ apiVersion: '2015-04-13', region: AWS_REGION });
@@ -14,7 +14,7 @@ const getPullRequestId = ({ Sns }) => {
 
 const startBuild = async (commitId, repositoryName, pullRequestId) => (
   await codeBuild.startBuild({
-    projectName: CODEBUILD_PROJECT_NAME,
+    projectName: CODE_BUILD_PROJECT_NAME,
     sourceVersion: commitId,
     environmentVariablesOverride: [
       {
@@ -28,8 +28,8 @@ const startBuild = async (commitId, repositoryName, pullRequestId) => (
         type: 'PLAINTEXT',
       },
       {
-        name: 'CODEBUILD_PROJECT_NAME',
-        value: CODEBUILD_PROJECT_NAME,
+        name: 'CODE_BUILD_PROJECT_NAME',
+        value: CODE_BUILD_PROJECT_NAME,
         type: 'PLAINTEXT',
       },
     ],

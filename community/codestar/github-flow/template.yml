@@ -100,7 +100,7 @@ Resources:
             Topic: !Ref SnsTopic
       Environment:
         Variables:
-          CODEBUILD_PROJECT_NAME: !Ref CodeBuildProject
+          CODE_BUILD_PROJECT_NAME: !Ref CodeBuildProject
       Policies:
         Version: 2012-10-17
         Statement: 
