@@ -452,7 +452,7 @@ Outputs:
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PublicListener' ] ]
   PrivateListener:
-    Description: The ARN of the public load balancer's Listener
+    Description: The ARN of the private load balancer's Listener
     Value: !Ref PrivateLoadBalancerListener
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateListener' ] ]
