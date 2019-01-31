@@ -2,3 +2,4 @@
 .idea/
 
 community/codestar/github-flow/packaged-template\.yml
+community/codestar/github-flow/lambda/node_modules
