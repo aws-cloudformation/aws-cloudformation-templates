@@ -1,4 +1,4 @@
-# GitHub flow in AWS CodeStar
+# GitHub flow in AWS CodeCommit and CodeBuild
 
 Features:
 - Checks PRs as soons as they are created in CodeCommit

@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Transform: AWS::Serverless-2016-10-31
 
-Description: GitHub Flow in AWS CodeStar
+Description: GitHub Flow in AWS CodeCommit and CodeBuild
 
 Parameters:
   RepositoryName:
