@@ -33,7 +33,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:CreateLogGroup
                   - logs:PutLogEvents
-                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}*:log-stream:*'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}:log-stream:*'
         - PolicyName: CanAccessGitRepository
           PolicyDocument: 
             Version: 2012-10-17
