@@ -40,7 +40,7 @@ The `Count` macro provides a template-wide `Count` property for CloudFormation r
 
 To make use of the macro, add `Transform: Count` to the top level of your CloudFormation template.
 
-TO create multiple copies of a resource, add a Count propert with an integer value.
+To create multiple copies of a resource, add a Count propert with an integer value.
 
 ```yaml
 AWSTemplateFormatVersion: "2010-09-09"
