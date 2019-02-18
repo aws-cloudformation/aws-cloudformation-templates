@@ -10,7 +10,8 @@ Tempalte will invoke the following:
   - Create an IAM role to attach to the Instances which will give them permissions to tag the root volumes created.
 
 To Create the instances you can either utilize the AWS CLI command (Where the parameters will be needed to alter for your specific use case):
- $ aws cloudformation create-stack --stack-name TaggingVolumes --template-body file://Tagging_Root_volume.json --parameters ParameterKey=KeyName,ParameterValue=TestKey ParameterKey=InstanceType,ParameterValue=t2.micro ParameterKey=InstanceAZ,ParameterValue=eu-west-1 ParameterKey=WindowsAMIID,ParameterValue=ami-0d138b26f46625e2f ParameterKey=LinuxAMIID,ParameterValue=ami-0fad7378adf284ce0
+
+```aws cloudformation create-stack --stack-name TaggingVolumes --template-body file://Tagging_Root_volume.json --parameters ParameterKey=KeyName,ParameterValue=TestKey ParameterKey=InstanceType,ParameterValue=t2.micro ParameterKey=InstanceAZ,ParameterValue=eu-west-1 ParameterKey=WindowsAMIID,ParameterValue=ami-0d138b26f46625e2f ParameterKey=LinuxAMIID,ParameterValue=ami-0fad7378adf284ce0```
 
 If you do not wish to utilize the CLI you can also create the template through the Console by:
  1) Navigate to the CloudFormation console - https://console.aws.amazon.com/cloudformation/home
