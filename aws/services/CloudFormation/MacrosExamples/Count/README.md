@@ -40,7 +40,7 @@ The `Count` macro provides a template-wide `Count` property for CloudFormation r
 
 To make use of the macro, add `Transform: Count` to the top level of your CloudFormation template.
 
-Then specify permissions using a more natural syntax:
+To create multiple copies of a resource, add a Count propert with an integer value.
 
 ```yaml
 AWSTemplateFormatVersion: "2010-09-09"
@@ -53,10 +53,64 @@ Resources:
     Type: AWS:::SQS::Queue
     Count: 2
 ```
+#### Note
+This will cause the resource "Bucket" to be multiplied 3 times. The new template will contain Bucket1, Bucket2 and Bucket3 but will not contain Bucket as this will be removed.
 
-### Important
+### Using decimal placeholders
+When resources are multiplied, you can put a decimal placeholder %d into any string value that you wish to be replaced with the iterator index number.
+
+e.g. 
+```yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: Count
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bucket %d
+    Count: 3
+```
+
+Using this example, the processed template will result become:
+```yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Bucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bucket 1
+  Bucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bucket 2
+  Bucket3:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bucket 3
+```
+
+### Important - Naming resources
 
 You cannot use Count on resources that use a hardcoded name (`Name:` property). Duplicate names will cause a CloudFormation runtime failure.
+If you wish to specify a name then you can use the decimal place holder %d in the name which will cause the name to incorporate the iterator value.
+
+e.g. 
+```yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Bucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+        BucketName: MyBucket%d
+```
 
 ## Author
 
