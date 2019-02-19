@@ -1,20 +1,3 @@
-# /*
-# * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# *
-# * Permission is hereby granted, free of charge, to any person obtaining a copy of this
-# * software and associated documentation files (the "Software"), to deal in the Software
-# * without restriction, including without limitation the rights to use, copy, modify,
-# * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-# * permit persons to whom the Software is furnished to do so.
-# *
-# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-# * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# */
-
 AWSTemplateFormatVersion: 2010-09-09
 Description: 'AWS CloudFormation Sample Template Tagging Root Volumes of EC2 Instances:
   This template shows how to automatically tag the root volume of the EC2 instances which are
@@ -41,13 +24,13 @@ Parameters:
    Type: AWS::EC2::AvailabilityZone::Name
    ConstraintDescription: "Must be the name of an availabity zone."
   WindowsAMIID:
-    Description: The Windows 2016 AMIID, the default value is for the eu-west-1 region
-    Type: String
-    Default: ami-0d138b26f46625e2f
+    Description: The Latest Windows 2016 AMI taken from the public Systems Manager Parameter Store
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base
   LinuxAMIID:
-    Description: The Amazon Linux 2 AMIID, the default value is for the eu-west-1 region
-    Type: String
-    Default: ami-0fad7378adf284ce0
+    Description: The Latest Amazon Linux 2 AMI taken from the public Systems Manager Parameter Store
+    Type : AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
 Resources:
   #Tagging the root volume for the EC2 instances with the Windows OS
@@ -61,7 +44,7 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfile
       KeyName: !Ref KeyName
       UserData: 
-        Fn::Base64: !Sub |
+        Fn::Base64: |
           <powershell>
             $AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
             $AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
@@ -77,7 +60,7 @@ Resources:
         #$AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
         #$AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
         #$ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
-        #aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=Name,Value=newAMI
+        #aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
         #</powershell>
       Tags:
         - Key: Name
@@ -100,12 +83,12 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfile
       KeyName: !Ref KeyName
       UserData: 
-        Fn::Base64: !Sub |
+        Fn::Base64: |
           $AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
           $AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
           $AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
           $ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
-          aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=Name,Value=newAMI
+          aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
       Tags:
         - Key: Name
           Value: !Ref 'AWS::StackName'
