@@ -1,8 +1,8 @@
 # Tag the EBS Root Volume through a CloudFormation Template. For Both Windows and Linux Systems
 
-Cloudformation template that will create a Linux and Windows Instance which will then tag the root volume of these instances.
+CloudFormation template that will create a Linux and Windows Instance which will then tag the root volume of these instances.
 
-Tempalte will invoke the following:
+Template will invoke the following:
   - Create a Windows and Linux EC2 Instance.
   - The Template will use the UserData property of the EC2 Instance resource to tag the root volume.
   - This is done through the AWS CLI commands which at base will tag the root volume with "--tags Key=MyRootTag,Value=MyRootVolumesValue" for the Windows and Linux AMIs.
