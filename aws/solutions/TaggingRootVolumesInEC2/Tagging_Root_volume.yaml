@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'AWS CloudFormation Sample Template Tagging Root Volumes of EC2 Instances:
+  This template shows how to automatically tag the root volume of the EC2 instances which are
+  created through the CloudFormation template. This is done through the UserData property of 
+  the AWS::EC2::Instance resource.
+  **WARNING** This template creates two Amazon EC2 instances and an IAM Role.
+  You will be billed for the AWS resources used if you create a stack from this template.'
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances.
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large, m3.medium, m3.large,
+      m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
+      c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge,
+      c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge,
+      r3.8xlarge, i2.xlarge, i2.2xlarge, i2.4xlarge, i2.8xlarge]
+    ConstraintDescription: Please choose a valid instance type.
+  InstanceAZ:
+   Description: EC2 AZ.
+   Type: AWS::EC2::AvailabilityZone::Name
+   ConstraintDescription: "Must be the name of an availabity zone."
+  WindowsAMIID:
+    Description: The Latest Windows 2016 AMI taken from the public Systems Manager Parameter Store
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base
+  LinuxAMIID:
+    Description: The Latest Amazon Linux 2 AMI taken from the public Systems Manager Parameter Store
+    Type : AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Resources:
+  #Tagging the root volume for the EC2 instances with the Windows OS
+  #The commented out powershell commands are to utilize if the AMI has the AWS CLI installed and you prefer that approach.
+  WindowsInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref WindowsAMIID
+      InstanceType: !Ref InstanceType
+      AvailabilityZone: !Ref InstanceAZ
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: !Ref KeyName
+      UserData: 
+        Fn::Base64: |
+          <powershell>
+            $AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
+            $AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
+            $AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
+            $ROOT_VOLUME_IDS=((Get-EC2Instance -Region $AWS_REGION -InstanceId $AWS_INSTANCE_ID).Instances.BlockDeviceMappings | where-object DeviceName -match '/dev/sda1').Ebs.VolumeId
+            $tag = New-Object Amazon.EC2.Model.Tag
+            $tag.key = "MyRootTag"
+            $tag.value = "MyRootVolumesValue"
+            New-EC2Tag -Resource $ROOT_VOLUME_IDS -Region $AWS_REGION -Tag $tag
+          </powershell>
+        #<powershell>
+        #$AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
+        #$AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
+        #$AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
+        #$ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+        #aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
+        #</powershell>
+      Tags:
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeType: io1
+            Iops: '200'
+            DeleteOnTermination: 'true'
+            VolumeSize: '10'
+
+  #Tagging the root volume for EC2 instances with an Unix OS with the AWS CLI installed.
+  LinuxInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref LinuxAMIID
+      InstanceType: !Ref InstanceType
+      AvailabilityZone: !Ref InstanceAZ
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: !Ref KeyName
+      UserData: 
+        Fn::Base64: |
+          $AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
+          $AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
+          $AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
+          $ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+          aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
+      Tags:
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeType: io1
+            Iops: '200'
+            DeleteOnTermination: 'true'
+            VolumeSize: '10'
+
+  #AMI role given to the instances, the instances need the describe and create tags to complete the UserData
+  InstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: taginstancepolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:Describe*'
+                  - 'ec2:CreateTags'
+                Resource: '*'
+  InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref InstanceRole
