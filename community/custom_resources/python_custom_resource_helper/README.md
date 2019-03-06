@@ -1,4 +1,8 @@
 ## Custom Resource Helper
+
+### NOTE
+> This implementation has been deprecated in favor of https://github.com/aws-cloudformation/custom-resource-helper which has a richer feature set, is cleaner to implement and can be installed as a pip module.
+
 The crhelper python script can be saved into your lambda zip to simplify best practice Custom Resource creation. It provides exception and timeout trapping, sending responses to CloudFormation and provides detailed, configurable logging.
 
 ### Usage
