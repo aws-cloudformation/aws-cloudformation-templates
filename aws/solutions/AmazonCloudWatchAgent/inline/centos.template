@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on centos. It was validated on centos 7'
+Description: 'Template to install CloudWatchAgent on centos. It was validated on centos 7'
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance

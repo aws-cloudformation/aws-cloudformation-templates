@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on ubuntu. It was validated on ubuntu 16'
+Description: 'Template to install CloudWatchAgent on ubuntu. It was validated on ubuntu 16'
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
