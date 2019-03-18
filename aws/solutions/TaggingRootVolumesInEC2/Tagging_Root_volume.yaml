@@ -59,7 +59,7 @@ Resources:
         #$AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
         #$AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
         #$AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
-        #$ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+        #$ROOT_VOLUME_IDS =(aws ec2 describe-instances --region $AWS_REGION --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
         #aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
         #</powershell>
       Tags:
@@ -84,10 +84,10 @@ Resources:
       KeyName: !Ref KeyName
       UserData: 
         Fn::Base64: |
-          $AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
-          $AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
-          $AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
-          $ROOT_VOLUME_IDS =(aws ec2 describe-instances --region eu-west-1 --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+          AWS_AVAIL_ZONE=$(curl http://169.254.169.254/latest/meta-data/placement/availability-zone)
+          AWS_REGION="`echo \"$AWS_AVAIL_ZONE\" | sed 's/[a-z]$//'`"
+          AWS_INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+          ROOT_VOLUME_IDS=$(aws ec2 describe-instances --region $AWS_REGION --instance-id $AWS_INSTANCE_ID --output text --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
           aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
       Tags:
         - Key: Name
