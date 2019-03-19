@@ -48,14 +48,14 @@ def handle_transform(template):
     new_resources = {}
     for resource_name, resource in resources.items():
         try:
-            explode_data = resource['Metadata']['Explode']
+            explode_map = resource['ExplodeMap']
+            del resource['ExplodeMap']
         except KeyError:
-            # This resource does not have Explode metadata, so copy it verbatim
+            # This resource does not have an ExplodeMap, so copy it verbatim
             # and move on
             new_resources[resource_name] = resource
             continue
         try:
-            explode_map = explode_data['Map']
             explode_map_data = mappings[explode_map]
         except KeyError:
             # This resource refers to a mapping entry which doesn't exist, so
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     """
     If run from the command line, parse the file specified and output it
     This is quite naive; CF YAML tags like !GetAtt will break it (as will
-    !Explode, but you can hide that in a string. Probably best to use JSON.
+    !Explode, but you can hide that in a string). Probably best to use JSON.
     Releatedly, always outputs JSON.
     """
     if len(sys.argv) == 2:

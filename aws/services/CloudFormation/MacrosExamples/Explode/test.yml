@@ -10,9 +10,7 @@ Mappings:
 
 Resources:
   Bucket:
-    Metadata:
-      Explode:
-        Map: BucketMap
+    ExplodeMap: BucketMap
     Type: AWS::S3::Bucket
     Properties:
       LifecycleConfiguration:
@@ -20,3 +18,5 @@ Resources:
           -
             ExpirationInDays: "!Explode Retention"
             Status: Enabled
+  NonExplodingBucket:
+    Type: AWS::S3::Bucket

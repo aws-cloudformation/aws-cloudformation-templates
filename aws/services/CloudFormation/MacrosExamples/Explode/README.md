@@ -41,7 +41,7 @@ To make use of the macro, add `Transform: Explode` to the top level of your Clou
 
 Add a mapping (to the `Mappings` section of your template) which contains the instances of the resource values you want to use. Each entry in the mapping will be used for another copy of the resource, and the values inside it will be copied into that instance. The entry name will be appended to the template resource name, unless a value `ResourceName` is given, which if present will be used at the complete resource name.
 
-For the resource you want to use, add a `Metadata` section, with an `Explode` map, which should contain a `Map` value pointing at the entry from your Mappings which should be used.
+For the resource you want to explode, add an `ExplodeMap` value at the top level pointing at the entry from your Mappings which should be used. You can use the same mapping against multiple resource entries.
 
 Inside the resource properties, you can use `!Explode KEY` to pull the value of `KEY` out of your mapping.
 
@@ -60,9 +60,7 @@ Mappings:
 
 Resources:
   Bucket:
-    Metadata:
-      Explode:
-        Map: BucketMap
+    ExplodeMap: BucketMap
     Type: AWS::S3::Bucket
     Properties:
       LifecycleConfiguration:
@@ -70,7 +68,6 @@ Resources:
           -
             ExpirationInDays: !Explode Retention
             Status: Enabled
-
 ```
 
 This will result in two Bucket resources; one named `MyThirtyDayBucket` with a
@@ -95,9 +92,7 @@ Mappings:
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
-    Metadata:
-      Explode:
-        Map: BucketMap
+    ExplodeMap: BucketMap
     Properties:
         BucketName: !Explode Name
 ```
