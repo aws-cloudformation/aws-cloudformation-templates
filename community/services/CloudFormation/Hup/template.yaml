@@ -1,0 +1,155 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+        - ExpirationInDays: 365
+          Status: Enabled
+  CustomResourceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: custom_resource.py
+      Handler: custom_resource.lambda_handler
+      Runtime: python3.7
+  MacroFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: macro.py
+      Handler: macro.lambda_handler
+      Runtime: python3.7
+      Environment:
+        Variables:
+          CustomResourceFunction: !GetAtt CustomResourceFunction.Arn
+          SendCommandRole: !GetAtt SendCommandRole.Arn
+  SendCommandRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt CustomResourceFunctionRole.Arn
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: Policy
+        PolicyDocument:
+          Statement:
+            Effect: Allow
+            Action: ssm:SendCommand
+            Resource:
+            - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript
+            - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+  Document:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Content:
+        schemaVersion: "0.3"
+        parameters:
+          logGroupName:
+            type: String
+        mainSteps:
+        - name: PutRetentionPolicy
+          action: aws:executeAwsApi
+          inputs:
+            Service: logs
+            Api: PutRetentionPolicy
+            logGroupName: "{{logGroupName}}"
+            retentionInDays: 365
+          outputs:
+          - Name: Response
+            Selector: $
+            Type: StringMap
+        - name: TagLogGroup
+          action: aws:executeAwsApi
+          inputs:
+            Service: logs
+            Api: TagLogGroup
+            logGroupName: "{{logGroupName}}"
+            tags:
+              cloudformation:stack-id: !Ref AWS::StackId
+              cloudformation:stack-name: !Ref AWS::StackName
+          outputs:
+          - Name: Response
+            Selector: $
+            Type: StringMap
+  Rule:
+    Type: AWS::Events::Rule
+    Properties:
+      # https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html#events-for-services-not-listed
+      EventPattern:
+        source:
+        - aws.logs
+        detail-type:
+        - AWS API Call via CloudTrail
+        detail:
+          eventName:
+          - CreateLogGroup
+          userIdentity:
+            sessionContext:
+              sessionIssuer:
+                userName:
+                - !Ref CustomResourceFunctionRole
+                - !Ref MacroFunctionRole
+      Targets:
+      - Id: Document
+        Arn: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/${Document}
+        InputTransformer:
+          InputTemplate: '{
+            "logGroupName": [<logGroupName>]
+          }'
+          InputPathsMap:
+            logGroupName: $.detail.requestParameters.logGroupName
+        RoleArn: !GetAtt EventsRole.Arn
+  EventsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: events.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: Policy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ssm:StartAutomationExecution
+            Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/${Document}:$DEFAULT
+          - Effect: Allow
+            Action:
+            - logs:PutRetentionPolicy
+            - logs:TagLogGroup
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 365
+  Macro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: Hup
+      FunctionName: !Ref MacroFunction
+      LogGroupName: !Ref LogGroup
+      LogRoleARN: !GetAtt MacroRole.Arn
+  MacroRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: Policy
+        PolicyDocument:
+          Statement:
+            Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: !GetAtt LogGroup.Arn
