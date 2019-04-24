@@ -13,7 +13,7 @@ Parameters:
     Description: Name of the python file(lambda handler)
     Default: Routetable
 Resources:
-  myVPC:
+  MyVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -22,8 +22,7 @@ Resources:
           Value: Test
   LambdaIAMRole:
     Type: 'AWS::IAM::Role'
-    DependsOn: myVPC
-    Description: The role which is assumed by Lambda function
+    DependsOn: MyVPC
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -52,34 +51,21 @@ Resources:
                 Resource: 'arn:aws:logs:*:*:*'
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
-    Description: >-
-      The Lambda function which have the required code to retrieve route table
-      id
     Properties:
-      Handler: !Join 
-        - ''
-        - - !Ref Lambdahandler
-          - .lambda_handler
-      Role: !GetAtt 
-        - LambdaIAMRole
-        - Arn
+      Handler: !Sub '${Lambdahandler}.lambda_handler'
+      Role: !GetAtt LambdaIAMRole.Arn
       Code:
         S3Bucket: !Ref Bucket
         S3Key: !Ref Key
       Runtime: python3.6
-      Timeout: '50'
+      Timeout: 50
   Lambdatrigger:
     Type: 'Custom::RouteTableLambda'
-    Description: Custom resource which invoke the Lambda function
-    DependsOn: LambdaFunction
     Properties:
-      ServiceToken: !GetAtt 
-        - LambdaFunction
-        - Arn
-      VPCID: !Ref myVPC
-  myInternetGateway:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+      VPCID: !Ref MyVPC
+  MyInternetGateway:
     Type: 'AWS::EC2::InternetGateway'
-    Description: Internet Gateway for myVPC
     Properties:
       Tags:
         - Key: Env
@@ -87,20 +73,14 @@ Resources:
   AttachGateway:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
-      VpcId: !Ref myVPC
-      InternetGatewayId: !Ref myInternetGateway
-  myRoute:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+  MyRoute:
     Type: 'AWS::EC2::Route'
-    DependsOn: myInternetGateway
-    Description: Route for public access to myVPC
     Properties:
-      RouteTableId: !GetAtt 
-        - Lambdatrigger
-        - RoutetableID
+      RouteTableId: !GetAtt Lambdatrigger.RoutetableID
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref myInternetGateway
+      GatewayId: !Ref MyInternetGateway
 Outputs:
   RouteTableID:
-    Value: !GetAtt 
-      - Lambdatrigger
-      - RoutetableID
+    Value: !GetAtt Lambdatrigger.RoutetableID
