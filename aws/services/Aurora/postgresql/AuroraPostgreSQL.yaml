@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Amazon Aurora Postgresql' 
+Description: 'Amazon Aurora PostgreSQL.' 
 Metadata: 
 ###############################################################################
 # Parameter groups

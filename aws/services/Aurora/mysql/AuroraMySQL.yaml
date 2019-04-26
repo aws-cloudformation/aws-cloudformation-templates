@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Amazon Aurora MySQL 5.6, 5.7 provisioned or serverless capacity type'
+Description: 'Amazon Aurora MySQL 5.6, 5.7 provisioned or serverless capacity'
 Metadata:
 ###############################################################################
 # Parameter groups
