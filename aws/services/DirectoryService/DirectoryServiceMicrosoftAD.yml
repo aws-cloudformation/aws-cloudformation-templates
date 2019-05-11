@@ -1,0 +1,150 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Provision AWS Managed Active Directory
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Active Directory Settings
+      Parameters:
+      - pDomainName
+      - pMicrosoftADShortName
+      - pMicrosoftADPW
+      - pEdition
+      - pCreateAlias
+      - pEnableSingleSignOn
+    - Label:
+        default: VPC Networking Settings
+      Parameters:
+      - pVPCID
+      - pPrivateSubnet1
+      - pPrivateSubnet2
+    ParameterLabels:
+      pDomainName:
+        default: Name
+      pMicrosoftADShortName:
+        default: Short Name
+      pMicrosoftADPW:
+        default: Active Directory Admin Password
+      pEdition:
+        default: Edition
+      pCreateAlias:
+        default: Create Alias
+      pEnableSingleSignOn:
+        default: Enable Single Sign On
+      pVPCID:
+        default: VPC ID
+      pPrivateSubnet1:
+        default: Private Subnet 1
+      pPrivateSubnet2:
+        default: Private Subnet 2
+
+Parameters:
+  pEdition:
+    Description: >
+      The AWS Microsoft AD edition. Valid values include Standard and
+      Enterprise. The default is Enterprise.
+    Type: String
+    Default: Enterprise
+    AllowedValues:
+    - Standard
+    - Enterprise
+  pDomainName:
+    Description: >
+      The fully qualified name for the Microsoft Active Directory
+      in AWS, such as corp.example.com. The name doesn't need to be
+      publicly resolvable; it will resolve inside your VPC only.
+    Type: String
+    Default: corp.example.com
+  pMicrosoftADShortName:
+    Description: >
+      The NetBIOS name for your domain, such as CORP. If you don't specify
+      a value, AWS Directory Service uses the first part of your directory
+      DNS server name. For example, if your directory DNS server name is
+      corp.example.com, AWS Directory Service specifies CORP for the NetBIOS
+      name.
+    Type: String
+    Default: corp
+  pEnableSingleSignOn:
+    Description: >
+      Whether to enable single sign-on for a Microsoft Active
+      Directory in AWS. Single sign-on allows users in your
+      directory to access certain AWS services from a computer
+      joined to the directory without having to enter their
+      credentials separately. If you don't specify a value,
+      AWS CloudFormation disables single sign-on by default.
+      If enabling SSO, then "Create Alias" need to be set to true.
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Default: 'false'
+  pCreateAlias:
+    Description: >
+      A unique alias to assign to the Microsoft Active Directory in AWS.
+      AWS Directory Service uses the alias to construct the access URL for
+      the directory, such as http://alias.awsapps.com. By default, AWS
+      CloudFormation does not create an alias.
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Default: 'false'
+  pMicrosoftADPW:
+    Description: >
+      The password for the default administrative user, Admin.
+    Type: String
+    NoEcho: true
+    Default: Pass@w0rd
+  pPrivateSubnet1:
+    Description: >
+      A subnet within the selected VPC. Each subnet must be in
+      different Availability Zones (AZs). AWS Directory Service
+      creates a directory server and a DNS server in each subnet.
+    Type: AWS::EC2::Subnet::Id
+  pPrivateSubnet2:
+    Description: >
+      A second subnet in same VPC that is in different AZ.
+      Each subnet must be in different Availability Zones (AZs).
+      AWS Directory Service creates a directory server and a DNS
+      server in each subnet.
+    Type: AWS::EC2::Subnet::Id
+  pVPCID:
+    Description: >
+      The VPC ID in which to create the Microsoft Active Directory server.
+    Type: AWS::EC2::VPC::Id
+
+Conditions:
+  cAlias: !Equals [ !Ref pCreateAlias, 'true' ]
+
+Resources:
+  rMSDirectory:
+    Type: AWS::DirectoryService::MicrosoftAD
+    Properties:
+      CreateAlias: !Ref pCreateAlias
+      Edition: !Ref pEdition
+      EnableSso: !Ref pEnableSingleSignOn
+      Name: !Ref pDomainName
+      Password: !Ref pMicrosoftADPW
+      ShortName: !Ref pMicrosoftADShortName
+      VpcSettings:
+        SubnetIds:
+        - !Ref pPrivateSubnet1
+        - !Ref pPrivateSubnet2
+        VpcId: !Ref pVPCID
+
+Outputs:
+  DirectoryID:
+    Description: ID of the MS Directory
+    Value: !Ref rMSDirectory
+  PrimaryDNS:
+    Description: DNS IPs of the MS Directory
+    Value: !Select [ '0', !GetAtt rMSDirectory.DnsIpAddresses ]
+  SecondaryDNS:
+    Description: DNS IPs of the MSDirectory
+    Value: !Select [ '1', !GetAtt rMSDirectory.DnsIpAddresses ]
+  DirectoryAlias:
+    Description: URL for the alias
+    Condition: cAlias
+    Value: !GetAtt rMSDirectory.Alias
