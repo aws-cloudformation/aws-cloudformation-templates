@@ -1,0 +1,72 @@
+Description: >-
+  AWS CloudFormation Sample Template Config: This template creates a Channel,
+  Datastore, Pipeline and Dataset with SQL action. **WARNING** You will be
+  billed for the AWS resources used if you create a stack from this template.
+  See https://aws.amazon.com/blogs/iot/introducing-aws-cloudformation-support-for-aws-iot-analytics/ for further details.
+Parameters:
+  ProjectName:
+    Type: String
+    Default: myIoTAnalyticsProject
+  SqlQuery:
+    Type: String
+    Default: "select * from myIoTAnalyticsProject_datastore "
+  ScheduleExpression:
+    Type: String
+    Default: 'cron(1/5 * * * ? *)'
+
+Resources:
+
+  Channel:
+    Type: 'AWS::IoTAnalytics::Channel'
+    Properties:
+      ChannelName: !Sub "${ProjectName}_channel"
+      Tags:
+        - Key: "Project"
+          Value: !Ref ProjectName
+
+  Datastore:
+    Type: 'AWS::IoTAnalytics::Datastore'
+    Properties:
+      DatastoreName: !Sub "${ProjectName}_datastore"
+      Tags:
+        - Key: "Project"
+          Value: !Ref ProjectName
+
+  Pipeline:
+    Type: 'AWS::IoTAnalytics::Pipeline'
+    DependsOn:
+      - Channel
+      - Datastore
+    Properties:
+      PipelineName: !Sub "${ProjectName}_pipeline"
+      PipelineActivities:
+        - Channel:
+            Name: ChannelActivity
+            ChannelName: !Sub "${ProjectName}_channel"
+            Next: DatastoreActivity
+          Datastore:
+            Name: DatastoreActivity
+            DatastoreName: !Sub "${ProjectName}_datastore"
+      Tags:
+        - Key: "Project"
+          Value: !Ref ProjectName
+
+  SqlDataset:
+    Type: 'AWS::IoTAnalytics::Dataset'
+    DependsOn: Datastore
+    Properties:
+      DatasetName: !Sub "${ProjectName}_dataset"
+      Actions:
+        - ActionName: SqlAction
+          QueryAction:
+            SqlQuery: !Ref SqlQuery
+      Triggers:
+        - Schedule:
+            ScheduleExpression: !Ref ScheduleExpression
+      RetentionPeriod:
+        Unlimited: false
+        NumberOfDays: 30
+      Tags:
+        - Key: "Project"
+          Value: !Ref ProjectName
+
