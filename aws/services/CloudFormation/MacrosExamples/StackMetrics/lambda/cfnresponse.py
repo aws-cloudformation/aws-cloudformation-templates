@@ -11,14 +11,16 @@ import json
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
-def send(event, context, responseStatus, responseData, physicalResourceId=None, noEcho=False):
+def send(event, context, responseStatus, responseData, reason=None physicalResourceId=None, noEcho=False):
     responseUrl = event['ResponseURL']
 
     print(responseUrl)
 
+    default_reason = 'See the details in CloudWatch Log Stream: ' + context.log_stream_name
+
     responseBody = {}
     responseBody['Status'] = responseStatus
-    responseBody['Reason'] = 'See the details in CloudWatch Log Stream: ' + context.log_stream_name
+    responseBody['Reason'] = reason or default_reason
     responseBody['PhysicalResourceId'] = physicalResourceId or context.log_stream_name
     responseBody['StackId'] = event['StackId']
     responseBody['RequestId'] = event['RequestId']
