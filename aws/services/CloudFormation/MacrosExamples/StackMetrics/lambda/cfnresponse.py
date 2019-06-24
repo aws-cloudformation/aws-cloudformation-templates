@@ -11,7 +11,7 @@ import json
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
-def send(event, context, responseStatus, responseData, reason=None physicalResourceId=None, noEcho=False):
+def send(event, context, responseStatus, responseData, reason=None, physicalResourceId=None, noEcho=False):
     responseUrl = event['ResponseURL']
 
     print(responseUrl)
