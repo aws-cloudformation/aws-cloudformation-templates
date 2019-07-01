@@ -56,6 +56,23 @@ Resources:
 #### Note
 This will cause the resource "Bucket" to be multiplied 3 times. The new template will contain Bucket1, Bucket2 and Bucket3 but will not contain Bucket as this will be removed.
 
+### Referencing the count value to a parameter
+```yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: Count
+Parameters:
+  bucketCount:
+    Description: "Number of S3 buckets to create"
+    Type: Number
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Count: 3
+  SQS:
+    Type: AWS:::SQS::Queue
+    Count: !Ref bucketCount
+```
+
 ### Using decimal placeholders
 When resources are multiplied, you can put a decimal placeholder %d into any string value that you wish to be replaced with the iterator index number.
 
