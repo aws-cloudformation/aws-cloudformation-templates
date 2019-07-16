@@ -11,34 +11,43 @@ EXPLODE_RE = re.compile(r'(?i)!Explode (?P<explode_key>\w+)')
 
 def walk_resource(resource, map_data):
     """Recursively process a resource."""
-    new_resource = {}
-    for key, value in resource.items():
-        if isinstance(value, dict):
-            new_resource[key] = walk_resource(value, map_data)
-        elif isinstance(value, list):
-            new_resource[key] = [walk_resource(x, map_data) for x in value]
-        elif isinstance(value, str):
-            match = EXPLODE_RE.search(value)
-            while match:
-                explode_key = match.group('explode_key')
-                try:
-                    replace_value = map_data[explode_key]
-                except KeyError:
-                    print("Missing item {} in mapping while processing {}: {}".format(
-                        explode_key,
-                        key,
-                        value))
-                if isinstance(replace_value, int):
-                    value = replace_value
-                    # No further explosion is possible on an int
-                    match = None
-                else:
-                    value = value.replace(match.group(0), replace_value)
-                    match = EXPLODE_RE.search(value)
-            new_resource[key] = value
-        else:
-            new_resource[key] = value
+    if isinstance(resource, dict):
+        new_resource = {}
+        for key, value in resource.items():
+            if isinstance(value, dict):
+                new_resource[key] = walk_resource(value, map_data)
+            elif isinstance(value, list):
+                new_resource[key] = [walk_resource(x, map_data) for x in value]
+            elif isinstance(value, str):
+                new_resource[key] = replace_explode_in_string(value, map_data)
+            else:
+                new_resource[key] = value
+    else:
+        # if the resource is of type string
+        new_resource = replace_explode_in_string(resource, map_data)
     return new_resource
+
+
+def replace_explode_in_string(value, map_data):
+    """Recursively process and replace Explode instances in a string."""
+    match = EXPLODE_RE.search(value)
+    while match:
+        explode_key = match.group('explode_key')
+        try:
+            replace_value = map_data[explode_key]
+        except KeyError:
+            print("Missing item {} in mapping while processing {}: {}".format(
+                explode_key,
+                key,
+                value))
+        if isinstance(replace_value, int):
+            value = replace_value
+            # No further explosion is possible on an int
+            match = None
+        else:
+            value = value.replace(match.group(0), replace_value)
+            match = EXPLODE_RE.search(value)
+    return value
 
 
 def handle_transform(template):
