@@ -1,0 +1,435 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Hana Backup S3 buckets with replication to other regoin and lifecycle policy
+Parameters:
+  RepRegion:
+    Type: String
+    Description: Enter Region for offsite backup (Replication to other Regoin)
+    AllowedValues:
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - us-west-2
+      - ca-central-1
+      - ap-south-1
+      - ap-northeast-2
+      - ap-southeast-1
+      - ap-southeast-2
+      - ap-northeast-1
+      - eu-central-1
+      - eu-west-1
+      - eu-west-2
+      - sa-east-1
+  ReplicationBucketName:
+    Type: String
+    Description: Enter Replication bucket name in selected region
+  OriginalBucketName:
+    Type: String
+    Description: Enter Source bucket name for backup in current Regoin
+  ReplicationCMKId:
+    Type: String
+    Description: Enter Aliases for custom KMS to encrypt Replication bucket
+  OriginalCMKId:
+      Type: String
+      Description: Enter Aliases for custom KMS to encrypt Source bucket
+  EC2RoleToRunBackup:
+      Type: String
+      Description: Enter EC2 Role Arn need to copy the Backup to s3
+  KMSAdminRole:
+    Type: String
+    Description: Enter Role ARN for KMS Admin
+  BucketNameForLambdaCode:
+    Type: String
+    Description: Enter The bucket name where source code of Lambda to be loaded
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Source Bucket"
+        Parameters:
+          - OriginalBucketName
+          - OriginalCMKId
+      -
+        Label:
+          default: "Replication Bucket"
+        Parameters:
+          - RepRegion
+          - ReplicationBucketName
+          - ReplicationCMKId
+          - EC2RoleToRunBackup
+          - KMSAdminRole
+      -
+        Label:
+          default: "Lamdba Bucket"
+        Parameters:
+          - BucketNameForLambdaCode
+Resources:
+  S3KmsSourceBucket:
+    Type: AWS::KMS::Key
+    Description: Enter Role ARN for EC2 Role to Encrypt backup on S3
+    Properties:
+      Description: "To Encrypt S3 backup bucket"
+      EnableKeyRotation: true
+      Tags:
+          - Key: "Name"
+            Value: "KMS Key For Source S3 Backup"
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: "kms-key-policy"
+        Statement:
+         -
+          Sid: "Enable IAM User Permissions"
+          Effect: "Allow"
+          Principal:
+                AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+          Action: "kms:*"
+          Resource: "*"
+         -
+            Sid: "Allow administration of the key"
+            Effect: "Allow"
+            Principal:
+                AWS: !Ref 'KMSAdminRole'
+            Action:
+              - "kms:Create*"
+              - "kms:Describe*"
+              - "kms:Enable*"
+              - "kms:List*"
+              - "kms:Put*"
+              - "kms:Update*"
+              - "kms:Revoke*"
+              - "kms:Disable*"
+              - "kms:Get*"
+              - "kms:Delete*"
+              - "kms:ScheduleKeyDeletion"
+              - "kms:CancelKeyDeletion"
+            Resource: "*"
+         -
+            Sid: "Allow use of the key"
+            Effect: "Allow"
+            Principal:
+              AWS: !Ref 'EC2RoleToRunBackup'
+            Action:
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:GenerateDataKeyWithoutPlaintext"
+            Resource: "*"
+  CreateAliasKMSkey:
+    DependsOn: S3KmsSourceBucket
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${OriginalCMKId}'
+      TargetKeyId: !GetAtt S3KmsSourceBucket.Arn
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          -
+            Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        -
+          PolicyDocument:
+            Statement:
+              -
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Effect: Allow
+                Resource: "arn:aws:logs:*:*:*"
+              -
+                Action:
+                  - "s3:*"
+                Effect: Allow
+                Resource: "*"
+              -
+                Action:
+                - "kms:*"
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: root
+  OriginalBucket:
+    Type: "AWS::S3::Bucket"
+    DependsOn: [ TriggerLambdaBucketLiveCycle, S3KmsSourceBucket, CreateAliasKMSkey ]
+    Properties:
+      BucketName: !Ref OriginalBucketName
+      ReplicationConfiguration:
+        Role: !GetAtt S3ReplRole.Arn
+        Rules:
+          -
+            Destination:
+              Bucket:
+                   !Join
+                  - ""
+                  -
+                    - "arn:aws:s3:::"
+                    - !Ref ReplicationBucketName
+              EncryptionConfiguration:
+                ReplicaKmsKeyID: !GetAtt 'TriggerLambdaKmsKey.Message'
+              StorageClass: STANDARD
+            Id: BackupReplication
+            Prefix: ""
+            Status: Enabled
+            SourceSelectionCriteria:
+              SseKmsEncryptedObjects:
+                Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+               KMSMasterKeyID: !Ref S3KmsSourceBucket
+               SSEAlgorithm: 'aws:kms'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+        - Id: DAILY
+          Prefix: 'DAILY/'
+          Status: Enabled
+          ExpirationInDays: '365'
+          Transitions:
+            - TransitionInDays: '10'
+              StorageClass: 'Glacier'
+  ReplicationBucket:
+    Type: "AWS::Lambda::Function"
+    DependsOn: TriggerLambdaKmsKey
+    Properties:
+      Code:
+        S3Bucket : !Ref BucketNameForLambdaCode
+        S3Key: "createDesbucket.zip"
+      Handler: bucketrepl.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs8.10
+      Timeout: 60
+  TriggerLambdaRepS3:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt ReplicationBucket.Arn
+      DestBucketName: !Ref ReplicationBucketName
+      DestBucketRegion: !Ref RepRegion
+      DestKmsId: !Ref ReplicationCMKId
+      AccountId: !Ref "AWS::AccountId"
+      KmsAdminRole: !Ref KMSAdminRole
+      KMSEC2Role: !Ref EC2RoleToRunBackup
+  ReplicationKmsKey:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        S3Bucket : "hanalamdbanodejs"
+        S3Key: "createbucket.zip"
+      Handler: create_kms.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs8.10
+      Timeout: 60
+  TriggerLambdaKmsKey:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt ReplicationKmsKey.Arn
+      DestBucketName: !Ref ReplicationBucketName
+      DestBucketRegion: !Ref RepRegion
+      DestKmsId: !Ref ReplicationCMKId
+      AccountId: !Ref "AWS::AccountId"
+      KmsAdminRole: !Ref KMSAdminRole
+      KMSEC2Role: !Ref EC2RoleToRunBackup
+  ReplicationBucketVersion:
+      Type: "AWS::Lambda::Function"
+      DependsOn: TriggerLambdaRepS3
+      Properties:
+        Code:
+          S3Bucket : "hanalamdbanodejs"
+          S3Key: "createbucket.zip"
+        Handler: bucketversion.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Runtime: nodejs8.10
+        Timeout: 60
+  TriggerLambdaBucketVersion:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt ReplicationBucketVersion.Arn
+      DestBucketName: !Ref ReplicationBucketName
+      DestBucketRegion: !Ref RepRegion
+      DestKmsId: !Ref ReplicationCMKId
+      AccountId: !Ref "AWS::AccountId"
+      KmsAdminRole: !Ref KMSAdminRole
+      KMSEC2Role: !Ref EC2RoleToRunBackup
+  ReplicationBucketDenyNonEcrypt:
+    Type: "AWS::Lambda::Function"
+    DependsOn: TriggerLambdaBucketVersion
+    Properties:
+      Code:
+        S3Bucket : "hanalamdbanodejs"
+        S3Key: "createbucket.zip"
+      Handler: denaynonencrypt.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs8.10
+      Timeout: 60
+  TriggerLambdaBucketDenyNonEcrypt:
+      Type: Custom::LambdaTrig
+      Properties:
+        ServiceToken: !GetAtt ReplicationBucketDenyNonEcrypt.Arn
+        DestBucketName: !Ref ReplicationBucketName
+        DestBucketRegion: !Ref RepRegion
+        DestKmsId: !Ref ReplicationCMKId
+        AccountId: !Ref "AWS::AccountId"
+        KmsAdminRole: !Ref KMSAdminRole
+        KMSEC2Role: !Ref EC2RoleToRunBackup
+  ReplicationBucketDefaultEncrypt:
+      Type: "AWS::Lambda::Function"
+      DependsOn: TriggerLambdaBucketDenyNonEcrypt
+      Properties:
+        Code:
+          S3Bucket : "hanalamdbanodejs"
+          S3Key: "createbucket.zip"
+        Handler: defaulrencrypt.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Runtime: nodejs8.10
+        Timeout: 60
+  TriggerLambdaBucketDefaultEncrypt:
+        Type: Custom::LambdaTrig
+        Properties:
+          ServiceToken: !GetAtt ReplicationBucketDefaultEncrypt.Arn
+          DestBucketName: !Ref ReplicationBucketName
+          DestBucketRegion: !Ref RepRegion
+          DestKmsId: !Ref ReplicationCMKId
+          AccountId: !Ref "AWS::AccountId"
+          KmsAdminRole: !Ref KMSAdminRole
+          KMSEC2Role: !Ref EC2RoleToRunBackup
+  ReplicationBucketLiveCycle:
+      Type: "AWS::Lambda::Function"
+      DependsOn: TriggerLambdaBucketDefaultEncrypt
+      Properties:
+        Code:
+          S3Bucket : "hanalamdbanodejs"
+          S3Key: "createbucket.zip"
+        Handler: lifecycle.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Runtime: nodejs8.10
+        Timeout: 60
+  TriggerLambdaBucketLiveCycle:
+        Type: Custom::LambdaTrig
+        Properties:
+          ServiceToken: !GetAtt ReplicationBucketLiveCycle.Arn
+          DestBucketName: !Ref ReplicationBucketName
+          DestBucketRegion: !Ref RepRegion
+          DestKmsId: !Ref ReplicationCMKId
+          AccountId: !Ref "AWS::AccountId"
+          KmsAdminRole: !Ref KMSAdminRole
+          KMSEC2Role: !Ref EC2RoleToRunBackup
+  S3ReplRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          -
+            Action: "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+        Version: "2012-10-17"
+      Path:  /service-role/
+  S3crrKmsForBucketPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+        ManagedPolicyName: "S3crrKmsForBucketPolicy1"
+        Roles:
+          - !Ref S3ReplRole
+        Path:  /service-role/
+        PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+               -
+                 Action:
+                    - s3:ListBucket
+                    - s3:GetReplicationConfiguration
+                    - s3:GetObjectVersionForReplication
+                    - s3:GetObjectVersionAcl
+                    - s3:GetObjectVersionTagging
+                 Effect: Allow
+                 Resource: [
+                  !Sub 'arn:aws:s3:::${OriginalBucketName}',
+                  !Sub 'arn:aws:s3:::${OriginalBucketName}/*']
+               -
+                 Action:
+                    - s3:ReplicateObject
+                    - s3:ReplicateDelete
+                    - s3:ReplicateTags
+                    - s3:GetObjectVersionTagging
+                 Effect: Allow
+                 Condition:
+                   StringLikeIfExists:
+                        's3:x-amz-server-side-encryption': [
+                            "aws:kms",
+                            "AES256"
+                        ]
+                        's3:x-amz-server-side-encryption-aws-kms-key-id': [
+                          !GetAtt 'TriggerLambdaKmsKey.Message'
+                        ]
+                 Resource: !Sub 'arn:aws:s3:::${ReplicationBucketName}/*'
+               -
+                 Action:
+                    - kms:Decrypt
+                 Effect: Allow
+                 Condition:
+                    StringLike:
+                        'kms:ViaService': !Sub 's3.${AWS::Region}.amazonaws.com'
+                        'kms:EncryptionContext:aws:s3:arn': [
+                            !Sub 'arn:aws:s3:::${OriginalBucketName}/*']
+                 Resource: [ !GetAtt S3KmsSourceBucket.Arn ]
+               -
+                 Action:
+                    - kms:Encrypt
+                 Effect: Allow
+                 Condition:
+                    StringLike:
+                        'kms:ViaService': !Sub 's3.${RepRegion}.amazonaws.com'
+                        'kms:EncryptionContext:aws:s3:arn': [
+                            !Sub 'arn:aws:s3:::${ReplicationBucketName}/*' ]
+                 Resource: [ !GetAtt 'TriggerLambdaKmsKey.Message' ]
+  DenyPutNonEncrypt:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OriginalBucketName
+      PolicyDocument:
+        Statement:
+          -
+             Sid: DenyIncorrectEncryptionHeader
+             Effect: Deny
+             Principal: "*"
+             Action: s3:PutObject
+             Resource: !Sub 'arn:aws:s3:::${OriginalBucketName}/*'
+             Condition:
+                 StringNotEquals:
+                       's3:x-amz-server-side-encryption': 'aws:kms'
+          -
+             Sid: DenyUnEncryptedObjectUploads
+             Effect: Deny
+             Principal: "*"
+             Action: s3:PutObject
+             Resource: !Sub 'arn:aws:s3:::${OriginalBucketName}/*'
+             Condition:
+                 'Null':
+                       's3:x-amz-server-side-encryption': true
+Outputs:
+  CustomResourceAttribute1:
+    Value:
+     !GetAtt 'TriggerLambdaKmsKey.Message'
