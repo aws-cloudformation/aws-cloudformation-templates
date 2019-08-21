@@ -56,8 +56,8 @@ Note: The creation of the IAM role and Lambda function is automated in the templ
 
 
 Step-by-step Instructions
-1.	Download the CFT and Lambda from code.amazon.com. https://code.amazon.com/packages/Aldahlehrepo/trees/heads/mainline/--/Artifacts/2019/AutomateCreatingHanaBackupBucket
-2.	Create s3 bucket for Lambda code. The Bucket name will be as Parameters when launch the CFT
+1.	Download the CFT and Lambda.
+2.	Create s3 bucket for Lambda. The Bucket name will be as Parameters when launch the CFT
 3.	Copy the  createDesbucket.zip to above bucket.
 4.	Launch the CloudFormation in the region to create source bucket.
 5.	Enter the parameters as defined in this document
