@@ -1,6 +1,5 @@
 ** Automate creating secure s3 Bucket for Hana Database backup, enable CRR, and
 Lifecycle; version 1.0 --
-https://code.amazon.com/packages/Aldahlehrepo/trees/mainline/--/Artifacts/2019/AutomateCreatingHanaBackupBucket
 // Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 
