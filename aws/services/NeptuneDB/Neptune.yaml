@@ -365,7 +365,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  !Sub '${Compliance}'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
