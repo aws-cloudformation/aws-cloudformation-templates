@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+Metadata:
   License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress
   is web software you can use to create a beautiful website or blog. This template
@@ -18,7 +18,7 @@ Parameters:
     MinLength: '1'
     Type: String
   DBPassword:
-    AllowedPattern: '[a-zA-Z0-9]*'
+    AllowedPattern: '[a-zA-Z0-9]+'
     ConstraintDescription: must contain only alphanumeric characters.
     Description: The WordPress database admin account password
     MaxLength: '41'
@@ -26,7 +26,7 @@ Parameters:
     NoEcho: 'true'
     Type: String
   DBRootPassword:
-    AllowedPattern: '[a-zA-Z0-9]*'
+    AllowedPattern: '[a-zA-Z0-9]+'
     ConstraintDescription: must contain only alphanumeric characters.
     Description: MySQL root password
     MaxLength: '41'
@@ -40,7 +40,6 @@ Parameters:
     Description: The WordPress database admin account username
     MaxLength: '16'
     MinLength: '1'
-    NoEcho: 'true'
     Type: String
   InstanceType:
     AllowedValues:
@@ -99,13 +98,22 @@ Parameters:
     - cc2.8xlarge
     - cg1.4xlarge
     ConstraintDescription: must be a valid EC2 instance type.
-    Default: t2.small
+    Default: t2.nano
     Description: WebServer EC2 instance type
     Type: String
   KeyName:
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
+  HostedZone:
+    ConstraintDescription: Must be the name of a hosted zone on Route 53.
+    Description: A hosted zone to apply this site to.
+    Type: AWS::Route53::HostedZone::Id
+  HostName:
+    AllowedPattern: '[a-z]+\.[a-z]+\.[a-z]+'
+    ConstraintDescription: Must be a simple string, only lower case alpha characters.
+    Description: A fully-qualified hostname to use for this. For example, blog.example.com
+    Type: String
   SSHLocation:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
@@ -113,7 +121,30 @@ Parameters:
     Description: The IP address range that can be used to SSH to the EC2 instances
     MaxLength: '18'
     MinLength: '9'
-    Type: String  
+    Type: String
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Database"
+        Parameters:
+          - DBName
+          - DBUser
+          - DBPassword
+          - DBRootPassword
+      - Label:
+          default: "Instance connection"
+        Parameters:
+          - InstanceType
+          - KeyName
+          - SSHLocation
+      - Label:
+          default: "DNS Lookup"
+        Parameters:
+          - HostedZone
+          - HostName
+
 Mappings:
   AWSInstanceType2Arch:
     c1.medium:
@@ -374,6 +405,7 @@ Mappings:
       HVM64: ami-f0091d91
       HVMG2: ami-315f4850
       PV64: ami-d93622b8
+
 Resources:
   WebServer:
     Type: AWS::EC2::Instance
@@ -395,7 +427,7 @@ Resources:
               test: !Sub |
                 $(mysql ${DBName} -u root --password='${DBRootPassword}' >/dev/null 2>&1 </dev/null); (( $? != 0 ))
             02_create_database:
-              command: !Sub |  
+              command: !Sub |
                 mysql -u root --password='${DBRootPassword}' < /tmp/setup.mysql
               test: !Sub |
                 $(mysql ${DBName} -u root --password='${DBRootPassword}' >/dev/null 2>&1 </dev/null); (( $? !=0))
@@ -437,7 +469,7 @@ Resources:
                 cp /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php
                 sed -i "s/'database_name_here'/'${DBName}'/g" wp-config.php
                 sed -i "s/'username_here'/'${DBUser}'/g" wp-config.php
-                sed -i "s/'password_here'/'${DBPassword}'/g" wp-config.php                                    
+                sed -i "s/'password_here'/'${DBPassword}'/g" wp-config.php
               group: root
               mode: '000500'
               owner: root
@@ -445,20 +477,30 @@ Resources:
               content: !Sub |
                 CREATE DATABASE ${DBName};
                 CREATE USER '${DBUser}'@'localhost' IDENTIFIED BY '${DBPassword}';
-                GRANT ALL ON ${DBName}.* TO '${DBUser}'@'localhost'; 
+                GRANT ALL ON ${DBName}.* TO '${DBUser}'@'localhost';
                 FLUSH PRIVILEGES;
               group: root
               mode: '000400'
               owner: root
+            /var/www/noindex/index.html:
+              content: |
+                <!DOCTYPE html>
+                <HTML><HEAD>
+                      <TITLE>HTML Meta Tag</title>
+                      <META HTTP-EQUIV= "refresh" CONTENT= "0; url = /wordpress" />
+                   </HEAD><BODY>
+                      <P>Redirect to <A HREF=/wordpress>WordPress</A>.</P>
+                      <!-- By default, redirect to the installed WordPress -->
+                   </BODY></HTML>
           packages:
             yum:
-              httpd: []
+              httpd24: []
               mysql: []
               mysql-devel: []
               mysql-libs: []
               mysql-server: []
-              php: []
-              php-mysql: []
+              php56: []
+              php56-mysqlnd: []
           services:
             sysvinit:
               httpd:
@@ -470,7 +512,7 @@ Resources:
           sources:
             /var/www/html: http://wordpress.org/latest.tar.gz
     Properties:
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]      
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]
       InstanceType:
         Ref: InstanceType
       KeyName:
@@ -480,6 +522,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
            #!/bin/bash -xe
+           yum update -y
            yum update -y aws-cfn-bootstrap
            /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource WebServer --configsets wordpress_install --region ${AWS::Region}
            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServer --region ${AWS::Region}
@@ -496,6 +539,16 @@ Resources:
         FromPort: '22'
         IpProtocol: tcp
         ToPort: '22'
+  WebServerDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      Name: !Ref HostName
+      Type: CNAME
+      TTL: 900
+      ResourceRecords:
+      - !GetAtt WebServer.PublicDnsName
+
 Outputs:
   PublicIP:
     Description: EC2 public IP
