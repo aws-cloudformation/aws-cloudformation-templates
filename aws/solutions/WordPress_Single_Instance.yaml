@@ -105,6 +105,15 @@ Parameters:
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
+  HostedZone:
+    ConstraintDescription: Must be the name of a hosted zone on Route 53.
+    Description: A hosted zone to apply this site to.
+    Type: AWS::Route53::HostedZone::Id
+  HostName:
+    AllowedPattern: '[a-z]+\.[a-z]+\.[a-z]+'
+    ConstraintDescription: Must be a simple string, only lower case alpha characters.
+    Description: A fully-qualified hostname to use for this. For example, blog.example.com
+    Type: String
   SSHLocation:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
@@ -130,6 +139,11 @@ Metadata:
           - InstanceType
           - KeyName
           - SSHLocation
+      - Label:
+          default: "DNS Lookup"
+        Parameters:
+          - HostedZone
+          - HostName
 
 Mappings:
   AWSInstanceType2Arch:
@@ -485,8 +499,8 @@ Resources:
               mysql-devel: []
               mysql-libs: []
               mysql-server: []
-              php73: []
-              php73-mysqlnd: []
+              php56: []
+              php56-mysqlnd: []
           services:
             sysvinit:
               httpd:
@@ -525,6 +539,15 @@ Resources:
         FromPort: '22'
         IpProtocol: tcp
         ToPort: '22'
+  WebServerDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      Name: !Ref HostName
+      Type: CNAME
+      TTL: 900
+      ResourceRecords:
+      - !GetAtt WebServer.PublicDnsName
 
 Outputs:
   PublicIP:
