@@ -31,8 +31,8 @@ Resources:
 | Name | Description | Format |
 |------|-------------|--------|
 | [Date](#date) | Date to use (defaults to `now`) | ISO Date |
-| [Date2](#date2) | Date to use for [`Days`](#days-1) operation (also defaults to `now`) | ISO Date |
-| [Days](#days-1) | Number of days to add or subtract in the [`Add`](#add) or [`Subtract`](#subtract] operations | Integer |
+| [Date2](#date2) | Date to use for [`Days`](#days) operation (also defaults to `now`) | ISO Date |
+| [Days](#days) | Number of days to add or subtract in the [`Add`](#add) or [`Subtract`](#subtract] operations | Integer |
 
 ## Date
 
@@ -57,9 +57,9 @@ It should be an integer, if it is omitted, it defaults to zero (`0`)
 | Name | Description | Parameters |
 |------|-------------|------------|
 | [Current](#current) | Returns the current date (or value of the [`Date`](#date) parameter | [`Date`](#date) (optional) |
-| [Add](#add) | Adds number of days to the [`Date`](#date) | [`Date`](#date) defaults to `now()`, [`Days`](#days-2) defaults to `0` |
-| [Subtract](#subtract) | Subtracts number of days from the [`Date`](#date) | `Date` defaults to `now()`, [`Days`](#days-2) defaults to `0` |
-| [Days](#days-2) | Returns the number of days from between two dates | [`Date`](#date) defaults to `now()`, [`Date2`](#date2) defaults to `now()` |
+| [Add](#add) | Adds number of days to the [`Date`](#date) | [`Date`](#date) defaults to `now()`, [`Days`](#days-1) defaults to `0` |
+| [Subtract](#subtract) | Subtracts number of days from the [`Date`](#date) | `Date` defaults to `now()`, [`Days`](#days-1) defaults to `0` |
+| [Days](#days-1) | Returns the number of days from between two dates | [`Date`](#date) defaults to `now()`, [`Date2`](#date2) defaults to `now()` |
 
 ### Current
 
@@ -67,11 +67,11 @@ Returns a copy of the current date and time in ISO format
  
 ### Add
 
-Adds the [`Days`](#days-1) parameter value to the `Date` value.
+Adds the [`Days`](#days) parameter value to the `Date` value.
 
 ### Subtract
 
-Subtracts the  [`Days`](#days-1) from the [`Date`](#date)
+Subtracts the  [`Days`](#days) from the [`Date`](#date)
 
 ### Days
 
