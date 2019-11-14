@@ -26,6 +26,34 @@ Resources:
                  Date: !Ref Date
                  Operation: Current
 ```
+The original use case for this was to create an SSM parameter with an expiration date, which is exemplified in the 
+following snippet:
+```yaml
+  # Secret key SSM paramber
+  S3UserSecretAccessKey:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: !Sub "/S3Bucket/API/Secret/${S3Bucket}"
+      Type: "String" # This really should be a SecureString, but CloudFormation doesn't yet support it for some reason
+      Value: !GetAtt S3AccessKey.SecretAccessKey
+      Description: "SSM Parameter for S3Bucket Secret"
+      Tier: Advanced
+      Policies:
+        Fn::Sub:
+          - "[{ \"Type\":\"Expiration\",\"Version\":\"1.0\",\"Attributes\": {\"Timestamp\":\"${ExpireDate}\" } }]"
+          - ExpireDate:
+              Fn::Transform:
+                - Name: 'Date'
+                  # Have the date be 30 days from now...
+                  Parameters:
+                    # No Date passed in means we add the days to now()
+                    Days: !Ref DaysToExpiration
+                    Operation: "Add"
+
+```
+The `Fn::Transform` will place a value in the expiration policy for the above parameter that will expire based on the 
+`DaysToExpiration` parameter (From the `Parameters` section of the CloudFormation template). 
+
 ## Parameters
 
 | Name | Description | Format |
