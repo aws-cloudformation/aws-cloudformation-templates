@@ -33,6 +33,7 @@ Resources:
         ZipFile: |
           import traceback
           import datetime
+          import time
 
 
 
@@ -42,6 +43,10 @@ Resources:
                   "status": "success"
               }
               try:
+
+                  utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
+                  utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
+
                   # Operation we are being asked to do
                   operation = event["params"]["Operation"]
 
@@ -85,7 +90,7 @@ Resources:
                         response["fragment"] = str(outputDays)
                       else:
                         # Get the ISO date for the input value
-                        response["fragment"] = inputDate.isoformat()
+                        response["fragment"] = inputDate.replace(tzinfo=datetime.timezone(offset=utc_offset)).replace(microsecond=0).isoformat()
                   else:
                       response["status"] = "failure"
               except Exception as e:
