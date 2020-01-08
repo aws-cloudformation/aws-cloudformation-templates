@@ -68,7 +68,7 @@ Resources:
   MyLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Runtime: nodejs8.10
+      Runtime: nodejs10.x
       Handler: index.handler
       Code:
         ZipFile: |

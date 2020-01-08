@@ -60,7 +60,7 @@
               "Handler" : "requestCertificate.handler",
               "MemorySize" : 128,
               "Role" : { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
-              "Runtime" : "nodejs8.10",
+              "Runtime" : "nodejs10.x",
               "Timeout" : 10
             }
         },
@@ -73,7 +73,7 @@
               "Handler" : "approveCertificate.handler",
               "MemorySize" : 128,
               "Role" : { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
-              "Runtime" : "nodejs8.10",
+              "Runtime" : "nodejs10.x",
               "Timeout" : 10
             }
         },
@@ -86,7 +86,7 @@
               "Handler" : "checkCertificateApproval.handler",
               "MemorySize" : 128,
               "Role" : { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
-              "Runtime" : "nodejs8.10",
+              "Runtime" : "nodejs10.x",
               "Timeout" : 180
             }
         },
@@ -99,7 +99,7 @@
             "Handler" : "getHostedZoneName.handler",
             "MemorySize" : 128,
             "Role" : { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
-            "Runtime" : "nodejs8.10",
+            "Runtime" : "nodejs10.x",
             "Timeout" : 10
           }
         },
@@ -112,7 +112,7 @@
             "Handler" : "clearBuckets.handler",
             "MemorySize" : 128,
             "Role" : { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
-            "Runtime" : "nodejs8.10",
+            "Runtime" : "nodejs10.x",
             "Timeout" : 10
           }
         }
