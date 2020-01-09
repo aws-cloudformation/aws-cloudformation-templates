@@ -18,7 +18,7 @@ Resources:
     Type: "AWS::S3::Bucket"
     Properties:
       Tags:
-        - Key: Upper
+        - Key: Date
           Value:
             'Fn::Transform':
              - Name: 'Date'
