@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template to add routes to default/main routetable of VPC
+Parameters:
+  Bucket:
+    Type: String
+    Description: Bucket name where files are stored
+  Key:
+    Type: String
+    Description: Zip file name
+    Default: Routetable.zip
+  Lambdahandler:
+    Type: String
+    Description: Name of the python file(lambda handler)
+    Default: Routetable
+Resources:
+  MyVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Env
+          Value: Test
+  LambdaIAMRole:
+    Type: 'AWS::IAM::Role'
+    DependsOn: MyVPC
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:Describe*'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: !Sub '${Lambdahandler}.lambda_handler'
+      Role: !GetAtt LambdaIAMRole.Arn
+      Code:
+        S3Bucket: !Ref Bucket
+        S3Key: !Ref Key
+      Runtime: python3.6
+      Timeout: 50
+  Lambdatrigger:
+    Type: 'Custom::RouteTableLambda'
+    Properties:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+      VPCID: !Ref MyVPC
+  MyInternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Env
+          Value: Test
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+  MyRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !GetAtt Lambdatrigger.RoutetableID
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+Outputs:
+  RouteTableID:
+    Value: !GetAtt Lambdatrigger.RoutetableID
