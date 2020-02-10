@@ -17,7 +17,7 @@
 
 
 # Notes
-# Specify necessary values for "UPDATE_HERE" respurces and properties for sucessiful deployment
+# Specify necessary values for "UPDATE_HERE" resources and properties for sucessiful deployment
 
 # Current limitations/considerations:
 # - Considereations around DBInstanceIdentifier resource properties should be reviewed
