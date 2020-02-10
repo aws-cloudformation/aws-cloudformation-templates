@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on debian. It was validated on debian 8'
+Description: 'Template to install CloudWatchAgent on debian. It was validated on debian 8'
 Parameters:
   SSMKey :
     Description: Name of parameter store which contains the json configuration of CWAgent.

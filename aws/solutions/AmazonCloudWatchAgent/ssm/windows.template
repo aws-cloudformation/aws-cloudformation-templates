@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on windows. It was validated on windows 2016'
+Description: 'Template to install CloudWatchAgent on windows. It was validated on windows 2016'
 Parameters:
   SSMKey :
     Description: Name of parameter store which contains the json configuration of CWAgent.

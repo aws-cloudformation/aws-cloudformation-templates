@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on centos. It was validated on centos 7'
+Description: 'Template to install CloudWatchAgent on centos. It was validated on centos 7'
 Parameters:
   SSMKey :
     Description: Name of parameter store which contains the json configuration of CWAgent.
