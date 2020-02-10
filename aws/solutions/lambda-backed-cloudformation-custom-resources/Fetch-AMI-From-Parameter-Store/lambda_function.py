@@ -29,16 +29,15 @@ def lambda_handler(event, context):
         elif event['RequestType'] == 'Create':
             print "create"
             client = boto3.client('ssm')
-            ami_id = json.loads(client.get_parameter(Name=parameter_name)['Parameter']['Value'])['image_id']
+            ami_id = client.get_parameter(Name=parameter_name)['Parameter']['Value']
             print ami_id
         elif event['RequestType'] == 'Update':
             print "update"
             client = boto3.client('ssm')
-            ami_id = json.loads(client.get_parameter(Name=parameter_name)['Parameter']['Value'])['image_id']
+            ami_id = client.get_parameter(Name=parameter_name)['Parameter']['Value']
             print ami_id
         responseStatus = 'SUCCESS'
         responseData = {'AMI': ami_id}
-        break
     except Exception as e:
         print e
         responseStatus = 'FAILURE'
@@ -67,4 +66,3 @@ def sendResponse(event, context, responseStatus, responseData, reason=None, phys
         print "Status code: " + response.reason
     except Exception as e:
         print "send(..) failed executing requests.put(..): " + str(e)
-
