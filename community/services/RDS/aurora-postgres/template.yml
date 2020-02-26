@@ -50,7 +50,7 @@ Resources:
   Cluster:
     Type: AWS::RDS::DBCluster
     Properties:
-      Engine: aurora
+      Engine: aurora-postgresql
       EngineMode: serverless
       EnableHttpEndpoint: true
       DBSubnetGroupName: !Ref DBSubnetGroupName
