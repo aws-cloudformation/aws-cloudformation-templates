@@ -57,7 +57,7 @@ Resources:
       Code:
         S3Bucket: !Ref Bucket
         S3Key: !Ref Key
-      Runtime: python3.6
+      Runtime: python3.8
       Timeout: 50
   Lambdatrigger:
     Type: 'Custom::RouteTableLambda'
