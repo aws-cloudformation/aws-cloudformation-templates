@@ -20,13 +20,13 @@ def lambda_handler(event, context):
         elif event['RequestType'] == 'Create':
             print("Request Type:", event['RequestType'])
             VPCID = event['ResourceProperties']['VPCID']
-            RouteTableID = get_vpc(VPCID)
+            RouteTableID = get_rtb(VPCID)
             responseData = {'RoutetableID': RouteTableID}
             print("Sending response to custom resource")
         elif event['RequestType'] == 'Update':
             print("Request Type:", event['RequestType'])
             VPCID = event['ResourceProperties']['VPCID']
-            RouteTableID = get_vpc(VPCID)
+            RouteTableID = get_rtb(VPCID)
             responseData = {'RoutetableID': RouteTableID}
             print("Sending response to custom resource")
         responseStatus = 'SUCCESS'
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
     send(event, context, responseStatus, responseData)
 
 
-def get_vpc(VPCID):
+def get_rtb(VPCID):
     response = ec2.describe_route_tables(
         Filters=[
             {
