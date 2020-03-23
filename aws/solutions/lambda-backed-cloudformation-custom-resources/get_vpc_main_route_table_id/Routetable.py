@@ -2,7 +2,6 @@ from __future__ import print_function
 import json
 import boto3
 import urllib
-from botocore.vendored import requests
 
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
@@ -74,9 +73,9 @@ def send(event, context, responseStatus, responseData, physicalResourceId=None, 
         'content-length': str(len(json_responseBody))
     }
     try:
-        response = requests.put(responseUrl,
-                                data=json_responseBody,
-                                headers=headers)
-        print("Status code: " + response.reason)
+        request = urllib.request.Request(
+            responseUrl, method="PUT", data=json_responseBody.encode('utf-8'), headers=headers)
+        with urllib.request.urlopen(request) as response:
+            print("Status code: " + response.reason)
     except Exception as e:
         print("send(..) failed executing requests.put(..): " + str(e))
