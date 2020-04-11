@@ -1,6 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+Metadata:
   License: Apache-2.0
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Database"
+        Parameters:
+          - DBName
+          - DBUser
+          - DBPassword
+          - DBRootPassword
+      - Label:
+          default: "Instance connection"
+        Parameters:
+          - InstanceType
+          - KeyName
+          - SSHLocation
 Description: 'AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress
   is web software you can use to create a beautiful website or blog. This template
   installs WordPress with a local MySQL database for storage. It demonstrates using
@@ -18,7 +33,7 @@ Parameters:
     MinLength: '1'
     Type: String
   DBPassword:
-    AllowedPattern: '[a-zA-Z0-9]*'
+    AllowedPattern: '[a-zA-Z0-9]+'
     ConstraintDescription: must contain only alphanumeric characters.
     Description: The WordPress database admin account password
     MaxLength: '41'
@@ -26,7 +41,7 @@ Parameters:
     NoEcho: 'true'
     Type: String
   DBRootPassword:
-    AllowedPattern: '[a-zA-Z0-9]*'
+    AllowedPattern: '[a-zA-Z0-9]+'
     ConstraintDescription: must contain only alphanumeric characters.
     Description: MySQL root password
     MaxLength: '41'
@@ -40,23 +55,14 @@ Parameters:
     Description: The WordPress database admin account username
     MaxLength: '16'
     MinLength: '1'
-    NoEcho: 'true'
     Type: String
   InstanceType:
     AllowedValues:
-    - t1.micro
     - t2.nano
     - t2.micro
     - t2.small
     - t2.medium
     - t2.large
-    - m1.small
-    - m1.medium
-    - m1.large
-    - m1.xlarge
-    - m2.xlarge
-    - m2.2xlarge
-    - m2.4xlarge
     - m3.medium
     - m3.large
     - m3.xlarge
@@ -66,8 +72,6 @@ Parameters:
     - m4.2xlarge
     - m4.4xlarge
     - m4.10xlarge
-    - c1.medium
-    - c1.xlarge
     - c3.large
     - c3.xlarge
     - c3.2xlarge
@@ -93,13 +97,11 @@ Parameters:
     - d2.2xlarge
     - d2.4xlarge
     - d2.8xlarge
-    - hi1.4xlarge
     - hs1.8xlarge
     - cr1.8xlarge
     - cc2.8xlarge
-    - cg1.4xlarge
     ConstraintDescription: must be a valid EC2 instance type.
-    Default: t2.small
+    Default: t2.nano
     Description: WebServer EC2 instance type
     Type: String
   KeyName:
@@ -113,13 +115,9 @@ Parameters:
     Description: The IP address range that can be used to SSH to the EC2 instances
     MaxLength: '18'
     MinLength: '9'
-    Type: String  
+    Type: String
 Mappings:
   AWSInstanceType2Arch:
-    c1.medium:
-      Arch: PV64
-    c1.xlarge:
-      Arch: PV64
     c3.2xlarge:
       Arch: HVM64
     c3.4xlarge:
@@ -168,20 +166,6 @@ Mappings:
       Arch: HVM64
     i2.xlarge:
       Arch: HVM64
-    m1.large:
-      Arch: PV64
-    m1.medium:
-      Arch: PV64
-    m1.small:
-      Arch: PV64
-    m1.xlarge:
-      Arch: PV64
-    m2.2xlarge:
-      Arch: PV64
-    m2.4xlarge:
-      Arch: PV64
-    m2.xlarge:
-      Arch: PV64
     m3.2xlarge:
       Arch: HVM64
     m3.large:
@@ -210,8 +194,6 @@ Mappings:
       Arch: HVM64
     r3.xlarge:
       Arch: HVM64
-    t1.micro:
-      Arch: PV64
     t2.large:
       Arch: HVM64
     t2.medium:
@@ -222,158 +204,40 @@ Mappings:
       Arch: HVM64
     t2.small:
       Arch: HVM64
-  AWSInstanceType2NATArch:
-    c1.medium:
-      Arch: NATPV64
-    c1.xlarge:
-      Arch: NATPV64
-    c3.2xlarge:
-      Arch: NATHVM64
-    c3.4xlarge:
-      Arch: NATHVM64
-    c3.8xlarge:
-      Arch: NATHVM64
-    c3.large:
-      Arch: NATHVM64
-    c3.xlarge:
-      Arch: NATHVM64
-    c4.2xlarge:
-      Arch: NATHVM64
-    c4.4xlarge:
-      Arch: NATHVM64
-    c4.8xlarge:
-      Arch: NATHVM64
-    c4.large:
-      Arch: NATHVM64
-    c4.xlarge:
-      Arch: NATHVM64
-    cc2.8xlarge:
-      Arch: NATHVM64
-    cr1.8xlarge:
-      Arch: NATHVM64
-    d2.2xlarge:
-      Arch: NATHVM64
-    d2.4xlarge:
-      Arch: NATHVM64
-    d2.8xlarge:
-      Arch: NATHVM64
-    d2.xlarge:
-      Arch: NATHVM64
-    g2.2xlarge:
-      Arch: NATHVMG2
-    g2.8xlarge:
-      Arch: NATHVMG2
-    hi1.4xlarge:
-      Arch: NATHVM64
-    hs1.8xlarge:
-      Arch: NATHVM64
-    i2.2xlarge:
-      Arch: NATHVM64
-    i2.4xlarge:
-      Arch: NATHVM64
-    i2.8xlarge:
-      Arch: NATHVM64
-    i2.xlarge:
-      Arch: NATHVM64
-    m1.large:
-      Arch: NATPV64
-    m1.medium:
-      Arch: NATPV64
-    m1.small:
-      Arch: NATPV64
-    m1.xlarge:
-      Arch: NATPV64
-    m2.2xlarge:
-      Arch: NATPV64
-    m2.4xlarge:
-      Arch: NATPV64
-    m2.xlarge:
-      Arch: NATPV64
-    m3.2xlarge:
-      Arch: NATHVM64
-    m3.large:
-      Arch: NATHVM64
-    m3.medium:
-      Arch: NATHVM64
-    m3.xlarge:
-      Arch: NATHVM64
-    m4.10xlarge:
-      Arch: NATHVM64
-    m4.2xlarge:
-      Arch: NATHVM64
-    m4.4xlarge:
-      Arch: NATHVM64
-    m4.large:
-      Arch: NATHVM64
-    m4.xlarge:
-      Arch: NATHVM64
-    r3.2xlarge:
-      Arch: NATHVM64
-    r3.4xlarge:
-      Arch: NATHVM64
-    r3.8xlarge:
-      Arch: NATHVM64
-    r3.large:
-      Arch: NATHVM64
-    r3.xlarge:
-      Arch: NATHVM64
-    t1.micro:
-      Arch: NATPV64
-    t2.large:
-      Arch: NATHVM64
-    t2.medium:
-      Arch: NATHVM64
-    t2.micro:
-      Arch: NATHVM64
-    t2.nano:
-      Arch: NATHVM64
-    t2.small:
-      Arch: NATHVM64
   AWSRegionArch2AMI:
     ap-northeast-1:
       HVM64: ami-383c1956
       HVMG2: ami-08e5c166
-      PV64: ami-393c1957
     ap-northeast-2:
       HVM64: ami-249b554a
       HVMG2: NOT_SUPPORTED
-      PV64: NOT_SUPPORTED
     ap-southeast-1:
       HVM64: ami-c9b572aa
       HVMG2: ami-5a15d239
-      PV64: ami-34bd7a57
     ap-southeast-2:
       HVM64: ami-48d38c2b
       HVMG2: ami-0c1a446f
-      PV64: ami-ced887ad
     cn-north-1:
       HVM64: ami-43a36a2e
       HVMG2: NOT_SUPPORTED
-      PV64: ami-18ac6575
     eu-central-1:
       HVM64: ami-bc5b48d0
       HVMG2: ami-ba1a09d6
-      PV64: ami-794a5915
     eu-west-1:
       HVM64: ami-bff32ccc
       HVMG2: ami-83fd23f0
-      PV64: ami-95e33ce6
     sa-east-1:
       HVM64: ami-6817af04
       HVMG2: NOT_SUPPORTED
-      PV64: ami-7d15ad11
     us-east-1:
       HVM64: ami-60b6c60a
       HVMG2: ami-e998ea83
-      PV64: ami-5fb8c835
     us-west-1:
       HVM64: ami-d5ea86b5
       HVMG2: ami-943956f4
-      PV64: ami-56ea8636
     us-west-2:
       HVM64: ami-f0091d91
       HVMG2: ami-315f4850
-      PV64: ami-d93622b8
 Resources:
   WebServer:
     Type: AWS::EC2::Instance
@@ -395,7 +259,7 @@ Resources:
               test: !Sub |
                 $(mysql ${DBName} -u root --password='${DBRootPassword}' >/dev/null 2>&1 </dev/null); (( $? != 0 ))
             02_create_database:
-              command: !Sub |  
+              command: !Sub |
                 mysql -u root --password='${DBRootPassword}' < /tmp/setup.mysql
               test: !Sub |
                 $(mysql ${DBName} -u root --password='${DBRootPassword}' >/dev/null 2>&1 </dev/null); (( $? !=0))
@@ -437,7 +301,7 @@ Resources:
                 cp /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php
                 sed -i "s/'database_name_here'/'${DBName}'/g" wp-config.php
                 sed -i "s/'username_here'/'${DBUser}'/g" wp-config.php
-                sed -i "s/'password_here'/'${DBPassword}'/g" wp-config.php                                    
+                sed -i "s/'password_here'/'${DBPassword}'/g" wp-config.php
               group: root
               mode: '000500'
               owner: root
@@ -445,20 +309,30 @@ Resources:
               content: !Sub |
                 CREATE DATABASE ${DBName};
                 CREATE USER '${DBUser}'@'localhost' IDENTIFIED BY '${DBPassword}';
-                GRANT ALL ON ${DBName}.* TO '${DBUser}'@'localhost'; 
+                GRANT ALL ON ${DBName}.* TO '${DBUser}'@'localhost';
                 FLUSH PRIVILEGES;
               group: root
               mode: '000400'
               owner: root
+            /var/www/noindex/index.html:
+              content: |
+                <!DOCTYPE html>
+                <HTML><HEAD>
+                      <TITLE>HTML Meta Tag</title>
+                      <META HTTP-EQUIV= "refresh" CONTENT= "0; url = /wordpress" />
+                   </HEAD><BODY>
+                      <P>Redirect to <A HREF=/wordpress>WordPress</A>.</P>
+                      <!-- By default, redirect to the installed WordPress -->
+                   </BODY></HTML>
           packages:
             yum:
-              httpd: []
+              httpd24: []
               mysql: []
               mysql-devel: []
               mysql-libs: []
               mysql-server: []
-              php: []
-              php-mysql: []
+              php73: []
+              php73-mysqlnd: []
           services:
             sysvinit:
               httpd:
@@ -470,7 +344,7 @@ Resources:
           sources:
             /var/www/html: http://wordpress.org/latest.tar.gz
     Properties:
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]      
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]
       InstanceType:
         Ref: InstanceType
       KeyName:
@@ -480,6 +354,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
            #!/bin/bash -xe
+           yum update -y
            yum update -y aws-cfn-bootstrap
            /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource WebServer --configsets wordpress_install --region ${AWS::Region}
            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServer --region ${AWS::Region}
@@ -489,13 +364,13 @@ Resources:
       GroupDescription: "Enable HTTP access via port 80 locked down to the load balancer + SSH access"
       SecurityGroupIngress:
       - CidrIp: 0.0.0.0/0
-        FromPort: '80'
+        FromPort: 80
         IpProtocol: tcp
-        ToPort: '80'
+        ToPort: 80
       - CidrIp: !Ref SSHLocation
-        FromPort: '22'
+        FromPort: 22
         IpProtocol: tcp
-        ToPort: '22'
+        ToPort: 22
 Outputs:
   PublicIP:
     Description: EC2 public IP

@@ -5,12 +5,12 @@ Parameters:
     Type: String
     Description: Name of an environment. 'dev', 'staging', 'prod' and any name.
     AllowedPattern: ^.*[^0-9]$
-    ConstraintDescription: Must end with non numberic character.
+    ConstraintDescription: Must end with non-numeric character.
   LambdaHandlerPath:  
     Type: String
-    Description: Path of an Lambda Handler. 
+    Description: Path of a Lambda Handler. 
     AllowedPattern: ^.*[^0-9]$
-    ConstraintDescription: Must end with non numberic character.
+    ConstraintDescription: Must end with non-numeric character.
 Outputs:
   LambdaRoleARN:
     Description: Role for Lambda execution.
@@ -59,8 +59,8 @@ Resources:
     Properties:
       FunctionName:
         Fn::Sub: lambda-function-${EnvName}
-      Description: LambdaFunctioni of nodejs4.3.
-      Runtime: nodejs4.3
+      Description: LambdaFunctioni of nodejs10.x.
+      Runtime: nodejs10.x
       Code:
         ZipFile:
           "exports.handler = function(event, context){\n

@@ -12,7 +12,7 @@ The `Explode` macro provides a template-wide `Explode` property for CloudFormati
 
 ```shell
 aws cloudformation package \
-    --template-file macro.yaml \
+    --template-file macro.yml \
     --s3-bucket <your bucket name here> \
     --output-template-file packaged.yaml
 ```

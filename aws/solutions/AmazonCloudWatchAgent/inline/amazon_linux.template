@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on amazon linux. It was validated on amazon linux 2'
+Description: 'Template to install CloudWatchAgent on amazon linux. It was validated on amazon linux 2'
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance

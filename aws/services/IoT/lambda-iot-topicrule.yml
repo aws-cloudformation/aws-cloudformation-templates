@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates required AWS resources 
+Parameters:
+  CertificateARN:
+    Description: The Amazon Resource Name (ARN) of an existing AWS IoT certificate
+      aws iot create-keys-and-certificate --set-as-active --certificate-pem-outfile certificate.pem.crt --private-key-outfile private.pem.key 
+    Type: String
+Resources:
+  IoTPolicy:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action: iot:Connect
+          Effect: Allow
+          Resource: 
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:client/*'
+        - Action: iot:*
+          Effect: Allow
+          Resource: 
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}'
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1'
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2'
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*'
+        - Action: iot:Subscribe
+          Effect: Allow
+          Resource: 
+            - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*'
+        Version: '2012-10-17'
+    Type: AWS::IoT::Policy
+  OpenIoTStarPolicy:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action: iot:*
+          Effect: Allow
+          Resource: "*"
+        Version: '2012-10-17'
+    Type: AWS::IoT::Policy
+  IoTPolicyPrincipalAttachment:
+    Properties:
+      PolicyName:
+        Ref: IoTPolicy
+      Principal:
+        Ref: CertificateARN
+    Type: AWS::IoT::PolicyPrincipalAttachment
+  IoTThing:
+    Properties:
+      ThingName: !Sub "${AWS::StackName}"
+    Type: AWS::IoT::Thing
+  IoTThingPrincipalAttachment:
+    Properties:
+      Principal:
+        Ref: CertificateARN
+      ThingName:
+        Ref: IoTThing
+    Type: AWS::IoT::ThingPrincipalAttachment
+  IoTTopicRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: !Sub "${AWS::StackName}"
+      TopicRulePayload:
+        Actions:
+        - Lambda:
+            FunctionArn: !GetAtt MyLambda.Arn
+        AwsIotSqlVersion: '2016-03-23'
+        Sql: !Sub " SELECT * FROM 'topic_2'"
+        RuleDisabled: false
+  MyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs10.x
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => { console.log(event); return {'statusCode': 200, 'body': "OK"}; }
+      FunctionName: !Sub "${AWS::StackName}"
+      Role: !GetAtt MyLambdaRole.Arn
+  MyLambdaVersion:
+    Type: AWS::Lambda::Version
+    DependsOn: MyLambda
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}"
+  MyLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}"
+          PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                  Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*'
+  MyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Sub "${AWS::StackName}"
+      Principal: iot.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
+      SourceArn: !GetAtt IoTTopicRule.Arn

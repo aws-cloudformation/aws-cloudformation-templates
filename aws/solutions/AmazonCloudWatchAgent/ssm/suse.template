@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWagentAgent on suse. It was validated on suse 12'
+Description: 'Template to install CloudWatchAgent on suse. It was validated on suse 12'
 Parameters:
   SSMKey :
     Description: Name of parameter store which contains the json configuration of CWAgent.
