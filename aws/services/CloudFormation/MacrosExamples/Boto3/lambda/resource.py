@@ -14,17 +14,23 @@
 from urllib.request import HTTPHandler, Request, build_opener
 import boto3
 import json
+import jmespath
+from botocore.exceptions import ParamValidationError
+import re
+import random
+import string
 
-def sendResponse(event, context, status, message):
+def sendResponse(event, context, status, message, data=None, resourceid=None):
     body = json.dumps({
         'Status': status,
         'Reason': message,
         'StackId': event['StackId'],
         'RequestId': event['RequestId'],
         'LogicalResourceId': event['LogicalResourceId'],
-        'PhysicalResourceId': event['ResourceProperties']['Action'],
-        'Data': {}
+        'PhysicalResourceId': event['ResourceProperties']['Action'] if resourceid is None else resourceid,
+        'Data': {} if data is None else data
     })
+    print(body)
 
     request = Request(event['ResponseURL'], data=str.encode(body))
     request.add_header('Content-Type', '')
@@ -42,22 +48,49 @@ def execute(action, properties):
 
     client, function = action[0], action[1]
 
-    try:
-        client = boto3.client(client.lower())
-    except Exception as e:
-        return 'FAILED', f'boto3 error: {e}'
+    resource_id = None
+    response_data = {}
+    response_ref = properties.pop('_Ref', None)
+    response_getatt = properties.pop('_GetAtt', None)
 
-    try:
-        function = getattr(client, function)
-    except Exception as e:
-        return 'FAILED', f'boto3 error: {e}'
+    client = boto3.client(client.lower())
+    function = getattr(client, function)
+    type_conversions = []
+    for r in range(2):
+        try:
+            for tc in type_conversions:
+                if tc['valid_type'] == 'bool':
+                    Set(properties, tc['jmespath'].split('.'), bool(jmespath.search(tc['jmespath'], properties)))
+                elif tc['valid_type'] == 'int':
+                    Set(properties, tc['jmespath'].split('.'), int(jmespath.search(tc['jmespath'], properties)))
+                elif tc['valid_type'] == 'str':
+                    if tc['bad_type'] == 'dict':
+                        Set(properties, tc['jmespath'].split('.'), json.dumps(jmespath.search(tc['jmespath'], properties)))
+                    else:
+                        Set(properties, tc['jmespath'].split('.'), str(jmespath.search(tc['jmespath'], properties)))
+            response = function(**properties)
+        
+            if response_ref:
+                resource_id = jmespath.search(response_ref, response)
+            if response_getatt:
+                for k, v in response_getatt.items():
+                    response_data[k] = jmespath.search(v, response)
+    
+        except ParamValidationError as pve:
+            print('Invalid parameter type(s) found:')
+            for e in pve.args[0].split('\n')[1:]:
+                match = re.search(r"^Invalid type for parameter ([^,]+), .*, type: <class '([^']+)'>, valid types: <class '([^']+)'>$", e)
+                type_conversions.append({'jmespath': match.group(1), 'bad_type': match.group(2), 'valid_type': match.group(3)})
+            print(json.dumps(type_conversions))
+        except Exception as e:
+            print(e)
+            return 'FAILED', f'boto3 error: {e}', None, None
+        else:
+            break
+    else:
+        return 'FAILED', 'Retries exhausted', None, None
 
-    try:
-        function(**properties)
-    except Exception as e:
-        return 'FAILED', f'boto3 error: {e}'
-
-    return 'SUCCESS', 'Completed successfully'
+    return 'SUCCESS', 'Completed successfully', resource_id, response_data
 
 def handler(event, context):
     print(json.dumps(event))
@@ -69,10 +102,31 @@ def handler(event, context):
         print('Bad properties', properties)
         return sendResponse(event, context, 'FAILED', 'Missing required parameters')
 
+    if '_CustomName' in properties['Properties']:
+        stack_name = event['StackId'].split('/')[1]
+        logical_resource_id = event['LogicalResourceId']
+        if properties['Properties']['_CustomName'] not in properties['Properties'] or properties['Properties'][properties['Properties']['_CustomName']] == '':
+            properties['Properties'][properties['Properties']['_CustomName']] = f'{stack_name}-{logical_resource_id}-{CloudFormationRandomName()}'
+        else:
+            properties['Properties'][properties['Properties']['_CustomName']] = f"{stack_name}-{properties['Properties'][properties['Properties']['_CustomName']]}-{CloudFormationRandomName()}"
+            
+        del properties['Properties']['_CustomName']
+
     mode = properties['Mode']
 
     if request == mode or request in mode:
-        status, message = execute(properties['Action'], properties['Properties'])
-        return sendResponse(event, context, status, message)
+        status, message, resourceid, data = execute(properties['Action'], properties['Properties'])
+        return sendResponse(event, context, status, message, data, resourceid)
 
     return sendResponse(event, context, 'SUCCESS', 'No action taken')
+
+def Set(d, a, v):
+    if len(a) == 1:
+        if a[0] in d.keys():
+            d[a[0]] = v
+    else:
+        if a[0] in d.keys():
+            return Set(d[a[0]], a[1:], v)
+
+def CloudFormationRandomName():
+    return ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in range(12))

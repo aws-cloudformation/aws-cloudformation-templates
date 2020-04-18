@@ -2,12 +2,28 @@ Transform: Boto3
 
 Resources:
   Repo:
-    Type: AWS::CodeCommit::Repository
+    Type: Boto3::CodeCommit.create_repository
+    Mode: Create
     Properties:
-      RepositoryName: my-repo
+      _CustomName: repositoryName
+      _Ref: repositoryMetadata.repositoryId
+      _GetAtt:
+        Arn: repositoryMetadata.Arn
+        CloneUrlHttp: repositoryMetadata.cloneUrlHttp
+        CloneUrlSsh: repositoryMetadata.cloneUrlSsh
+        Name: repositoryMetadata.repositoryName
+      repositoryDescription: my-repo
+
+  RepoDelete:
+    Type: Boto3::CodeCommit.delete_repository
+    DependsOn: Repo
+    Mode: Delete
+    Properties:
+      repositoryName: !GetAtt Repo.Name
 
   AddReadme:
     Type: Boto3::CodeCommit.put_file
+    DependsOn: Repo
     Mode: Create
     Properties:
       repositoryName: !GetAtt Repo.Name
@@ -16,3 +32,18 @@ Resources:
       filePath: README.md
       commitMessage: Add another README.md
       name: CloudFormation
+
+Outputs:
+
+  Id:
+   Value: !Ref Repo
+
+  Arn:
+   Value: !GetAtt Repo.Arn
+
+  CloneUrlHttp:
+   Value: !GetAtt Repo.CloneUrlHttp
+
+  CloneUrlSsh:
+   Value: !GetAtt Repo.CloneUrlSsh
+
