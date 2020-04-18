@@ -54,11 +54,6 @@ def execute(action, properties):
     except Exception as e:
         return "FAILED", "boto3 error: {}".format(e)
 
-    properties = {
-        key[0].lower() + key[1:]: value
-        for key, value in properties.items()
-    }
-
     try:
         function(**properties)
     except Exception as e:

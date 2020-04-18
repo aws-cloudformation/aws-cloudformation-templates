@@ -10,9 +10,9 @@ Resources:
     Type: Boto3::CodeCommit.put_file
     Mode: Create
     Properties:
-      RepositoryName: !GetAtt Repo.Name
-      BranchName: master
-      FileContent: "Hello, world"
-      FilePath: README.md
-      CommitMessage: Add another README.md
-      Name: CloudFormation
+      repositoryName: !GetAtt Repo.Name
+      branchName: master
+      fileContent: "Hello, world"
+      filePath: README.md
+      commitMessage: Add another README.md
+      name: CloudFormation
