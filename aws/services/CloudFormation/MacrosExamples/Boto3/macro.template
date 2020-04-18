@@ -5,7 +5,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python2.7
-      CodeUri: lambda
+      CodeUri: lambda/resource.py
       Handler: resource.handler
       Policies: PowerUserAccess
 
@@ -13,7 +13,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.6
-      CodeUri: lambda
+      CodeUri: lambda/macro.py
       Handler: macro.handler
       Environment:
         Variables:
