@@ -53,12 +53,12 @@ Resources:
     Type: Boto3::CodeCommit.put_file
     Mode: Create
     Properties:
-      RepositoryName: !GetAtt Repo.Name
-      BranchName: master
-      FileContent: "Hello, world!"
-      FilePath: README.md
-      CommitMessage: Add a readme file
-      Name: CloudFormation
+      repositoryName: !GetAtt Repo.Name
+      branchName: master
+      fileContent: "Hello, world!"
+      filePath: README.md
+      commitMessage: Add a readme file
+      name: CloudFormation
 ```
 
 ## Features
@@ -88,7 +88,7 @@ The `Mode` may either be a string or a list of strings. For example:
 
 ### Resource properties
 
-The `Properties` of the resource will be passed to the specified boto3 method as arguments. The name of each property will be modified so that it started with a lower-case character so that you can use property names that look similar to other CloudFormation resource properties.
+The `Properties` of the resource will be passed to the specified boto3 method as arguments. The name of each property needs to match those defined in the `Boto3` library, they are therefore case sensitive.
 
 ### Controlling the order of execution
 
@@ -111,7 +111,7 @@ ChangeBinaryTypes:
 will result in running the equivalent of the following:
 
 ```python
-boto3.client("cloudformation").execute_change_set(changeSetName=<value of ChangeSet>, stackName=<value of StackName>)
+boto3.client("cloudformation").execute_change_set(ChangeSetName=<value of ChangeSet>, StackName=<value of StackName>)
 ```
 
 when the stack is created or updated.
