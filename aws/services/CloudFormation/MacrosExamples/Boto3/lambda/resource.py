@@ -30,7 +30,6 @@ def sendResponse(event, context, status, message, data=None, resourceid=None):
         'PhysicalResourceId': event['ResourceProperties']['Action'] if resourceid is None else resourceid,
         'Data': {} if data is None else data
     })
-    print(body)
 
     request = Request(event['ResponseURL'], data=str.encode(body))
     request.add_header('Content-Type', '')
@@ -56,6 +55,7 @@ def execute(action, properties):
     client = boto3.client(client.lower())
     function = getattr(client, function)
     type_conversions = []
+    drop_fields = []
     for r in range(2):
         try:
             for tc in type_conversions:
@@ -68,6 +68,9 @@ def execute(action, properties):
                         Set(properties, tc['jmespath'].split('.'), json.dumps(jmespath.search(tc['jmespath'], properties)))
                     else:
                         Set(properties, tc['jmespath'].split('.'), str(jmespath.search(tc['jmespath'], properties)))
+            for df in drop_fields:
+                del properties[df]
+
             response = function(**properties)
         
             if response_ref:
@@ -79,9 +82,19 @@ def execute(action, properties):
         except ParamValidationError as pve:
             print('Invalid parameter type(s) found:')
             for e in pve.args[0].split('\n')[1:]:
-                match = re.search(r"^Invalid type for parameter ([^,]+), .*, type: <class '([^']+)'>, valid types: <class '([^']+)'>$", e)
-                type_conversions.append({'jmespath': match.group(1), 'bad_type': match.group(2), 'valid_type': match.group(3)})
-            print(json.dumps(type_conversions))
+                if e.startswith('Invalid type for parameter'):
+                    match = re.search(r"^Invalid type for parameter ([^,]+), .*, type: <class '([^']+)'>, valid types: <class '([^']+)'>$", e)
+                    type_conversions.append({'jmespath': match.group(1), 'bad_type': match.group(2), 'valid_type': match.group(3)})
+                elif e.startswith('Unknown parameter in input'):
+                    match = re.search(r'^Unknown parameter in input: "([^"]+)",.*$',e)
+                    drop_fields.append(match.group(1))
+                else:
+                    print(e)
+            if (len(type_conversions) + len(drop_fields)) == 0:
+                print('No alterations possible.')
+                return 'FAILED', f'boto3 error: {pve}', None, None
+            print('Type conversions: ', json.dumps(type_conversions))
+            print('Fields to drop: ', json.dumps(drop_fields))
         except Exception as e:
             print(e)
             return 'FAILED', f'boto3 error: {e}', None, None
@@ -105,11 +118,9 @@ def handler(event, context):
     if '_CustomName' in properties['Properties']:
         stack_name = event['StackId'].split('/')[1]
         logical_resource_id = event['LogicalResourceId']
-        if properties['Properties']['_CustomName'] not in properties['Properties'] or properties['Properties'][properties['Properties']['_CustomName']] == '':
+        if properties['Properties']['_CustomName'] in properties['Properties']:
             properties['Properties'][properties['Properties']['_CustomName']] = f'{stack_name}-{logical_resource_id}-{CloudFormationRandomName()}'
-        else:
-            properties['Properties'][properties['Properties']['_CustomName']] = f"{stack_name}-{properties['Properties'][properties['Properties']['_CustomName']]}-{CloudFormationRandomName()}"
-            
+
         del properties['Properties']['_CustomName']
 
     mode = properties['Mode']
