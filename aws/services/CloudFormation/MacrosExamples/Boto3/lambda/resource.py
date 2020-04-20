@@ -43,7 +43,7 @@ def execute(action, properties):
     action = action.split('.')
 
     if len(action) != 2:
-        return 'FAILED', f"Invalid boto3 call: {'.'.join(action)}"
+        return 'FAILED', f"Invalid boto3 call: {'.'.join(action)}", None, None
 
     client, function = action[0], action[1]
 
@@ -113,7 +113,7 @@ def handler(event, context):
 
     if any(prop not in properties for prop in ('Action', 'Properties')):
         print('Bad properties', properties)
-        return sendResponse(event, context, 'FAILED', 'Missing required parameters'), None, None
+        return sendResponse(event, context, 'FAILED', 'Missing required parameters')
 
     if '_CustomName' in properties['Properties']:
         stack_name = event['StackId'].split('/')[1]
