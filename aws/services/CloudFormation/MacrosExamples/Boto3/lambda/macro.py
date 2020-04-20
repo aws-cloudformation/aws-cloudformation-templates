@@ -21,12 +21,15 @@ LAMBDA_ARN = os.environ['LAMBDA_ARN']
 def handle_template(request_id, template):
     for name, resource in template.get('Resources', {}).items():
         if resource['Type'].startswith(PREFIX):
+            default_mode = ['Create', 'Update']
+            if resource.get('Properties', {}).get('_DeleteAction', '') != '':
+                default_mode.append('Delete')
             resource.update({
                 'Type': 'Custom::Boto3',
                 'Version': '1.0',
                 'Properties': {
                     'ServiceToken': LAMBDA_ARN,
-                    'Mode': resource.get('Mode', ['Create', 'Update']),
+                    'Mode': resource.get('Mode', default_mode),
                     'Action': resource['Type'][len(PREFIX):],
                     'Properties': resource.get('Properties', {})
                 }

@@ -113,12 +113,12 @@ def handler(event, context):
 
     if any(prop not in properties for prop in ('Action', 'Properties')):
         print('Bad properties', properties)
-        return sendResponse(event, context, 'FAILED', 'Missing required parameters')
+        return sendResponse(event, context, 'FAILED', 'Missing required parameters'), None, None
 
     if '_CustomName' in properties['Properties']:
         stack_name = event['StackId'].split('/')[1]
         logical_resource_id = event['LogicalResourceId']
-        if properties['Properties']['_CustomName'] in properties['Properties']:
+        if properties['Properties']['_CustomName'] not in properties['Properties']:
             properties['Properties'][properties['Properties']['_CustomName']] = f'{stack_name}-{logical_resource_id}-{CloudFormationRandomName()}'
 
         del properties['Properties']['_CustomName']
@@ -126,7 +126,19 @@ def handler(event, context):
     mode = properties['Mode']
 
     if request == mode or request in mode:
-        status, message, resourceid, data = execute(properties['Action'], properties['Properties'])
+        action = properties['Action']
+        if request == 'Update':
+            properties['Properties'][properties['Properties']['_Ref']] = event['PhysicalResourceId']
+            if '_UpdateAction' in properties['Properties']:
+                action = '.'.join([action.split('.')[0], properties['Properties']['_UpdateAction']])
+        elif request =='Delete':
+            properties['Properties'][properties['Properties']['_Ref']] = event['PhysicalResourceId']
+            if '_DeleteAction' in properties['Properties']:
+                action = '.'.join([action.split('.')[0], properties['Properties']['_DeleteAction']])
+        properties['Properties'].pop('_UpdateAction', None)
+        properties['Properties'].pop('_DeleteAction', None)
+        print(f'Action determined: {action}')        
+        status, message, resourceid, data = execute(action, properties['Properties'])
         return sendResponse(event, context, status, message, data, resourceid)
 
     return sendResponse(event, context, 'SUCCESS', 'No action taken')

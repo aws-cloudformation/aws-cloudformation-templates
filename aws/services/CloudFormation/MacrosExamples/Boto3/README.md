@@ -86,6 +86,8 @@ The `Mode` may either be a string or a list of strings. For example:
 * `Mode: Delete`
 * `Mode: [Create, Update]`
 
+If not supplied this property will default to `[Create, Update]`.
+
 ### Resource properties
 
 The `Properties` of the resource will be passed to the specified boto3 method as arguments. The name of each property needs to match those defined in the `Boto3` library, they are therefore case sensitive.
@@ -96,25 +98,39 @@ There are some properties that enable special functionality when used. They have
 
 * _CustomName (optional)
 
-  This property is used to mimic the automatic naming capability of supported CloudFormation resources. The value supplied is the name of the `Boto3` property that you wish to be populated with a unique randomly generated name. If the corresponding property is not supplied or suppiled as an empty string the name generated will be of the form:
+  This property is used to mimic the automatic naming capability of supported CloudFormation resources. The value supplied is the name of the `Boto3` property that you wish to be populated with a unique randomly generated name. If used the corresponding property must not be supplied. The name generated will be of the form:
 
   `<StackName>-<LogicalResourceId>-<A random 12 alphumermic string>`
 
-  If the corresponding property is suplpied in addition to the `_CustomName` property then the name generated will use this property in place of the `LogicalResourceid`
-
-  Finally if the `_CustomName` property is not supplied at all no name will be generated and instead the values supplied in the `Boto3` function will be used.
-
-* _Ref (optional)
+* _Ref (optional*)
 
   This property is used to set the value of the `PhysicalResourceId` of the created resource. It therefore allows the `Ref` function be used on the resource to retrieve it.
 
   This property takes a [jmespath](https://jmespath.org/) string expression which is applied to the response of the `Boto3` function to extract the required value.
+
+  &ast;This property becomes mandatory if either of the `_UpdateAction` or `_DeleteAction` special properties are supplied.
+
+  If using this in conjunction with either `_UpdateAction` or `_DeleteAction` special properties then the property defined by this property will be populated with the value of the `PhysicalResourceId` so that Update and Delete actions on the resource can be carrried out.
 
 * _GetAtt (optional)
 
   This property is used in a similar way to the `_Ref` property but intead of populating the value of the `Ref` CloudFormation function call it allows the setting of the values returned by the `Fn::GetAtt` function.
 
   This property takes a dict of string and [jmespath](https://jmespath.org/) string expression key pairs, which are applied to the response of the `Boto3` function to extract the required value.
+
+* _UpdateAction (optional)
+
+  This property is used to override the `Boto3` function that will be called in case of an Update action on the stack. Using this means it it possible t0 define a single resource, with different actions, in the CloudFormation template for multiple actions (Create, Update and Delete).
+
+  This property is useful since `Boto3` has different function names for Create, Update (if possible) and Delete actions on an AWS resource. Without this property you would previously have had to define multple resources using different `Mode` property values.
+
+* _DeleteAction (optional)
+
+  This property is used to override the `Boto3` function that will be called in case of a Delete action on the stack. Using this means it it possible t0 define a single resource, with different actions, in the CloudFormation template for multiple actions (Create, Update and Delete).
+
+  This property is useful since `Boto3` has different function names for Create, Update (if possible) and Delete actions on an AWS resource. Without this property you would previously have had to define multple resources using different `Mode` property values.
+
+  Supplying this property and not suppliying a `Mode` property value will change the default value of `Mode` to be `[Create,Update,Delete]` since by using this property implies you wish to use the Delete `Mode`.
 
 There are examples in the section below of how each of these special properties can be used.
 
@@ -171,33 +187,6 @@ will create a CodeCommit Repository with the following capabilties:
 * `!GetAtt Repo.CloneUrlSsh` will return the repositoryMetadata.cloneUrlSsh value from the `boto3.client('codedeploy').create_repository(...)` function call.
 * `!GetAtt Repo.Name` will return the repositoryMetadata.repositoryName value from the `boto3.client('codedeploy').create_repository(...)` function call.
 
-
-A slightly modified version (by adding the `_CustomName` defined property `repositoryName` value) of the same resource:
-
-***Stack Name: SampleStack***
-```yaml
-  Repo:
-    Type: Boto3::CodeCommit.create_repository
-    Mode: Create
-    Properties:
-      _CustomName: repositoryName
-      _Ref: repositoryMetadata.repositoryId
-      _GetAtt:
-        Arn: repositoryMetadata.Arn
-        CloneUrlHttp: repositoryMetadata.cloneUrlHttp
-        CloneUrlSsh: repositoryMetadata.cloneUrlSsh
-        Name: repositoryMetadata.repositoryName
-      repositoryName: MyRepo
-      repositoryDescription: my-repo
-```
-
-will create a CodeCommit Repository with the following capabilties:
-
-* `!Ref Repo` will return the repositoryName that was generated automatically (`SampleStack-`<u>MyRepo</u>`-A1B2C3D4E5F6`).
-* `!GetAtt Repo.Arn` will return the repositoryMetadata.Arn value from the `boto3.client('codedeploy').create_repository(...)` function call.
-* `!GetAtt Repo.CloneUrlHttp` will return the repositoryMetadata.cloneUrlHttp value from the `boto3.client('codedeploy').create_repository(...)` function call.
-* `!GetAtt Repo.CloneUrlSsh` will return the repositoryMetadata.cloneUrlSsh value from the `boto3.client('codedeploy').create_repository(...)` function call.
-* `!GetAtt Repo.Name` will return the repositoryMetadata.repositoryName value from the `boto3.client('codedeploy').create_repository(...)` function call.
 
 ## Author
 
