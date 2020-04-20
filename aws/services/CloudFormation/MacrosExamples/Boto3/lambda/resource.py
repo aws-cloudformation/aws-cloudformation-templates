@@ -72,13 +72,15 @@ def execute(action, properties):
                 del properties[df]
 
             response = function(**properties)
-        
+
             if response_ref:
                 resource_id = jmespath.search(response_ref, response)
+                if resource_id is None:
+                    resource_id = jmespath.search(response_ref, properties)
             if response_getatt:
                 for k, v in response_getatt.items():
                     response_data[k] = jmespath.search(v, response)
-    
+
         except ParamValidationError as pve:
             print('Invalid parameter type(s) found:')
             for e in pve.args[0].split('\n')[1:]:
@@ -130,15 +132,22 @@ def handler(event, context):
         if request == 'Update':
             properties['Properties'][properties['Properties']['_Ref']] = event['PhysicalResourceId']
             if '_UpdateAction' in properties['Properties']:
-                action = '.'.join([action.split('.')[0], properties['Properties']['_UpdateAction']])
+                action = '.'.join([action.split('.')[0], properties['Properties']['_UpdateAction']['Method']])
+                if '_Ref' in properties['Properties']['_UpdateAction']:
+                    properties['Properties'][properties['Properties']['_UpdateAction']['_Ref']] = event['PhysicalResourceId']
         elif request =='Delete':
             properties['Properties'][properties['Properties']['_Ref']] = event['PhysicalResourceId']
             if '_DeleteAction' in properties['Properties']:
-                action = '.'.join([action.split('.')[0], properties['Properties']['_DeleteAction']])
+                action = '.'.join([action.split('.')[0], properties['Properties']['_DeleteAction']['Method']])
+                if '_Ref' in properties['Properties']['_DeleteAction']:
+                    properties['Properties'][properties['Properties']['_DeleteAction']['_Ref']] = event['PhysicalResourceId']
         properties['Properties'].pop('_UpdateAction', None)
         properties['Properties'].pop('_DeleteAction', None)
         print(f'Action determined: {action}')        
         status, message, resourceid, data = execute(action, properties['Properties'])
+        if resourceid is None and 'PhysicalResourceId' in event:
+            resourceid = event['PhysicalResourceId']
+        print(status, message, resourceid, data)
         return sendResponse(event, context, status, message, data, resourceid)
 
     return sendResponse(event, context, 'SUCCESS', 'No action taken')

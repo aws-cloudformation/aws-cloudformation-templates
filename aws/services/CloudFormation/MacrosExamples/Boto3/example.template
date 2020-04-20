@@ -3,30 +3,26 @@ Transform: Boto3
 Resources:
   Repo:
     Type: Boto3::CodeCommit.create_repository
-    Mode: Create
+    Mode: [Create, Delete]
     Properties:
       _CustomName: repositoryName
-      _Ref: repositoryMetadata.repositoryId
+      _Ref: repositoryMetadata.repositoryName
       _GetAtt:
         Arn: repositoryMetadata.Arn
         CloneUrlHttp: repositoryMetadata.cloneUrlHttp
         CloneUrlSsh: repositoryMetadata.cloneUrlSsh
-        Name: repositoryMetadata.repositoryName
+        Id: repositoryMetadata.repositoryId
+      _DeleteAction:
+        Method: delete_repository
+        _Ref: repositoryName
       repositoryDescription: my-repo
-
-  RepoDelete:
-    Type: Boto3::CodeCommit.delete_repository
-    DependsOn: Repo
-    Mode: Delete
-    Properties:
-      repositoryName: !GetAtt Repo.Name
 
   AddReadme:
     Type: Boto3::CodeCommit.put_file
     DependsOn: Repo
     Mode: Create
     Properties:
-      repositoryName: !GetAtt Repo.Name
+      repositoryName: !Ref Repo
       branchName: master
       fileContent: "Hello, world"
       filePath: README.md
@@ -35,8 +31,11 @@ Resources:
 
 Outputs:
 
-  Id:
+  Name:
    Value: !Ref Repo
+
+  Id:
+   Value: !GetAtt Repo.Id
 
   Arn:
    Value: !GetAtt Repo.Arn
