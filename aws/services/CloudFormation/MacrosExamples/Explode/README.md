@@ -1,6 +1,6 @@
 # Explode CloudFormation Macro
 
-The `Explode` macro provides a template-wide `Explode` property for CloudFormation resources. Similar to the Count macro, it will create multiple copies of a template Resource, but looks up values to inject into each copy in a Mapping.
+The `Explode` macro provides a template-wide `Explode` property for CloudFormation resources, conditions and outputs. Similar to the Count macro, it will create multiple copies of a template Resource, but looks up values to inject into each copy in a Mapping, and this capability is expanded to Condition and Output statements in the template.
 
 ## How to install and use the Explode macro in your AWS account
 
@@ -39,9 +39,9 @@ aws cloudformation deploy \
 
 To make use of the macro, add `Transform: Explode` to the top level of your CloudFormation template.
 
-Add a mapping (to the `Mappings` section of your template) which contains the instances of the resource values you want to use. Each entry in the mapping will be used for another copy of the resource, and the values inside it will be copied into that instance. The entry name will be appended to the template resource name, unless a value `ResourceName` is given, which if present will be used as the complete resource name.
+Add a mapping (to the `Mappings` section of your template) which defines the instances of each template statement you want to explode by instantiating multiple times. Each entry in the mapping will be used for another copy of the resource/condition/output, and the values inside it will be copied into that instance. The entry name will be appended to the statement's name, unless a value `ResourceName` is given, which if present will be used as the complete instance name.  Note `ResourceName` is only useful if exploding a single statement as otherwise it creates naming conflicts.
 
-For the resource you want to explode, add an `ExplodeMap` value at the top level pointing at the entry from your Mappings which should be used. You can use the same mapping against multiple resource entries.
+For each statement you want to explode, add an `ExplodeMap` value at the top level pointing at the entry from your Mappings which should be used. You can use the same mapping against multiple resource entries.
 
 Inside the resource properties, you can use `!Explode KEY` to pull the value of `KEY` out of your mapping.
 
