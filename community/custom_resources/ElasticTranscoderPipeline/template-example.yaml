@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform:
+  - AWS::Serverless-2016-10-31
+  - SamPolicyTemplateTranslator
+Description: >
+  ElasticTranscoder
+Parameters:
+  ElasticTranscoderPipelineLambda:
+    Type: String
+    Description: The Name of the Lambda function that create the ElasticTranscoder Pipeline
+    Default: "ElasticTranscoderPipeline"
+Resources:
+
+  InputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+
+  PipelineNotification:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ElasticTranscoderPipeline-topic
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - elastictranscoder.amazonaws.com
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName:
+              Ref: ElasticTranscoderPipelineLambda
+        - S3ReadPolicy:
+            BucketName:
+              Ref: InputBucket
+        - S3WritePolicy:
+            BucketName:
+              Ref: OutputBucket
+        - SNSPublishMessagePolicy:
+            TopicName:
+              Ref: PipelineNotification
+
+  ElasticTranscoderPipeline:
+    Type: Custom::ElasticTranscoderPipeline
+    Version: '1.0'
+    Properties:
+      Name: "ElasticTranscoderPipeline"
+      ServiceToken:
+        Fn::Join: 
+          - ""
+          - - Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:"
+            - Ref: ElasticTranscoderPipelineLambda
+      Role:
+        Fn::GetAtt: PipelineRole.Arn
+      InputBucket:
+        Ref: InputBucket
+      OutputBucket:
+        Ref: OutputBucket
+      Notifications:
+        Completed:
+          Ref: PipelineNotification
+        Error:
+          Ref: PipelineNotification
+        Progressing:
+          Ref: PipelineNotification
+        Warning:
+          Ref: PipelineNotification
+
+Outputs:
+  InputBucket:
+    Description: The Input S3 bucket
+    Value:
+      Ref: InputBucket
+  OutputBucket:
+    Description: The Output S3 bucket
+    Value:
+      Ref: OutputBucket
+  PipelineNotification:
+    Description: The SNS Notification for the pipeline events
+    Value:
+      Ref: PipelineNotification
+
