@@ -18,18 +18,10 @@ Resources:
   InputBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
-    Properties:
-      Tags:
-        - Key: PLATFORM
-          Value: ARCHITECTURE_LABS
 
   OutputBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
-    Properties:
-      Tags:
-        - Key: PLATFORM
-          Value: ARCHITECTURE_LABS
 
   PipelineNotification:
     Type: AWS::SNS::Topic
