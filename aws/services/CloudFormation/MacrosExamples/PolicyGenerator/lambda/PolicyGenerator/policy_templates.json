@@ -82,6 +82,93 @@
                     }
                 ]
             }
+        },
+        "DefaultS3BucketPolicy": {
+            "Description": "A sane default S3 Bucket Policy",
+            "Parameters": {
+                "Service": {
+                    "Description": "The service that is alllowed to Put object in that bucket"
+                },
+                "BucketName": {
+                    "Description": "The S3 bucket"
+                }
+            },
+            "Definition": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "AclCheck",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": {
+                                "Ref": "Service"
+                            }
+                        },
+                        "Action": "s3:GetBucketAcl",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:s3:::",
+                                    {
+                                        "Ref": "BucketName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Sid": "Write",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": {
+                                "Ref": "Service"
+                            }
+                        },
+                        "Action": "s3:PutObject",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:s3:::",
+                                    {
+                                        "Ref": "BucketName"
+                                    },
+                                    "/*"
+                                ]
+                            ]
+                        },
+                        "Condition": {
+                            "StringEquals": {
+                                "s3:x-amz-acl": "bucket-owner-full-control"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "DefaultTopicPolicy": {
+            "Description": "A sane default SNS Topic Policy",
+            "Parameters": {
+                "Service": {
+                    "Description": "The service that is alllowed to public to that SNS Topic"
+                }
+            },
+            "Definition": {
+                "Version": "2008-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": {
+                                "Ref": "Service"
+                            }
+                        },
+                        "Action": "sns:Publish",
+                        "Resource": "*"
+                    }
+                ]
+            }
         }
     }
 }

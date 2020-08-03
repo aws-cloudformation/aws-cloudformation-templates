@@ -14,11 +14,8 @@ policy_templates = PolicyTemplatesProcessor._read_json(POLICY_TEMPLATES_FILE)
 processor = PolicyTemplatesProcessor(policy_templates)
 
 
-def generate_kms_policy(policy: dict):
+def generate_policy(policy: dict):
     """This method will convert a Policy Name into a KMS Key policy."""
-    if 'PolicyName' in policy:
-        # This is a normal policy that should not be expanded
-        return policy
     policy_name = next(iter(policy))
     policy_parameters = policy[policy_name]
     try:
@@ -31,13 +28,17 @@ def handle_template(request_id, template):
     """Loop through the template and generate the given policy."""    
     for name, resource in template.get("Resources", {}).items():
         resource_type = resource["Type"]
+        if 'Version' in resource.get('Properties', {}).get("KeyPolicy", {}):
+            continue
         if resource_type == "AWS::KMS::Key":
             properties = resource['Properties']
             policy = properties["KeyPolicy"]
-            if 'Version' in policy:
-                # This is a norml policy
-                continue
-            properties["KeyPolicy"] = generate_kms_policy(policy)
+            properties["KeyPolicy"] = generate_policy(policy)
+        elif resource_type in ("AWS::SNS::TopicPolicy", "AWS::S3::BucketPolicy"):
+            properties = resource['Properties']
+            policy = properties["PolicyDocument"]
+            properties["PolicyDocument"] = generate_policy(policy)
+
     return template
 
 
