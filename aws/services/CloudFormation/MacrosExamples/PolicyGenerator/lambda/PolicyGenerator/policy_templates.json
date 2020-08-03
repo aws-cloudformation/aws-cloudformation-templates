@@ -1,0 +1,87 @@
+{
+    "Version": "0.0.1",
+    "Templates": {
+        "DefaultKeyPolicy": {
+            "Description": "A sane default KMS Key Policy",
+            "Parameters": {
+                "Administrator": {
+                    "Description": "Name of the IAM User with administration priviledge on the key"
+                },
+                "User": {
+                    "Description": "Name of the IAM User with decryption / encryption priviledge on the key"
+                }
+            },
+            "Definition": {
+                "Version": "2012-10-17",
+                "Id": "key-default-1",
+                "Statement": [
+                    {
+                        "Sid": "Enable IAM User Permissions",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                        },
+                        "Action": "kms:*",
+                        "Resource": "*"
+                    },
+                    {
+                        "Sid": "Allow administration of the key",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Fn::Sub": [
+                                    "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/${administrator}",
+                                    {
+                                        "administrator": {
+                                            "Ref": "Administrator"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "Action": [
+                            "kms:Create*",
+                            "kms:Describe*",
+                            "kms:Enable*",
+                            "kms:List*",
+                            "kms:Put*",
+                            "kms:Update*",
+                            "kms:Revoke*",
+                            "kms:Disable*",
+                            "kms:Get*",
+                            "kms:Delete*",
+                            "kms:ScheduleKeyDeletion",
+                            "kms:CancelKeyDeletion"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Sid": "Allow use of the key",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Fn::Sub": [
+                                    "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/${user}",
+                                    {
+                                        "user": {
+                                            "Ref": "User"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "Action": [
+                            "kms:DescribeKey",
+                            "kms:Encrypt",
+                            "kms:Decrypt",
+                            "kms:ReEncrypt*",
+                            "kms:GenerateDataKey",
+                            "kms:GenerateDataKeyWithoutPlaintext"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+        }
+    }
+}
