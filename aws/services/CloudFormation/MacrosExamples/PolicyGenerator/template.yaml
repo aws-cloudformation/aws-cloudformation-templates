@@ -19,6 +19,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: lambda/PolicyGenerator
+      Description: A CF Macro to generate IAM Policy for S3 Bucket, SNS Topic and KMS keys
       Handler: app.lambda_handler
       Runtime: python3.8
       Layers:
