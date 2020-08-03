@@ -7,7 +7,7 @@ import uuid
 import json
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # Reference: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-policy.html
 # Use the policy already defined in SAM
@@ -47,7 +47,6 @@ def handle_template(request_id, template):
         if 'Version' in properties.get(policy_key, {}):
             # This is a normal policy document
             continue
-        print (resource)
         properties[policy_key] = generate_policy(properties[policy_key])
         properties[policy_key]['Version'] = policy_version
     return template
@@ -71,4 +70,5 @@ def lambda_handler(event, context):
             "fragment": fragment,
             "errorMessage": str(e)
         }
+    logger.debug (json.dumps(response))
     return response

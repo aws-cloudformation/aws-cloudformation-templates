@@ -2,7 +2,7 @@
     "Version": "0.0.1",
     "Templates": {
         "DefaultKeyPolicy": {
-            "Description": "A sane default KMS Key Policy",
+            "Description": "A Sane default KMS Key Policy",
             "Parameters": {
                 "Administrator": {
                     "Description": "Name of the IAM User with administration priviledge on the key"
@@ -14,7 +14,7 @@
             "Definition": {
                 "Statement": [
                     {
-                        "Sid": "Enable IAM User Permissions",
+                        "Sid": "Root User has all priviledges",
                         "Effect": "Allow",
                         "Principal": {
                             "AWS": {
