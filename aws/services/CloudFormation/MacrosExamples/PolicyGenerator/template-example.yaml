@@ -19,3 +19,21 @@ Resources:
             Ref: Administrator
           User: 
             Ref: User
+
+  BucketPolicy: 
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: "CloudTrailBucket"
+      PolicyDocument: 
+        DefaultS3BucketPolicy:
+          Service: "cloudtrail.amazonaws.com"
+          BucketName: "CloudTrailBucket"
+
+  TopicPolicy: 
+    Type: AWS::SNS::TopicPolicy
+    Properties: 
+      Topics: "CloudTrailTopic"
+      PolicyDocument: 
+        DefaultTopicPolicy:
+          Service: "cloudtrail.amazonaws.com"
+
