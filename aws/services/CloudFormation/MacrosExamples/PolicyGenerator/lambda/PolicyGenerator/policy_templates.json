@@ -12,14 +12,14 @@
                 }
             },
             "Definition": {
-                "Version": "2012-10-17",
-                "Id": "key-default-1",
                 "Statement": [
                     {
                         "Sid": "Enable IAM User Permissions",
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                            "AWS": {
+                                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                            }
                         },
                         "Action": "kms:*",
                         "Resource": "*"
@@ -94,7 +94,6 @@
                 }
             },
             "Definition": {
-                "Version": "2012-10-17",
                 "Statement": [
                     {
                         "Sid": "AclCheck",
@@ -155,7 +154,6 @@
                 }
             },
             "Definition": {
-                "Version": "2008-10-17",
                 "Statement": [
                     {
                         "Effect": "Allow",
