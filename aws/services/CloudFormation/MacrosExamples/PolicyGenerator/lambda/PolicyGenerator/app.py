@@ -25,27 +25,29 @@ def generate_policy(policy: dict):
         policy_document['Id'] = f"{policy_name}-{policy_id}"
         return policy_document
     except Exception:
-        raise ValueError(f"Must specify valid parameter values for policy '{policy_name}'")
+        raise ValueError(f"Invalid Parameter values for policy '{policy_name}'")
 
 
 def handle_template(request_id, template):
     """Loop through the template and generate the given policy."""    
     for name, resource in template.get("Resources", {}).items():
         resource_type = resource["Type"]
-        if 'Version' in resource.get('Properties', {}).get("KeyPolicy", {}):
-            continue
-        properties = resource['Properties']
         if resource_type == "AWS::KMS::Key":
             policy_key = "KeyPolicy"
             policy_version = "2012-10-17"
-        elif resource_type in "AWS::S3::BucketPolicy":
+        elif resource_type == "AWS::S3::BucketPolicy":
             policy_key = "PolicyDocument"
             policy_version = "2012-10-17"
-        elif resource_type in "AWS::SNS::TopicPolicy":
+        elif resource_type == "AWS::SNS::TopicPolicy":
             policy_key = "PolicyDocument"
             policy_version = "2008-10-17"
         else:
             continue
+        properties = resource['Properties']
+        if 'Version' in properties.get(policy_key, {}):
+            # This is a normal policy document
+            continue
+        print (resource)
         properties[policy_key] = generate_policy(properties[policy_key])
         properties[policy_key]['Version'] = policy_version
     return template
@@ -67,5 +69,6 @@ def lambda_handler(event, context):
             "requestId": request_id,
             "status": "failure",
             "fragment": fragment,
+            "errorMessage": str(e)
         }
     return response

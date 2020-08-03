@@ -66,7 +66,6 @@ def lambda_handler(event, context):
             "requestId": request_id,
             "status": "failure",
             "fragment": fragment,
+            "errorMessage": str(e)
         }
-
-    print("response = " + json.dumps(response, indent=2))
     return response
