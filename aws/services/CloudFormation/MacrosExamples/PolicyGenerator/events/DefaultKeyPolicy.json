@@ -3,7 +3,7 @@
   "fragment": {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Transform": [
-      "SamPolicyTemplateTranslator"
+      "PolicyGenerator"
     ],
     "Parameters": {
       "Administrator": {
