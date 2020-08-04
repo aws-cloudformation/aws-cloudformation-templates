@@ -41,6 +41,9 @@ def handle_template(request_id, template):
         elif resource_type == "AWS::SNS::TopicPolicy":
             policy_key = "PolicyDocument"
             policy_version = "2008-10-17"
+        elif resource_type == "AWS::SQS::QueuePolicy":
+            policy_key = "PolicyDocument"
+            policy_version = "2012-10-17"
         else:
             continue
         properties = resource['Properties']
