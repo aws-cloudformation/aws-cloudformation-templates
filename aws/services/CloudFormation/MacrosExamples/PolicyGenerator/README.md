@@ -53,7 +53,7 @@ Resources:
 
 ### Supported Object
 
-So far only `AWS::KMS::Key/KeyPolicy`.
+So far only `AWS::KMS::Key`, `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`.
 
 ## Author
 
