@@ -44,7 +44,7 @@ def handle_template(template):
     """
     for name, resource in template.get("Resources", {}).items():
         logger.debug(f"Parsing Resource '{name}'")
-        visit(resource["Properties"],
+        visit(resource.get("Properties", {}),
               lambda s: 'Fn::Yaml2Json' == s, json.dumps)
     return template
 
