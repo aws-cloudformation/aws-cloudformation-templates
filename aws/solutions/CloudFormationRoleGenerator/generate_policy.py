@@ -1,8 +1,10 @@
-#!C:/Tools/Python38/python.exe
+#!/bin/env python
 """
-Generate a policy stub from a list of CloudTrail Events. This policy can then 
-be attached to a role and passed to a CICD pipeline.
-NOTE: That the policy is not scoped to the resource of the stack that is updated / maintained  
+Generate a policy stub from a list of CloudTrail Events. This policy can then
+be attached to a role and passed to a CICD pipeline. It allows you to use the
+"least privileged" principle on you CICD infrastructure pipelines. One short
+coming is that it does not scope the policy to the resources, but use a 
+wildcard resource instead.
 """
 from argparse import ArgumentParser, RawTextHelpFormatter
 from os import listdir
@@ -47,20 +49,23 @@ def generate_policy(args):
         raise ValueError(f"Invalid '--log-dir' parameter: no such directory {args.logs_dir}")
     onlyfiles = [f for f in listdir(args.logs_dir) if isfile(join(args.logs_dir, f))]
     user_records = []
-    actions = []
+    user_actions = []
     for f in onlyfiles:
-        logger.debug(f"Parsing {f} ...")
+        logger.debug("Processing %s ...", f)
         with gzip.open(join(args.logs_dir, f), "rb") as f:
             records = json.loads(f.read().decode('utf-8'))['Records']
             records = list(filter(lambda r: r.get('userIdentity', {}).get('userName', '') == args.username, records))
             records = list(sorted(records, key=lambda x: x['eventTime']))
-            actions.extend(list(map(lambda r: f"{r['eventSource']}:{r['eventName']}", records)))
+            actions = list(map(lambda r: f"{r['eventSource']}:{r['eventName']}", records))
             user_records.extend(records)
-    if args.user_events_output:
-        with open(args.user_events_output, "w") as user_events_output:
-            json.dump(user_records, user_events_output, indent=2)
+            user_actions.extend(actions)
 
-    user_policy = _generate_policy_from_actions(actions)
+    if args.records_output:
+        logger.debug("Writing records to '%s'", args.records_output)
+        with open(args.records_output, "w") as records_output:
+            json.dump(user_records, records_output, indent=2)
+
+    user_policy = _generate_policy_from_actions(user_actions)
     if args.validate:
         logger.debug("Validating policy ...")
         response = iam.create_policy(
@@ -73,10 +78,11 @@ def generate_policy(args):
         if policy_arn:
             iam.delete_policy(PolicyArn=policy_arn)
         else:
-            logger.warn("Failed to create the policy. Check if it is valid")
-    if args.user_policy_output:
-        with open(args.user_policy_output, "w") as user_policy_output:
-            json.dump(user_policy, user_policy_output, indent=2)
+            logger.warning("Failed to create the policy. Check if it is valid")
+    if args.policy_output:
+        logger.debug("Writing policy to '%s'", args.policy_output)
+        with open(args.policy_output, "w") as policy_output:
+            json.dump(user_policy, policy_output, indent=2)
     else:
         print(json.dumps(user_policy, indent=2))
 
@@ -88,21 +94,27 @@ def parse_command_line():
         description=__doc__,
         formatter_class=RawTextHelpFormatter)
     parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Run the program in debug mode',
+        required=False,
+        default=False)
+    parser.add_argument(
         '--logs-dir',
         help='The path where the logs were downloaded',
         metavar="DIR",
         required=True)
     parser.add_argument(
         '--username',
-        help='The EventUsername used to filter the events',
+        help='The EventUsername used to filter the events. Default to "StackDeveloper"',
         required=False, default='StackDeveloper')
     parser.add_argument(
-        '--user-events-output',
+        '--records-output',
         metavar="FILE",
-        help='If set, writes the user events records to file',
+        help='The name of the file where to store the records',
         required=False)
     parser.add_argument(
-        '--user-policy-output',
+        '--policy-output',
         metavar="FILE",
         help='If set, writes the policy to file',
         required=False)
@@ -116,8 +128,11 @@ def parse_command_line():
 
 
 def main():
+    """Main entrypoint"""
     args = parse_command_line()
     try:
+        if args.debug:
+            logger.setLevel(level=logging.DEBUG)
         return args.func(args)
     except Exception as e:
         logging.error(e, exc_info=True)
