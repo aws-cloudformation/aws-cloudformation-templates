@@ -1,11 +1,16 @@
 AWSTemplateFormatVersion: 2010-09-09
+Description: 'AWS CloudFormation Sample Template:
+  Sample template which will create an s3 bucket with deletion retention
+  enabled and a bucket policy to enable cross account acccess. The template
+  requires you to provide an AWS account ID to provide cross account access to,
+  and a globally unique name for an s3 bucket.'
 Parameters:
   BucketName:
     Type: String
     Description: 'The name of the S3 Bucket to create, make this unique'
   PublisherAccountID:
     Type: String
-    Description: 'The account ID of the Publisher with whom you are sharing access'    
+    Description: 'The AWS account ID with whom you are sharing access'
 Resources:
   S3BUCKET:
     Type: 'AWS::S3::Bucket'
