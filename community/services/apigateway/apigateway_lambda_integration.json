@@ -232,11 +232,21 @@
                 {
                   "Effect": "Allow",
                   "Action": [
-                    "logs:CreateLogGroup",
+                    "logs:CreateLogGroup"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
                     "logs:CreateLogStream",
                     "logs:PutLogEvents"
                   ],
-                  "Resource": "*"
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*"
+                  }
                 }
               ]
             }
