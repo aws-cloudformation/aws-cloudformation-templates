@@ -5,6 +5,7 @@ CloudFormation template transform macro: Explode
 import re
 import sys
 import logging
+import json
 
 EXPLODE_RE = re.compile(r'(?i)!Explode (?P<explode_key>\w+)')
 logger = logging.getLogger(__name__)
@@ -44,10 +45,10 @@ def replace_explode_in_string(value, map_data):
         try:
             replace_value = map_data[explode_key]
         except KeyError:
-            print("Missing item {} in mapping while processing {}: {}".format(
+            raise Exception ("Missing item {} in mapping while processing: {}\nMap Data:\n{}".format(
                 explode_key,
-                key,
-                value))
+                value,
+                json.dumps(map_data, indent=4)))
         if isinstance(replace_value, int):
             value = replace_value
             # No further explosion is possible on an int
@@ -125,7 +126,6 @@ if __name__ == "__main__":
     Relatedly, always outputs JSON.
     """
     if len(sys.argv) == 2:
-        import json
         filename = sys.argv[1]
         if filename.endswith(".yml") or filename.endswith(".yaml"):
             try:
