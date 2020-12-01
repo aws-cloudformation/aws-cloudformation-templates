@@ -142,4 +142,4 @@ if __name__ == "__main__":
             print("Test file needs to end .yaml, .yml or .json")
             sys.exit(1)
         new_fragment = handle_transform(loaded_fragment)
-        print(json.dumps(new_fragment))
+        print(json.dumps(new_fragment,indent=4))
