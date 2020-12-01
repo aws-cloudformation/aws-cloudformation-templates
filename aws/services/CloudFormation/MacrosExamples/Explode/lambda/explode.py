@@ -4,10 +4,10 @@ CloudFormation template transform macro: Explode
 
 import re
 import sys
-
+import logging
 
 EXPLODE_RE = re.compile(r'(?i)!Explode (?P<explode_key>\w+)')
-
+logger = logging.getLogger(__name__)
 
 def walk_resource(resource, map_data):
     """Recursively process a resource."""
@@ -29,7 +29,7 @@ def walk_resource(resource, map_data):
                 new_resource.append(replace_explode_in_string(value, map_data))
             else:
                 new_resource.append(value)
-           
+
     else:
         # if the resource is of type string
         new_resource = replace_explode_in_string(resource, map_data)
@@ -75,8 +75,7 @@ def handle_section_transform(section, mappings):
         except KeyError:
             # This resource refers to a mapping entry which doesn't exist, so
             # fail
-            print('Unable to find mapping for exploding object {}'.format(resource_name))
-            raise
+            raise Exception('Unable to find mapping for exploding object {}'.format(resource_name))
         resource_instances = explode_map_data.keys()
         for resource_instance in resource_instances:
             new_resource = walk_resource(resource, explode_map_data[resource_instance])
@@ -107,7 +106,8 @@ def handler(event, _context):
 
     try:
         fragment = handle_transform(fragment)
-    except:
+    except Exception as e:
+        logger.error(e.__str__())
         status = "failure"
 
     return {
