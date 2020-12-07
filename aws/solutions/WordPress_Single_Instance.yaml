@@ -108,7 +108,7 @@ Parameters:
     - cr1.8xlarge
     - cc2.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
-    Default: t2.nano
+    Default: t3.nano
     Description: WebServer EC2 instance type
     Type: String
   KeyName:
