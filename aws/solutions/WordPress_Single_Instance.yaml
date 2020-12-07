@@ -63,6 +63,13 @@ Parameters:
     - t2.small
     - t2.medium
     - t2.large
+    - t3.nano
+    - t3.micro
+    - t3.small
+    - t3.medium
+    - t3.large
+    - t3.xlarge
+    - t3.2xlarge
     - m3.medium
     - m3.large
     - m3.xlarge
@@ -204,6 +211,18 @@ Mappings:
       Arch: HVM64
     t2.small:
       Arch: HVM64
+    t3.nano:
+      Arch: HVM64
+    t3.micro:
+      Arch: HVM64
+    t3.small:
+      Arch: HVM64
+    t3.medium:
+      Arch: HVM64
+    t3.large:
+      Arch: HVM64
+    t3.2xlarge:
+      Arch: HVM64
   AWSRegionArch2AMI:
     ap-northeast-1:
       HVM64: ami-383c1956
@@ -238,6 +257,9 @@ Mappings:
     us-west-2:
       HVM64: ami-f0091d91
       HVMG2: ami-315f4850
+    af-south-1:
+      HVM64: ami-0576c852ff9d8e746
+      HVMG2: NOT_SUPPORTED
 Resources:
   WebServer:
     Type: AWS::EC2::Instance
