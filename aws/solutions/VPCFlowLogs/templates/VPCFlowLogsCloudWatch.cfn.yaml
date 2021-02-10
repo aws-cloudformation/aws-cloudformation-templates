@@ -109,7 +109,7 @@ Resources:
         - VPCFlowLogsCloudWatchKMSKeyCondition
         - !Ref VPCFlowLogsCloudWatchKMSKey
         - !Ref AWS::NoValue
-  VPCFlowLogstoCloudWatch:
+  VPCFlowLogsToCloudWatch:
     Type: AWS::EC2::FlowLog
     Properties:
       LogDestinationType: cloud-watch-logs
