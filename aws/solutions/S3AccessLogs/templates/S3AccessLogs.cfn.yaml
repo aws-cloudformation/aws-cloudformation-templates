@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template creates an S3 bucket that will be used for storing S3 Access Logs.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: S3 Access Logs Configuration
+        Parameters:
+          - S3AccessLogsBucketName
+          - S3AccessLogsBucketKMSKey
+          - S3AccessLogsBucketKeyEnabled
+    ParameterLabels:
+      S3AccessLogsBucketKeyEnabled:
+        default: S3 Access Logs Bucket Key Enabled
+      S3AccessLogsBucketKMSKey:
+        default: S3 Access Logs Bucket KMS Key
+      S3AccessLogsBucketName:
+        default: S3 Access Logs Bucket Name
+Parameters:
+  S3AccessLogsBucketKeyEnabled:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description:
+      Set to true to have Amazon S3 use an S3 Bucket Key with server-side encryption using KMS (SSE-KMS). If false, S3 Bucket Key is not enabled.
+      Note, will only be set if KMS Key parameter, "S3AccessLogsBucketKMSKey", was provided.
+    Type: String
+  S3AccessLogsBucketKMSKey:
+    AllowedPattern: '^$|^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription:
+      'Key ID example: 1234abcd-12ab-34cd-56ef-1234567890ab  Key ARN
+      example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Default: ''
+    Description:
+      (Optional) KMS Key ID or ARN to use for the default encryption. If empty, server-side encryption with Amazon S3-managed encryption keys (SSE-S3)
+      will be used. Note, will only be set if S3 Bucket parameter, "S3AccessLogsBucketName", was not provided, thus a new S3 bucket is being created.
+    Type: String
+  S3AccessLogsBucketName:
+    AllowedPattern: '^$|^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
+    ConstraintDescription:
+      S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Default: ''
+    Description:
+      (Optional) S3 Access Logs bucket name for where Amazon S3 should store server access log files. S3 bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created as a
+      destination for S3 server access logs, it will follow the format, aws-s3-access-logs-<account>-<region>
+    Type: String
+Conditions:
+  S3AccessLogsBucketNameCondition: !Not [!Equals [S3AccessLogsBucketName, '']]
+  S3AccessLogsBucketKMSKeyCondition: !Not [!Equals [!Ref S3AccessLogsBucketKMSKey, '']]
+Resources:
+  S3AccessLogsBucket:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: S3 access logs not enabled on this bucket, as this bucket stores the S3 access logs
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If
+        - S3AccessLogsBucketNameCondition
+        - !Ref S3AccessLogsBucketName
+        - !Sub aws-s3-access-logs-${AWS::AccountId}-${AWS::Region}
+      AccessControl: LogDeliveryWrite
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: !If
+                - S3AccessLogsBucketKMSKeyCondition
+                - 'aws:kms'
+                - 'AES256'
+              KMSMasterKeyID: !If
+                - S3AccessLogsBucketKMSKeyCondition
+                - !Ref S3AccessLogsBucketKMSKey
+                - !Ref AWS::NoValue
+            BucketKeyEnabled: !If
+              - S3AccessLogsBucketKMSKeyCondition
+              - !Ref S3AccessLogsBucketKeyEnabled
+              - !Ref AWS::NoValue
+      VersioningConfiguration:
+        Status: Enabled
+  S3AccessLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3AccessLogsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyNonSSLRequests
+            Effect: Deny
+            Action: s3:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${S3AccessLogsBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${S3AccessLogsBucket}/*
+            Principal: '*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+Outputs:
+  S3AccessLogsBucketName:
+    Description: S3 Access Logs Bucket Name
+    Value: !Ref S3AccessLogsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3AccessLogsBucketName'
