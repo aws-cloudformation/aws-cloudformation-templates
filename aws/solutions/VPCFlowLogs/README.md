@@ -44,4 +44,4 @@ templates.
 
 ## Instructions (Nested Stacks)
 
-1. Deploy [VPCFlowLogs.cfn.yaml](templates/VPCFlowLogs.cfn.yaml) template to enable VPC Flow Logs to CloudWatch Logs, S3, or both.
+1. Deploy [VPCFlowLogs-main.cfn.yaml](templates/VPCFlowLogs-main.cfn.yaml) template to enable VPC Flow Logs to CloudWatch Logs, S3, or both.
