@@ -25,6 +25,8 @@ Metadata:
         Parameters:
           - CreateVPCFlowLogsToS3
           - VPCFlowLogsBucketName
+          - VPCFlowLogsBucketKMSKey
+          - VPCFlowLogsBucketKeyEnabled
           - S3AccessLogsBucketName
       - Label:
           default: Templates Configuration
