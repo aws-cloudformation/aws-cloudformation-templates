@@ -35,9 +35,9 @@ Metadata:
           - TemplatesS3BucketRegion
     ParameterLabels:
       CreateVPCFlowLogsToCloudWatch:
-        default: Enable VPC flow logs to CloudWatch
+        default: Create VPC Flow Logs (CloudWatch)
       CreateVPCFlowLogsToS3:
-        default: Enable VPC flow logs to S3
+        default: Create VPC Flow Logs (S3)
       S3AccessLogsBucketName:
         default: S3 Access Logs Bucket Name
       TemplatesS3BucketName:
@@ -64,20 +64,14 @@ Metadata:
         default: VPC ID
 Parameters:
   CreateVPCFlowLogsToCloudWatch:
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'false'
-    Description:
-      Set to true to create VPC flow logs for the VPC and publish them to CloudWatch. If false, VPC flow logs will not be created/published to
-      CloudWatch.
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create VPC flow logs for the VPC and publish them to CloudWatch
     Type: String
   CreateVPCFlowLogsToS3:
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'false'
-    Description: Set to true to create VPC flow logs for the VPC and publish them to S3. If false, VPC flow logs will not be created/published to S3.
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create VPC flow logs for the VPC and publish them to S3
     Type: String
   S3AccessLogsBucketName:
     AllowedPattern: '^$|^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
@@ -100,9 +94,7 @@ Parameters:
     Description: The AWS Region where the Templates S3 bucket (TemplatesS3BucketName) is hosted.
     Type: String
   VPCFlowLogsBucketKeyEnabled:
-    AllowedValues:
-      - 'true'
-      - 'false'
+    AllowedValues: ['true', 'false']
     Default: 'false'
     Description:
       Set to true to have Amazon S3 use an S3 Bucket Key with server-side encryption using KMS (SSE-KMS). If false, S3 Bucket Key is not enabled.
@@ -150,19 +142,14 @@ Parameters:
     Description: Number of days to retain the VPC Flow Logs in CloudWatch
     Type: String
   VPCFlowLogsMaxAggregationInterval:
-    AllowedValues:
-      - 60
-      - 600
+    AllowedValues: [60, 600]
     Default: 600
     Description:
       The maximum interval of time during which a flow of packets is captured and aggregated into a flow log record. You can specify 60 seconds (1
       minute) or 600 seconds (10 minutes).
     Type: String
   VPCFlowLogsTrafficType:
-    AllowedValues:
-      - ACCEPT
-      - ALL
-      - REJECT
+    AllowedValues: [ACCEPT, ALL, REJECT]
     Default: REJECT
     Description: The type of traffic to log. You can log traffic that the resource accepts or rejects, or all traffic.
     Type: String
@@ -170,15 +157,15 @@ Parameters:
     Description: ID of the VPC (e.g., vpc-0343606e)
     Type: AWS::EC2::VPC::Id
 Rules:
-  EnableVPCFlowLogs:
+  CreateVPCFlowLogs:
     Assertions:
       - Assert: !Or
-          - !Equals [!Ref CreateVPCFlowLogsToCloudWatch, 'true']
-          - !Equals [!Ref CreateVPCFlowLogsToS3, 'true']
-        AssertDescription: To enable VPC Flow Logs, you must have CreateVPCFlowLogsToCloudWatch and/or CreateVPCFlowLogsToS3 set to 'true'
+          - !Equals [!Ref CreateVPCFlowLogsToCloudWatch, 'Yes']
+          - !Equals [!Ref CreateVPCFlowLogsToS3, 'Yes']
+        AssertDescription: To create VPC Flow Logs, you must have CreateVPCFlowLogsToCloudWatch and/or CreateVPCFlowLogsToS3 set to 'Yes'
 Conditions:
-  VPCFlowLogsToCloudWatchCondition: !Equals [!Ref CreateVPCFlowLogsToCloudWatch, 'true']
-  VPCFlowLogsToS3Condition: !Equals [!Ref CreateVPCFlowLogsToS3, 'true']
+  VPCFlowLogsToCloudWatchCondition: !Equals [!Ref CreateVPCFlowLogsToCloudWatch, 'Yes']
+  VPCFlowLogsToS3Condition: !Equals [!Ref CreateVPCFlowLogsToS3, 'Yes']
 Resources:
   VPCFlowLogsCloudWatchStack:
     Condition: VPCFlowLogsToCloudWatchCondition

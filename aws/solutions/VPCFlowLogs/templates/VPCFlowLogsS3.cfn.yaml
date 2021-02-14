@@ -124,6 +124,7 @@ Resources:
         - Key: Name
           Value: VPC Flow Logs S3
   VPCFlowLogsBucket:
+    Condition: VPCFlowLogsNewBucketCondition
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub aws-vpcflowlogs-${AWS::AccountId}-${AWS::Region}
@@ -155,6 +156,7 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
   VPCFlowLogsBucketPolicy:
+    Condition: VPCFlowLogsNewBucketCondition
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref VPCFlowLogsBucket
