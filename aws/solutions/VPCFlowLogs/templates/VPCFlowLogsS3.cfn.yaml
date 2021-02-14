@@ -104,7 +104,7 @@ Parameters:
     Type: AWS::EC2::VPC::Id
 Conditions:
   S3AccessLogsCondition: !Not [!Equals [!Ref S3AccessLogsBucketName, '']]
-  VPCFlowLogsNewBucketCondition: !Not [!Equals [!Ref VPCFlowLogsBucketName, '']]
+  VPCFlowLogsNewBucketCondition: !Equals [!Ref VPCFlowLogsBucketName, '']
   VPCFlowLogsBucketKMSKeyCondition: !Not [!Equals [!Ref VPCFlowLogsBucketKMSKey, '']]
 Resources:
   VPCFlowLogstoS3:
@@ -113,8 +113,8 @@ Resources:
       LogDestinationType: s3
       LogDestination: !If
         - VPCFlowLogsNewBucketCondition
-        - !Sub arn:aws:s3:::${VPCFlowLogsBucketName}
         - !GetAtt VPCFlowLogsBucket.Arn
+        - !Sub arn:aws:s3:::${VPCFlowLogsBucketName}
       LogFormat: !Ref VPCFlowLogsLogFormat
       MaxAggregationInterval: !Ref VPCFlowLogsMaxAggregationInterval
       ResourceId: !Ref VPCID
