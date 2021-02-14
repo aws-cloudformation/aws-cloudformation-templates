@@ -8,35 +8,10 @@ Metadata:
           default: S3 Access Logs Configuration
         Parameters:
           - S3AccessLogsBucketName
-          - S3AccessLogsBucketKMSKey
-          - S3AccessLogsBucketKeyEnabled
     ParameterLabels:
-      S3AccessLogsBucketKeyEnabled:
-        default: S3 Access Logs Bucket Key Enabled
-      S3AccessLogsBucketKMSKey:
-        default: S3 Access Logs Bucket KMS Key
       S3AccessLogsBucketName:
         default: S3 Access Logs Bucket Name
 Parameters:
-  S3AccessLogsBucketKeyEnabled:
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'false'
-    Description:
-      Set to true to have Amazon S3 use an S3 Bucket Key with server-side encryption using KMS (SSE-KMS). If false, S3 Bucket Key is not enabled.
-      Note, will only be set if KMS Key parameter, "S3AccessLogsBucketKMSKey", was provided.
-    Type: String
-  S3AccessLogsBucketKMSKey:
-    AllowedPattern: '^$|^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
-    ConstraintDescription:
-      'Key ID example: 1234abcd-12ab-34cd-56ef-1234567890ab  Key ARN
-      example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Default: ''
-    Description:
-      (Optional) KMS Key ID or ARN to use for the default encryption. If empty, server-side encryption with Amazon S3-managed encryption keys (SSE-S3)
-      will be used. Note, will only be set if S3 Bucket parameter, "S3AccessLogsBucketName", was not provided, thus a new S3 bucket is being created.
-    Type: String
   S3AccessLogsBucketName:
     AllowedPattern: '^$|^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
     ConstraintDescription:
@@ -49,7 +24,6 @@ Parameters:
     Type: String
 Conditions:
   S3AccessLogsBucketNameCondition: !Not [!Equals [!Ref S3AccessLogsBucketName, '']]
-  S3AccessLogsBucketKMSKeyCondition: !Not [!Equals [!Ref S3AccessLogsBucketKMSKey, '']]
 Resources:
   S3AccessLogsBucket:
     Metadata:
@@ -72,18 +46,7 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: !If
-                - S3AccessLogsBucketKMSKeyCondition
-                - 'aws:kms'
-                - 'AES256'
-              KMSMasterKeyID: !If
-                - S3AccessLogsBucketKMSKeyCondition
-                - !Ref S3AccessLogsBucketKMSKey
-                - !Ref AWS::NoValue
-            BucketKeyEnabled: !If
-              - S3AccessLogsBucketKMSKeyCondition
-              - !Ref S3AccessLogsBucketKeyEnabled
-              - !Ref AWS::NoValue
+              SSEAlgorithm: 'AES256'
       VersioningConfiguration:
         Status: Enabled
   S3AccessLogsBucketPolicy:
