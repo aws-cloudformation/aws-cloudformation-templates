@@ -48,7 +48,7 @@ Parameters:
       destination for S3 server access logs, it will follow the format, aws-s3-access-logs-<account>-<region>
     Type: String
 Conditions:
-  S3AccessLogsBucketNameCondition: !Not [!Equals [S3AccessLogsBucketName, '']]
+  S3AccessLogsBucketNameCondition: !Not [!Equals [!Ref S3AccessLogsBucketName, '']]
   S3AccessLogsBucketKMSKeyCondition: !Not [!Equals [!Ref S3AccessLogsBucketKMSKey, '']]
 Resources:
   S3AccessLogsBucket:
