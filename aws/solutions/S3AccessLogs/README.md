@@ -18,11 +18,8 @@ This solution creates an S3 bucket to be used as a destination for S3 server acc
 
 - Creates a new S3 bucket with encryption.
   - If no bucket name is specified, then bucket name will follow this syntax: `aws-s3-access-logs-<account>-<region>`
-  - By default, server-side encryption with Amazon S3-managed encryption keys
-    [SSE-S3](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html) that uses `AES-256`.
-  - If KMS Key is provided, then server-side encryption is done with the specified KMS CMK
-    ([SSE-KMS](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html))
-    - An option is provided to enable the use of an [S3 Bucket Key](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/enable-bucket-key.html).
+  - Server-side encryption with Amazon S3-managed encryption keys
+    [SSE-S3](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html) that uses `AES-256` is used.
 
 ## Instructions
 
