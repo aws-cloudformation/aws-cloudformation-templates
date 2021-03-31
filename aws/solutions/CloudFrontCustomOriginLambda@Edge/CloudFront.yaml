@@ -801,12 +801,6 @@ Outputs:
     Export:
       Name:      !Sub '${AppName}-${Environment}-alb-external-access-ingrees-sg'
 
-  EC2InstanceSGID:
-    Description: "EC2 Instance Security Group ID"
-    Value:       !Ref 'EC2InstanceSG'
-    Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-sg'
-
   EC2InstanceDNS:
     Description: "EC2 Instance DNS Name"
     Value:       !GetAtt 'EC2Instance.PrivateDnsName'
