@@ -18,6 +18,7 @@ LAMBDA_ARN = os.environ["LAMBDA_ARN"]
 
 s3_client = boto3.client("s3")
 
+
 def handle_template(request_id, template):
     new_resources = {}
 
@@ -25,8 +26,19 @@ def handle_template(request_id, template):
         if resource["Type"] == "AWS::S3::Object":
             props = resource["Properties"]
 
-            if len([prop for prop in resource["Properties"] if prop in ["Body", "Base64Body", "Source"]]) != 1:
-                raise Exception("You must specify exactly one of: Body, Base64Body, Source")
+            if (
+                len(
+                    [
+                        prop
+                        for prop in resource["Properties"]
+                        if prop in ["Body", "Base64Body", "Source"]
+                    ]
+                )
+                != 1
+            ):
+                raise Exception(
+                    "You must specify exactly one of: Body, Base64Body, Source"
+                )
 
             target = props["Target"]
 
@@ -57,6 +69,7 @@ def handle_template(request_id, template):
         template["Resources"][name] = resource
 
     return template
+
 
 def handler(event, context):
     try:
