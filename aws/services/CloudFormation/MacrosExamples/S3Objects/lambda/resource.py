@@ -31,7 +31,7 @@ def sendResponse(event, context, status, message):
             "StackId": event["StackId"],
             "RequestId": event["RequestId"],
             "LogicalResourceId": event["LogicalResourceId"],
-            "PhysicalResourceId": "s3://{}/{}".format(bucket, key),
+            "PhysicalResourceId": f"s3://{bucket}/{key}",
             "Data": {
                 "Bucket": bucket,
                 "Key": key,
@@ -106,4 +106,4 @@ def handler(event, context):
 
         return sendResponse(event, context, "SUCCESS", "Deleted")
 
-    return sendResponse(event, context, "FAILED", "Unexpected: {}".format(request))
+    return sendResponse(event, context, "FAILED", f"Unexpected: {request}")
