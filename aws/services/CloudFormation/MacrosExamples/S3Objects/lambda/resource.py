@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,10 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-from urllib2 import build_opener, HTTPHandler, Request
+from urllib.request import build_opener, HTTPHandler, Request
 import base64
 import boto3
-import httplib
+import http.client
 import json
 
 s3_client = boto3.client("s3")
@@ -39,7 +39,7 @@ def sendResponse(event, context, status, message):
         }
     )
 
-    request = Request(event["ResponseURL"], data=body)
+    request = Request(event["ResponseURL"], data=body.encode("utf-8"))
     request.add_header("Content-Type", "")
     request.add_header("Content-Length", len(body))
     request.get_method = lambda: "PUT"
