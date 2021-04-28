@@ -27,16 +27,19 @@ Metadata:
           - LambdaLogLevel
           - LambdaRoleName
           - LambdaFunctionName
-          - LogGroupRetention
+          - LambdaLogsLogGroupRetention
+          - LambdaLogsCloudWatchKMSKey
     ParameterLabels:
       LambdaFunctionName:
         default: Lambda Function Name
       LambdaLogLevel:
         default: Lambda Log Level
+      LambdaLogsCloudWatchKMSKey:
+        default: CloudWatch Logs KMS Key for Lambda logs
+      LambdaLogsLogGroupRetention:
+        default: Lambda Log Group Retention
       LambdaRoleName:
         default: Lambda Role Name
-      LogGroupRetention:
-        default: Log Group Retention
       NumberOfRouteTables:
         default: Number of Route Tables
       NumberOfSecurityGroups:
@@ -59,7 +62,7 @@ Metadata:
         default: VPC Peering Connection ID
 Parameters:
   LambdaFunctionName:
-    AllowedPattern: '^[\w-]{0,64}$'
+    AllowedPattern: '^[\w-]{1,64}$'
     ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
     Default: CR-TagVpcPeeringConnections
     Description: Lambda Function Name for Custom Resource
@@ -68,16 +71,24 @@ Parameters:
     AllowedValues: [INFO, DEBUG]
     Default: INFO
     Type: String
+  LambdaLogsCloudWatchKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Default: ''
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
+      encryption keys.
+    Type: String
+  LambdaLogsLogGroupRetention:
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+    Default: 14
+    Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
+    Type: String
   LambdaRoleName:
     AllowedPattern: '^[\w+=,.@-]{1,64}$'
     ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [+, =, ., @, -]
     Default: Lambda-Role-CR-TagVpcPeeringConnections
     Description: Lambda Execution Role Name for the Custom Resource to Tag VPC Peering Connections
-    Type: String
-  LogGroupRetention:
-    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
-    Default: 14
-    Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
     Type: String
   NumberOfRouteTables:
     AllowedValues: [1, 2, 3, 4, 5, 6]
@@ -107,12 +118,12 @@ Parameters:
     Description: Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
     Type: List<AWS::EC2::SecurityGroup::Id>
   TemplatesS3BucketName:
-    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
+    AllowedPattern: '^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
     ConstraintDescription:
-      Templates bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+      Templates S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
     Description:
-      S3 bucket name for the AWS CloudFormation Templates. Bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It
-      cannot start or end with a hyphen (-).
+      Templates S3 bucket name for the CloudFormation templates. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
     Type: String
   TemplatesS3BucketRegion:
     Description: AWS Region where the S3 bucket (TemplatesS3BucketName) is hosted.
@@ -141,8 +152,9 @@ Resources:
       Parameters:
         LambdaFunctionName: !Ref LambdaFunctionName
         LambdaLogLevel: !Ref LambdaLogLevel
+        LambdaLogsCloudWatchKMSKey: !Ref LambdaLogsCloudWatchKMSKey
+        LambdaLogsLogGroupRetention: !Ref LambdaLogsLogGroupRetention
         LambdaRoleName: !Ref LambdaRoleName
-        LogGroupRetention: !Ref LogGroupRetention
         PeerName: !Ref PeerName
         VPCPeeringConnectionId: !Ref VPCPeeringConnectionId
   VPCPeeringUpdatesStack:

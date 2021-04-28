@@ -23,6 +23,7 @@ Metadata:
           - PeerOwnerId
           - PeerRoleARN
           - PeerVPCID
+          - PeerVPCCIDR
     ParameterLabels:
       NumberOfRouteTables:
         default: Number of Route Tables
@@ -94,12 +95,12 @@ Parameters:
     Description: Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
     Type: List<AWS::EC2::SecurityGroup::Id>
   TemplatesS3BucketName:
-    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
+    AllowedPattern: '^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
     ConstraintDescription:
-      Templates bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+      Templates S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
     Description:
-      S3 bucket name for the AWS CloudFormation Templates. Bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It
-      cannot start or end with a hyphen (-).
+      Templates S3 bucket name for the CloudFormation templates. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
     Type: String
   TemplatesS3BucketRegion:
     Description: AWS Region where the S3 bucket (TemplatesS3BucketName) is hosted.

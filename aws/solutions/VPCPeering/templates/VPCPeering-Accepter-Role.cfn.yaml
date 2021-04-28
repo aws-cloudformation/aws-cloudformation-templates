@@ -22,7 +22,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W11
-            reason: Lab - Allow * in resource, restricting to principal account.
+            reason: Allow * in resource, as only allowed AWS accounts can assume this role
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -32,6 +32,9 @@ Resources:
             Principal:
               AWS: !Split [',', !Ref PeerOwnerIds]
       Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
       Policies:
         - PolicyName: AcceptVPCPeering
           PolicyDocument:
