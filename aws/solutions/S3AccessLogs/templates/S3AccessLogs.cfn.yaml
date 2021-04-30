@@ -1,25 +1,25 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  This template creates an S3 bucket that will be used for storing S3 Access Logs.
+  This template creates an Amazon S3 bucket that will be used for storing S3 server access logs.
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: S3 Access Logs Configuration
+          default: S3 Server Access Logs Configuration
         Parameters:
           - S3AccessLogsBucketName
     ParameterLabels:
       S3AccessLogsBucketName:
-        default: S3 Access Logs Bucket Name
+        default: S3 Server Access Logs Bucket Name
 Parameters:
   S3AccessLogsBucketName:
-    AllowedPattern: '^$|^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
+    AllowedPattern: '^$|^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
     ConstraintDescription:
       S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
     Default: ''
     Description:
-      (Optional) S3 Access Logs bucket name for where Amazon S3 should store server access log files. S3 bucket name can include numbers, lowercase
-      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created as a
+      (Optional) S3 Server Access Logs bucket name for where Amazon S3 should store server access log files. S3 bucket name can include numbers,
+      lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created as a
       destination for S3 server access logs, it will follow the format, aws-s3-access-logs-<account>-<region>
     Type: String
 Conditions:
@@ -30,7 +30,8 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W35
-            reason: S3 access logs not enabled on this bucket, as this bucket stores the S3 access logs
+            reason:
+              Amazon S3 server access logs not enabled on this bucket, as this bucket is the target for storing all Amazon S3 server access logs.
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !If
@@ -46,7 +47,7 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: 'AES256'
+              SSEAlgorithm: AES256
       VersioningConfiguration:
         Status: Enabled
   S3AccessLogsBucketPolicy:
@@ -67,7 +68,7 @@ Resources:
                 aws:SecureTransport: false
 Outputs:
   S3AccessLogsBucketName:
-    Description: S3 Access Logs Bucket Name
+    Description: S3 Server Access Logs Bucket Name
     Value: !Ref S3AccessLogsBucket
     Export:
       Name: !Sub '${AWS::StackName}-S3AccessLogsBucketName'
