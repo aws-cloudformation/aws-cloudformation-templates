@@ -33,7 +33,6 @@ Parameters:
   VPCFlowLogsCloudWatchKMSKey:
     AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
     ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Default: ''
     Description:
       (Optional) KMS Key ARN to use for encrypting the VPC flow logs data. If empty, encryption is enabled with CloudWatch Logs managing the
       server-side encryption keys.
@@ -53,19 +52,14 @@ Parameters:
     Description: Number of days to retain the VPC Flow Logs in CloudWatch
     Type: String
   VPCFlowLogsMaxAggregationInterval:
-    AllowedValues:
-      - 60
-      - 600
+    AllowedValues: [60, 600]
     Default: 600
     Description:
       The maximum interval of time during which a flow of packets is captured and aggregated into a flow log record. You can specify 60 seconds (1
       minute) or 600 seconds (10 minutes).
     Type: String
   VPCFlowLogsTrafficType:
-    AllowedValues:
-      - ACCEPT
-      - ALL
-      - REJECT
+    AllowedValues: [ACCEPT, ALL, REJECT]
     Default: REJECT
     Description: The type of traffic to log. You can log traffic that the resource accepts or rejects, or all traffic.
     Type: String
@@ -88,6 +82,9 @@ Resources:
               Service:
                 - vpc-flow-logs.amazonaws.com
       Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
       Policies:
         - PolicyName: CloudWatchLogGroup
           PolicyDocument:
