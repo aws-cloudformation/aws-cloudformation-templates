@@ -153,7 +153,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
@@ -166,11 +166,11 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
-      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer CIDR, ${PeerName}
       GroupId: !Select [1, !Ref SecurityGroupIds]
       CidrIp: !Ref PeerVPCCIDR
   PeerIngressRule3:
@@ -179,7 +179,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
@@ -192,7 +192,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
@@ -205,7 +205,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
@@ -218,7 +218,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W42
-            reason: Lab - "Ingress Rule with -1"
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
