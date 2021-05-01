@@ -117,7 +117,7 @@ Parameters:
     Description: Create AWS resources (IAM role & instnace profile)to support seamless domain join Windows EC2 instances
     Type: String
   DomainDNSName:
-    AllowedPattern: '[a-zA-Z0-9-]+..+'
+    AllowedPattern: '[a-zA-Z0-9-]+\..+'
     Description: Fully qualified name of the on-premises directory, such as corp.example.com
     MaxLength: 25
     MinLength: 3
@@ -132,7 +132,7 @@ Parameters:
     Description: DNS or domain controller servers for the on-premises directory.
     Type: String
   DomainNetBiosName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Description: Short name of your existing directory, such as CORP
     MaxLength: 15
     MinLength: 1
@@ -151,7 +151,7 @@ Parameters:
     NoEcho: true
     Type: String
   LambdaFunctionName:
-    AllowedPattern: '^[\w-]{0,64}$'
+    AllowedPattern: '^[\w-]{1,64}$'
     ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
     Default: CR-ADConnector
     Description: Lambda Function Name for Custom Resource.
@@ -167,7 +167,7 @@ Parameters:
     Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
     Type: String
   LambdaLogsCloudWatchKMSKey:
-    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
     ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
     Default: ''
     Description:
