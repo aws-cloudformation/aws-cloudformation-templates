@@ -53,12 +53,12 @@ Metadata:
         default: VPC ID
 Parameters:
   AWSManagedADDomainDNSName:
-    AllowedPattern: '[a-zA-Z0-9-]+..+'
+    AllowedPattern: '[a-zA-Z0-9-]+\..+'
     Default: awsmad.lab
     Description: Fully qualified domain name for the AWS Managed Microsoft AD directory, such as corp.example.com.
     Type: String
   AWSManagedADDomainNetBiosName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Default: AWSMAD
     Description: NetBIOS name for your domain, such as CORP.
     MaxLength: 15
@@ -103,7 +103,7 @@ Parameters:
     Description: ID of the private subnet 2 in Availability Zone 2 (e.g., subnet-a0246dcd)
     Type: AWS::EC2::Subnet::Id
   SecretsManagerDomainCredentialsSecretsKMSKey:
-    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
     ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
     Default: ''
     Description:
