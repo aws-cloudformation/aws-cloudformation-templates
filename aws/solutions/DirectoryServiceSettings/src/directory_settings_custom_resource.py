@@ -32,9 +32,7 @@ except Exception as error:
     helper.init_failure(error)
 
 if TYPE_CHECKING:
-    from typing import List
-    from typing import Tuple
-    from typing import Union
+    from typing import List, Tuple, Union
 
 
 def get_directory_alias_and_sso_enabled_status(directory_id: str) -> Union[Tuple[str, bool], None]:
@@ -70,7 +68,7 @@ def get_registered_topics(directory_id: str) -> List[str]:
     return registered_topics
 
 
-def register_directory_monitoring_topic(directory_id: str, topic: str):
+def register_directory_monitoring_topic(directory_id: str, topic: str) -> None:
     """Register SNS topic for directory monitoring.
 
     Args:
@@ -84,7 +82,7 @@ def register_directory_monitoring_topic(directory_id: str, topic: str):
         logger.debug(f"register_topic_response = {json.dumps(response, default=str)}")
 
 
-def deregister_directory_monitoring_topic(directory_id: str, topic: str):
+def deregister_directory_monitoring_topic(directory_id: str, topic: str) -> None:
     """Deregister SNS topic for directory monitoring.
 
     Args:
@@ -107,7 +105,7 @@ def create_directory_alias(directory_id: str, alias: str, existing_alias: str) -
         existing_alias: Existing directory alias
 
     Raises:
-        Exception: Directory already has a different alias. Use existing alias for the 'DirectoryAlias' CloudFormation parameter.
+        ValueError: Directory already has a different alias. Use existing alias for the 'DirectoryAlias' CloudFormation parameter.
 
     Returns:
         The directory alias, either the new alias created, or the existing alias that was already configured.
@@ -121,10 +119,10 @@ def create_directory_alias(directory_id: str, alias: str, existing_alias: str) -
         return alias
     else:
         error_message = f"Directory already has a different alias.  Use '{existing_alias}' for the 'DirectoryAlias' CloudFormation parameter."
-        raise Exception(error_message)
+        raise ValueError(error_message)
 
 
-def enable_directory_sso(directory_id: str, existing_sso_enabled: bool):
+def enable_directory_sso(directory_id: str, existing_sso_enabled: bool) -> None:
     """Enables single sign-on for the directory.
 
     Args:
@@ -139,7 +137,7 @@ def enable_directory_sso(directory_id: str, existing_sso_enabled: bool):
         logger.info("Directory was already enabled for SSO")
 
 
-def disable_directory_sso(directory_id: str, existing_sso_enabled: bool):
+def disable_directory_sso(directory_id: str, existing_sso_enabled: bool) -> None:
     """Disables single sign-on for the directory.
 
     Args:
@@ -163,34 +161,30 @@ def create_and_update(event, context):
         event: event data
         context: runtime information
 
-    Raises:
-        Exception: Captures all exceptions.
     """
-    try:
-        logger.info(f"{event['RequestType']} Event")
-        logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
-        directory_id: str = event["ResourceProperties"]["DirectoryId"]
-        create_alias: str = event["ResourceProperties"]["CreateDirectoryAlias"]
-        enable_sso: str = event["ResourceProperties"]["EnableDirectorySSO"]
-        alias: str = event["ResourceProperties"]["DirectoryAlias"]
-        topic: str = event["ResourceProperties"]["DirectoryMonitoringTopicName"]
-        # Directory Monitoring
-        register_directory_monitoring_topic(directory_id, topic)
-        # Existing Alias & SSO Status
-        existing_alias, existing_sso_status = get_directory_alias_and_sso_enabled_status(directory_id)
-        logger.info(f"existing_alias={existing_alias} --- existing_sso_status={existing_sso_status}")
-        # Directory Alias
-        if create_alias == "Yes":
-            create_directory_alias(directory_id, alias, existing_alias)
-            helper.Data.update({"AliasUrl": f"https://{alias}.awsapps.com"})
-        # Directory SSO
-        if enable_sso == "Yes":
-            enable_directory_sso(directory_id, existing_sso_status)
-        else:
-            disable_directory_sso(directory_id, existing_sso_status)
+    logger.info(f"{event['RequestType']} Event")
+    logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
+    directory_id: str = event["ResourceProperties"]["DirectoryId"]
+    create_alias: str = event["ResourceProperties"]["CreateDirectoryAlias"]
+    enable_sso: str = event["ResourceProperties"]["EnableDirectorySSO"]
+    alias: str = event["ResourceProperties"]["DirectoryAlias"]
+    topic: str = event["ResourceProperties"]["DirectoryMonitoringTopicName"]
+    # Directory Monitoring
+    register_directory_monitoring_topic(directory_id, topic)
+    # Existing Alias & SSO Status
+    existing_alias, existing_sso_status = get_directory_alias_and_sso_enabled_status(directory_id)
+    logger.info(f"existing_alias={existing_alias} --- existing_sso_status={existing_sso_status}")
+    # Directory Alias
+    if create_alias == "Yes":
+        create_directory_alias(directory_id, alias, existing_alias)
+        helper.Data.update({"AliasUrl": f"https://{alias}.awsapps.com"})
+    else:
         helper.Data.update({"AliasUrl": ""})
-    except Exception as error:
-        raise error
+    # Directory SSO
+    if enable_sso == "Yes":
+        enable_directory_sso(directory_id, existing_sso_status)
+    else:
+        disable_directory_sso(directory_id, existing_sso_status)
 
 
 @helper.delete
@@ -201,25 +195,20 @@ def delete(event, context):
         event: event data
         context: runtime information
 
-    Raises:
-        Exception: Captures all exceptions.
     """
-    try:
-        logger.info("Delete Event")
-        logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
-        directory_id: str = event["ResourceProperties"]["DirectoryId"]
-        topic: str = event["ResourceProperties"]["DirectoryMonitoringTopicName"]
-        # Directory Monitoring
-        deregister_directory_monitoring_topic(directory_id, topic)
-        # Existing Alias & SSO Status
-        existing_alias, existing_sso_status = get_directory_alias_and_sso_enabled_status(directory_id)
-        # Directory Alias
-        if existing_alias:
-            logger.info("Directory Alias by design cannot be modified. Skipped!")
-        # Directory SSO
-        disable_directory_sso(directory_id, existing_sso_status)
-    except Exception as error:
-        raise error
+    logger.info("Delete Event")
+    logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
+    directory_id: str = event["ResourceProperties"]["DirectoryId"]
+    topic: str = event["ResourceProperties"]["DirectoryMonitoringTopicName"]
+    # Directory Monitoring
+    deregister_directory_monitoring_topic(directory_id, topic)
+    # Existing Alias & SSO Status
+    existing_alias, existing_sso_status = get_directory_alias_and_sso_enabled_status(directory_id)
+    # Directory Alias
+    if existing_alias:
+        logger.info("Directory Alias by design cannot be modified. Skipped!")
+    # Directory SSO
+    disable_directory_sso(directory_id, existing_sso_status)
 
 
 def lambda_handler(event, context):
