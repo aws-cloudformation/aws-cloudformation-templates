@@ -1,0 +1,2 @@
+- name: Yor GitHub Action
+  uses: bridgecrewio/yor-action@0.2.0
