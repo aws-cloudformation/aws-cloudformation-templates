@@ -90,7 +90,7 @@ Parameters:
     Description: Directory ID
     Type: String
   DirectoryName:
-    AllowedPattern: '[a-zA-Z0-9-]+..+'
+    AllowedPattern: '[a-zA-Z0-9-]+\..+'
     Description: Fully qualified name of the on-premises directory, such as corp.example.com
     MaxLength: 25
     MinLength: 3
@@ -120,14 +120,14 @@ Parameters:
       AD domain.
     Type: String
   DomainMember1NetBIOSName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Default: SERVER1
     Description: NetBIOS name of Domain Member 1 (using inline SSM association). Note, if computer name existed in AD before, delete from AD first.
     MaxLength: 15
     MinLength: 1
     Type: String
   DomainMember2NetBIOSName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Default: SERVER2
     Description:
       NetBIOS name of Domain Member 2 (using SSM association via instance id). Note, if computer name existed in AD before, delete from AD first.
@@ -135,14 +135,14 @@ Parameters:
     MinLength: 1
     Type: String
   DomainMember3NetBIOSName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Default: SERVER3
     Description: NetBIOS name of Domain Member 3 (using SSM association via tag). Note, if computer name existed in AD before, delete from AD first.
     MaxLength: 15
     MinLength: 1
     Type: String
   DomainMember4NetBIOSName:
-    AllowedPattern: '[a-zA-Z0-9\-]+'
+    AllowedPattern: '[a-zA-Z0-9-]+'
     Default: SERVER4
     Description: NetBIOS name of Domain Member 4 (AmazonLinux2)
     MaxLength: 15
@@ -365,14 +365,14 @@ Resources:
         Fn::Base64: !Sub |
           # Set HostName
           LowerEc2Name=$(echo ${DomainMember4NetBIOSName} | tr '[:upper:]' '[:lower:]')
-          sudo hostnamectl set-hostname $LowerEc2Name
+          hostnamectl set-hostname $LowerEc2Name
           # Set TimeZone
-          # sudo sed -i 's|^ZONE=.*|ZONE="America/New_York"|' /etc/sysconfig/clock
-          # sudo ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
+          # sed -i 's|^ZONE=.*|ZONE="America/New_York"|' /etc/sysconfig/clock
+          # ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
           # Patch System Up
-          sudo yum update -y
+          yum update -y
           # Reboot
-          sudo reboot
+          reboot
   JoinDomainAssociationInstances:
     Type: AWS::SSM::Association
     Properties:
