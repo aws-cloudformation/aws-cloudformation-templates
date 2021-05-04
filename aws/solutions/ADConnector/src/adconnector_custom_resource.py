@@ -50,7 +50,7 @@ def get_adconnector_parameters(params: dict) -> dict:
         "ConnectSettings": {
             "VpcId": params["ADCONNECTOR_VPCID"],
             "SubnetIds": [params["ADCONNECTOR_SUBNET_ID1"], params["ADCONNECTOR_SUBNET_ID2"]],
-            "CustomerDnsIps": params["DOMAIN_DNS_SERVERS"].replace(", ", ",").split(","),
+            "CustomerDnsIps": params["DOMAIN_DNS_SERVERS"].split(", "),
             "CustomerUserName": secret.get("username"),
         },
     }
@@ -64,22 +64,16 @@ def create(event, context) -> str:
         event: event data
         context: runtime information
 
-    Raises:
-        Exception: Captures all exceptions.
-
     Returns:
         ADConnectorDirectoryResourceID
     """
-    try:
-        logger.info("Create Event")
-        logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
-        adconnector_params = get_adconnector_parameters(event["ResourceProperties"])
-        response = ds_client.connect_directory(**adconnector_params)
-        logger.info(f"connect_directory_response = {json.dumps(response, default=str)}")
-        helper.PhysicalResourceId = response["DirectoryId"]
-        return helper.PhysicalResourceId
-    except Exception as error:
-        raise error
+    logger.info("Create Event")
+    logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
+    adconnector_params = get_adconnector_parameters(event["ResourceProperties"])
+    response = ds_client.connect_directory(**adconnector_params)
+    logger.info(f"connect_directory_response = {json.dumps(response, default=str)}")
+    helper.PhysicalResourceId = response["DirectoryId"]
+    return helper.PhysicalResourceId
 
 
 @helper.update
@@ -90,14 +84,9 @@ def update(event, context):
         event: event data
         context: runtime information
 
-    Raises:
-        Exception: Captures all exceptions.
     """
-    try:
-        logger.info("Update Event")
-        logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
-    except Exception as error:
-        raise error
+    logger.info("Update Event")
+    logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
 
 
 @helper.delete
@@ -108,19 +97,14 @@ def delete(event, context):
         event: event data
         context: runtime information
 
-    Raises:
-        Exception: Captures all exceptions.
     """
-    try:
-        logger.info("Delete Event")
-        logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
-        helper.PhysicalResourceId = event.get("PhysicalResourceId")
-        directory_id = helper.PhysicalResourceId
-        logger.info(f"directory_id = {directory_id}")
-        response = ds_client.delete_directory(DirectoryId=directory_id)
-        logger.info(f"delete_directory_response = {json.dumps(response, default=str)}")
-    except Exception as error:
-        raise error
+    logger.info("Delete Event")
+    logger.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
+    helper.PhysicalResourceId = event.get("PhysicalResourceId")
+    directory_id = helper.PhysicalResourceId
+    logger.info(f"directory_id = {directory_id}")
+    response = ds_client.delete_directory(DirectoryId=directory_id)
+    logger.info(f"delete_directory_response = {json.dumps(response, default=str)}")
 
 
 def lambda_handler(event, context):

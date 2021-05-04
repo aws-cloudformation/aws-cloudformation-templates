@@ -1,4 +1,5 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
+set -e
 
 # Builds a lambda package from a single Python 3 module with pip dependencies.
 # This is a modified version of the AWS packaging instructions:
@@ -22,7 +23,7 @@ create_package() {
 
 # Includes Python Script & Dependencies (if any)
 make_zip() {
-    cd .package || exit
+    cd .package
     zip -r ../"${SCRIPT_NAME}".zip ./*
     echo -e "\n### SCRIPT DIRECTORY:      ${SCRIPT_DIRECTORY}"
     echo -e "\n### LAMBDA ZIP FILE:       ${SCRIPT_NAME}.zip"
