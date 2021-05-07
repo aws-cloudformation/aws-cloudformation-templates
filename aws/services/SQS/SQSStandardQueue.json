@@ -43,7 +43,7 @@
   "Mappings": {},
   "Conditions": {
     "CreateDeadLetterQueue" : {"Fn::Equals" : [{"Ref" : "UsedeadletterQueue"}, "true"]},
-	  "IsKmsExist": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "KmsMasterKeyIdForSqs"}]}]}
+    "IsKmsExist": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "KmsMasterKeyIdForSqs"}]}]}
     },
   "Resources": {
     "SQSQueue":{
@@ -53,7 +53,7 @@
       "MaximumMessageSize": {"Ref":"MaximumMessageSize"},
       "MessageRetentionPeriod": {"Ref":"MessageRetentionPeriod"},
       "ReceiveMessageWaitTimeSeconds":{"Ref":"ReceiveMessageWaitTimeSeconds"},
-	    "KmsMasterKeyId": {"Fn::If" : ["IsKmsExist",{"Ref":"KmsMasterKeyIdForSqs"}, { "Ref" : "AWS::NoValue" }] },
+      "KmsMasterKeyId": {"Fn::If" : ["IsKmsExist",{"Ref":"KmsMasterKeyIdForSqs"}, { "Ref" : "AWS::NoValue" }] },
       "RedrivePolicy": {
       "Fn::If" : [
         "CreateDeadLetterQueue",
