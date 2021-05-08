@@ -29,7 +29,7 @@
       "Default": "false"
     },
      "VisibilityTimeout": {
-      "Description": "This should be longer than the time it would take to process and delete a message, this should not exceed 12 hours.",
+      "Description": "Time in seconds. This should be longer than the time it would take to process and delete a message, this should not exceed 12 hours.",
       "Type": "Number",
       "Default": "5"
     },
