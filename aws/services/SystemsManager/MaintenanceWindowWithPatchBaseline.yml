@@ -52,10 +52,10 @@ Resources:
         Type: "AWS::SSM::MaintenanceWindowTask"
         Properties:
             WindowId: !Ref SSMMaintenanceWindow
-            Targets: 
+            Targets:
               - 
                 Key: "WindowTargetIds"
-                Values: 
+                Values:
                   - !Ref SSMMaintenanceWindowTarget
             TaskArn: "AWS-RunPatchBaseline"
             ServiceRoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM"
@@ -64,11 +64,11 @@ Resources:
             MaxConcurrency: "2"
             MaxErrors: "1"
             Name: "DevPatchTask"
-            TaskInvocationParameters: 
+            TaskInvocationParameters:
                 MaintenanceWindowRunCommandParameters:
-                    Parameters: 
-                        Operation: 
+                    Parameters:
+                        Operation:
                           - "Install"
-                        RebootOption: 
+                        RebootOption:
                           - "RebootIfNeeded"
                     TimeoutSeconds: 600
