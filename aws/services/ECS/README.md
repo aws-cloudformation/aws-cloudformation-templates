@@ -21,9 +21,9 @@ Each of the service stacks has default values prefilled for launching a simple N
 
 ## Fully Public Container
 
-![public subnet public load balancer](images/public-task-public-loadbalancer.png)
+![public subnet public load balancer](images/public-task-public-loadbalancer.svg)
 
-This architecture deploys your container into its own VPC, inside a public facing network subnet. The containers are hosted with direct access to the internet, and they are also accessible to other clients on the internet via a public facing appliation load balancer.
+This architecture deploys your container into its own VPC, inside a public facing network subnet. The containers are hosted with direct access to the internet, and they are also accessible to other clients on the internet via a public facing application load balancer.
 
 ### Run in AWS Fargate
 
@@ -41,7 +41,7 @@ This architecture deploys your container into its own VPC, inside a public facin
 
 ## Publicly Exposed Service with Private Networking
 
-![private subnet public load balancer](images/private-task-public-loadbalancer.png)
+![private subnet public load balancer](images/private-task-public-loadbalancer.svg)
 
 This architecture deploys your container into a private subnet. The containers do not have direct internet access, or a public IP address. Their outbound traffic must go out via a NAT gateway, and receipients of requests from the containers will just see the request orginating from the IP address of the NAT gateway. However, inbound traffic from the public can still reach the containers because there is a public facing load balancer that can proxy traffic from the public to the containers in the private subnet.
 
@@ -61,7 +61,7 @@ This architecture deploys your container into a private subnet. The containers d
 
 ## Internal Service with Private Networking
 
-![private subnet private load balancer](images/private-task-private-loadbalancer.png)
+![private subnet private load balancer](images/private-task-private-loadbalancer.svg)
 
 This architecture deploys your container in a private subnet, with no direct internet access. Outbound traffic from your container goes through an NAT gateway, and receipients of requests from the containers will just see the request orginating from the IP address of the NAT gateway. There is no acess to the container for the public. Instead there is a private, internal load balancer that only accepts traffic from other containers in the cluster. This is ideal for an internal service that is used by other services, but should not be used directly by the public.
 
