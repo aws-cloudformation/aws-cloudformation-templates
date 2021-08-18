@@ -19,8 +19,8 @@ Parameters:
     Type: String
     Description: New account password
     MinLength: '1'
-    MaxLength: '41'
-    ConstraintDescription: the password must be between 1 and 41 characters
+    MaxLength: '38'
+    ConstraintDescription: the password must be between 1 and 38 characters
 Resources:
   CFNUser:
     Type: AWS::IAM::User
