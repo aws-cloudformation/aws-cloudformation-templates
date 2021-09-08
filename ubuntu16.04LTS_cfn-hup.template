@@ -1,0 +1,147 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Installing Cloudformation helper scripts in Ubuntu 16.04 LTS",
+
+  "Parameters" : {
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+
+    "InstanceType" : {
+      "Description" : "WebServer EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.small",
+      "AllowedValues" : [ "t1.micro", "t2.nano", "t2.micro", "t2.small", "t2.medium", "t2.large", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c1.medium", "c1.xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "g2.2xlarge", "g2.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge", "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"]
+,
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "SSHLocation" : {
+      "Description" : "The IP address range that can be used to SSH to the EC2 instances",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+   }
+
+
+  },
+
+  "Mappings": {
+    "AWSRegionAMIEC2" : {
+      "us-east-1"        : {"Ubuntu16" : "ami-d15a75c7"},
+      "us-west-2"        : {"Ubuntu16" : "ami-746aba14"},
+      "us-west-1"        : {"Ubuntu16" : "ami-a9a8e4c9"},
+      "eu-west-1"        : {"Ubuntu16" : "ami-844e0bf7"},
+      "eu-central-1"     : {"Ubuntu16" : "ami-a9a557c6"},
+      "ap-northeast-1"   : {"Ubuntu16" : "ami-d82efcb9"},
+      "ap-southeast-1"   : {"Ubuntu16" : "ami-d554f1b6"},
+      "ap-southeast-2"   : {"Ubuntu16" : "ami-0bc1f168"}
+             }
+         },
+
+         
+"Resources" : {
+    "EC2Instance" : {
+      "Type" : "AWS::EC2::Instance",
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : "PT7M",
+          "Count"   : "1"
+        }
+      },
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "full_install" : [ "install_and_enable_cfn_hup" ]
+          },
+          "install_and_enable_cfn_hup" : {
+            "files" : {
+                        "/etc/cfn/cfn-hup.conf" : {
+                          "content" : { "Fn::Join" : ["", [
+                            "[main]\n",
+                            "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                            "region=", { "Ref" : "AWS::Region" }, "\n"
+                          ]]},
+                          "mode"    : "000400",
+                          "owner"   : "root",
+                          "group"   : "root"
+                        },
+                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                          "content": { "Fn::Join" : ["", [
+                            "[cfn-auto-reloader-hook]\n",
+                            "triggers=post.update\n",
+                            "path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init\n",
+                            "action=/opt/aws/bin/cfn-init -v ",
+                            "         --stack ", { "Ref" : "AWS::StackName" },
+                            "         --resource EC2Instance ",
+                            "         --configsets full_install ",
+                            "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                            "runas=root\n"
+                          ]]}
+                        },
+                       "/lib/systemd/system/cfn-hup.service": {
+                            "content": { "Fn::Join" : ["", [
+                            "[Unit]\n",
+                            "Description=cfn-hup daemon\n\n",
+                            "[Service]\n",
+                            "Type=simple\n",
+                            "ExecStart=/opt/aws/bin/cfn-hup\n", 
+                            "Restart=always\n\n",
+                            "[Install]\n",
+                            "WantedBy=multi-user.target"]]}
+                             }
+                  },  
+            "commands" : {
+                  "01enable_cfn_hup" : {
+                      "command" : "systemctl enable cfn-hup.service"
+                  },
+                  "02start_cfn_hup" : {
+                      "command" : "systemctl start cfn-hup.service"
+                  }
+              }
+           }
+        }
+      },
+      "Properties" : {
+        "InstanceType" : { "Ref" : "InstanceType" },
+        "SecurityGroups" : [ { "Ref" : "InstanceSecurityGroup" } ],
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId" : {"Fn::FindInMap": [ "AWSRegionAMIEC2", { "Ref": "AWS::Region" },"Ubuntu16"]},
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+             "#!/bin/bash -xe\n",
+             "apt-get update -y\n",
+             "apt-get install -y python-setuptools\n",
+             "mkdir -p /opt/aws/bin\n",
+             "wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+             "python -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-latest.tar.gz\n",
+              "/opt/aws/bin/cfn-init -v ",
+             "         --stack ", { "Ref" : "AWS::StackName" },
+             "         --resource EC2Instance ",
+             "         --configsets full_install ",
+             "         --region ", { "Ref" : "AWS::Region" }, "\n",
+
+             "/opt/aws/bin/cfn-signal -e $? ",
+             "         --stack ", { "Ref" : "AWS::StackName" },
+             "         --resource EC2Instance ",
+             "         --region ", { "Ref" : "AWS::Region" }, "\n"
+            ]]}}}
+    },
+    "InstanceSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable SSH access via port 22",
+        "SecurityGroupIngress" : [ {
+          "IpProtocol" : "tcp",
+          "FromPort" : "22",
+          "ToPort" : "22",
+          "CidrIp" : { "Ref" : "SSHLocation"}
+        } ]
+      }
+    }
+  }
+}
