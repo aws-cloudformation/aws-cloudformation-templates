@@ -1,0 +1,97 @@
+# Example of cross-account, same-region, S3 replication using customer-managed KMS keys for encryption.
+# The source and destination resources should be deployed to the same region in different AWS Accounts.
+# Deploy the destination account resources first.
+# The destination S3 bucket must exist before configuring replication on the source bucket.
+# CloudFormation stack name: replication-demo
+# Source bucket name syntax: {stack-name}-{source-account}-bucket
+# Destination bucket name syntax: {stack-name}-{destination-account}-bucket
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Example of cross-account, same-region, S3 replication (v2) using server-side
+  encryption with a customer-managed KMS key.  Create a symmetric KMS key with
+  an alias, and a destination S3 bucket with default encryption and versioning
+  enabled. Allow the source account access to the destination S3 bucket and KMS
+  key for replication.
+
+Parameters:
+  AccountIdSource:
+    Description: 'Account Id of the source AWS Account for replication (ie: 123456789012).'
+    Type: String
+
+Resources:
+  # Create a customer managed, symmetric KMS Key used by the destination S3 bucket.
+  KmsKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: !Sub ${AWS::StackName}-${AWS::AccountId}-key-policy
+        Statement:
+        - Sid: Allow destination account access to KMS key in destination account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: '*'
+        - Sid: Allow source account access to KMS key in destination account
+          Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${AccountIdSource}:root
+          Action:
+            - kms:Encrypt
+            - kms:ReEncrypt*
+            - kms:GenerateDataKey*
+            - kms:DescribeKey
+          Resource: '*'
+
+  # Create a KMS Key alias.
+  KmsKeyAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub alias/${AWS::StackName}-${AWS::AccountId}-kms-key
+      TargetKeyId: !Ref KmsKey
+
+  # Create an S3 bucket for the destination of S3 replication.
+  S3BucketDestination:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-${AWS::AccountId}-bucket
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref KmsKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration: # Public access is not required for replication.
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration: # Versioning must be enabled for replication.
+        Status: Enabled
+
+  # S3 Bucket Policy to allow replication from source account.
+  S3BucketDestinationPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref S3BucketDestination
+      PolicyDocument:
+        Id: !Sub ${AWS::StackName}-${AWS::AccountId}-bucket-policy
+        Version: 2012-10-17
+        Statement:
+          # Allow replication rule in source account to put objects in destination bucket.
+          - Sid: Allow source account access to destination bucket
+            Effect: Allow
+            Principal:
+              AWS: !Ref AccountIdSource # Only the Account Id of the source account is needed as the principal.
+            Action:
+              - s3:ReplicateDelete
+              - s3:ReplicateObject
+              - s3:ReplicateTags
+              - s3:GetObjectVersionTagging
+              - s3:ObjectOwnerOverrideToBucketOwner
+            Resource: !Sub
+              - ${varBucketArn}/*
+              - varBucketArn: !GetAtt S3BucketDestination.Arn
