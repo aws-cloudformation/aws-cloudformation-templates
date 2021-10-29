@@ -4,6 +4,8 @@
 
 Example of cross-account, same-region, S3 bucket replication (v2) using server-side encryption with customer-managed KMS keys.
 
+![Diagram](./images/s3-replication-diagram.png)
+
 ## Notes
 
 - The source and destination resources should be deployed to the same region in different AWS Accounts.
