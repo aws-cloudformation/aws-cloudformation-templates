@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Empty VPC
+Resources:
+  MyVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: MyVPC
+  IGW:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties: {}
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref IGW
+  SubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      CidrBlock: 10.0.1.0/24
+      VpcId: !Ref MyVPC
