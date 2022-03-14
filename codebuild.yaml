@@ -14,7 +14,7 @@ Resources:
         Webhook: true
         FilterGroups:
           - - Type: EVENT
-              Pattern: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+              Pattern: PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
             - Type: BASE_REF
               Pattern: !Sub  refs/heads/master$
       Environment:
