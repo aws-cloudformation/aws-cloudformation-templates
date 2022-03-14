@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS CodeBuild Project
+Description: AWS CodeBuild Project for AWS CICD Pipeline
 
 Resources:  
   CodeBuildProject:
