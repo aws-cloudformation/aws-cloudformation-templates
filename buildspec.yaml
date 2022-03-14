@@ -6,6 +6,8 @@
 #   parameter-store:
 #     LOGIN_PASSWORD: /CodeBuild/dockerLoginPassword
 
+#Just an update
+
 phases:
   # install:
   #   commands:
