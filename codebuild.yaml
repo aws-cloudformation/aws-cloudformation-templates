@@ -1,5 +1,19 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS CodeBuild Project for AWS CICD Pipeline
+Description: CI/CD Pipeline for AWS Resource Deployment
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: fatuboy
+  GitHubReporsitoryName:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: aws-cloudformation-templates
+  GitHubBranch:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: master
 
 Resources:  
   CodeBuildProject:
@@ -14,15 +28,15 @@ Resources:
         Webhook: true
         FilterGroups:
           - - Type: EVENT
-              Pattern: PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED
+              Pattern: PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, PULL_REQUEST_REOPENED
             - Type: BASE_REF
-              Pattern: !Sub  refs/heads/master$
+              Pattern: !Sub  refs/heads/${GitHubBranch}$
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:5.0
       Source:
-        Location: https://github.com/fatuboy/aws-cloudformation-templates.git
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubReporsitoryName}.git
         Type: GITHUB
         BuildSpec: buildspec.yaml
         Auth: 
