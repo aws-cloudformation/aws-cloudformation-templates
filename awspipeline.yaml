@@ -6,7 +6,7 @@ Parameters:
     Type: String
     AllowedPattern: "[A-Za-z0-9-]*"
     Default: fatuboy
-  GitHubReporsitoryName:
+  GitHubRepositoryName:
     Type: String
     AllowedPattern: "[A-Za-z0-9-]*"
     Default: aws-cloudformation-templates
@@ -14,6 +14,10 @@ Parameters:
     Type: String
     AllowedPattern: "[A-Za-z0-9-]*"
     Default: master
+  GitHubToken:
+    Type: String
+    # AllowedPattern: "[A-Za-z0-9-]*"
+    Default: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
 
 Resources:  
   CodeBuildProject:
@@ -36,7 +40,7 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:5.0
       Source:
-        Location: !Sub https://github.com/${GitHubOwner}/${GitHubReporsitoryName}.git
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepositoryName}.git
         Type: GITHUB
         BuildSpec: buildspec.yaml
         Auth: 
@@ -99,86 +103,49 @@ Resources:
     Properties: 
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
+      Token: !Ref GitHubToken
 
   CodePipeline: 
     Type: AWS::CodePipeline::Pipeline 
     Properties: 
-      RoleArn: !GetAtt CodePipelineServiceRole 
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
       Stages: 
-        - 
-          Name: Source 
+        - Name: Source 
           Actions: 
-            - 
-              Name: SourceAction
+            - Name: Source
               ActionTypeId: 
                 Category: Source 
-                Owner: AWS 
+                Owner: ThirdParty 
                 Version: 1 
-                Provider: S3 
+                Provider: GitHub
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepositoryName
+                Branch: !Ref GitHubBranch
+                PollForSourceChanges: 'false'
+                OAuthToken: !Ref GitHubToken
               OutputArtifacts: 
-                - 
-                  Name: SourceOutput 
-              Configuration: 
-                S3Bucket: 
-                  Ref: SourceS3Bucket 
-                S3ObjectKey: 
-                  Ref: SourceS3ObjectKey 
-              RunOrder: 1 
-        - 
-          Name: Beta 
+                - Name: SourceCode
+        - Name: Build 
           Actions: 
-            - 
-              Name: BetaAction 
-              InputArtifacts: 
-                -
-                  Name: SourceOutput 
+            - Name: Build 
               ActionTypeId: 
-                Category: Deploy 
+                Category: Build 
                 Owner: AWS 
                 Version: 1 
-                Provider: CodeDeploy
+                Provider: CodeBuild
               Configuration: 
-                ApplicationName: 
-                  Ref: ApplicationName 
-                DeploymentGroupName: 
-                  Ref: DeploymentGroupName 
-              RunOrder: 1 
-        - 
-          Name: Release 
-          Actions: 
-            - 
-              Name: ReleaseAction
-              InputArtifacts: 
-                - 
-                  Name: SourceOutput 
-              ActionTypeId: 
-                Category: Deploy 
-                Owner: AWS 
-                Version: 1
-                Provider: CodeDeploy 
-              Configuration: 
-                ApplicationName: 
-                  Ref: ApplicationName
-                DeploymentGroupName: 
-                  Ref: DeploymentGroupName 
+                ProjectName: !Ref CodeBuildProject
+              OutputArtifacts:
+                - Name: BuildOutput
+              InputArtifacts:
+                - Name: SourceCode
               RunOrder: 1 
       ArtifactStore: 
         Type: S3 
         Location:
-          Ref: ArtifactStoreS3Location 
-        EncryptionKey:
-          Id: arn:aws:kms:useast-1:ACCOUNT-ID:key/KEY-ID
-          Type: KMS
-      DisableInboundStageTransitions: 
-        - 
-          StageName: Release 
-          Reason: "Disabling the transition until integration tests are completed"
-      Tags:
-        - Key: Project
-          Value: ProjectA
-        - Key: IsContainerBased
-          Value: 'true'
+          Ref: CodePipelineArtifactStore 
+
   
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
@@ -191,7 +158,7 @@ Resources:
               Service: codepipeline.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns: 
-        - !Ref CodePipelineServiceRolePolicy
+        - !Ref CodePipelneServiceRolePolicy
   
   CodePipelneServiceRolePolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -229,9 +196,31 @@ Resources:
                 - 's3:GetBucketAcl'
                 - 's3:GetBucketLocation'
               Resource: '*'
+            - Sid: CodebuildPolicy  
+              Effect: Allow
+              Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              Resource: "*"
 
   CodePipelineArtifactStore:
     Type: 'AWS::S3::Bucket'
     Properties:
       VersioningConfiguration: 
         Status: Enabled
+
+  CodePipelineWebhook:
+    Type: AWS::CodePipeline::Webhook
+    Properties: 
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration: 
+        SecretToken: !Ref GitHubToken
+      RegisterWithThirdParty: 'true'
+      Filters: 
+        - JsonPath: '$.ref'
+          MatchEquals: 'refs/heads/{Branch}'
+        - JsonPath: '$.repository.name'
+          MatchEquals: '{Repo}'
+      TargetPipeline: !Ref CodePipeline
+      TargetAction: Source
+      TargetPipelineVersion: !GetAtt CodePipeline.Version
