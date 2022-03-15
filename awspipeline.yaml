@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CI/CD Pipeline for AWS Resource Deployment
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: fatuboy
+  GitHubReporsitoryName:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: aws-cloudformation-templates
+  GitHubBranch:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]*"
+    Default: master
+
+Resources:  
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref AWS::StackName
+      Description: CodeBuild Pipleline Project
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, PULL_REQUEST_REOPENED
+            - Type: BASE_REF
+              Pattern: !Sub  refs/heads/${GitHubBranch}$
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+      Source:
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubReporsitoryName}.git
+        Type: GITHUB
+        BuildSpec: buildspec.yaml
+        Auth: 
+          Type: OAUTH
+          Resource: !Ref CodeBuildSourceCredential
+      TimeoutInMinutes: 10
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - !Ref CodeBuildServiceRolePolicy
+  
+  CodeBuildServiceRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+        ManagedPolicyName: CodeBuildServiceRolePolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Sid: CloudWatchLogsPolicy
+              Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+            - Sid: CodeCommitPolicy
+              Effect: Allow
+              Action:
+                - 'codecommit:GitPull'
+              Resource: '*'
+            - Sid: S3GetObjectPolicy
+              Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:GetObjectVersion'
+              Resource: '*'
+            - Sid: S3PutObjectPolicy
+              Effect: Allow
+              Action:
+                - 's3:PutObject'
+              Resource: '*'
+            - Sid: S3BucketIdentity
+              Effect: Allow
+              Action:
+                - 's3:GetBucketAcl'
+                - 's3:GetBucketLocation'
+              Resource: '*'
+
+  CodeBuildSourceCredential:  
+    Type: AWS::CodeBuild::SourceCredential
+    Properties: 
+      AuthType: PERSONAL_ACCESS_TOKEN
+      ServerType: GITHUB
+      Token: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
+
+  CodePipeline: 
+    Type: AWS::CodePipeline::Pipeline 
+    Properties: 
+      RoleArn: !GetAtt CodePipelineServiceRole 
+      Stages: 
+        - 
+          Name: Source 
+          Actions: 
+            - 
+              Name: SourceAction
+              ActionTypeId: 
+                Category: Source 
+                Owner: AWS 
+                Version: 1 
+                Provider: S3 
+              OutputArtifacts: 
+                - 
+                  Name: SourceOutput 
+              Configuration: 
+                S3Bucket: 
+                  Ref: SourceS3Bucket 
+                S3ObjectKey: 
+                  Ref: SourceS3ObjectKey 
+              RunOrder: 1 
+        - 
+          Name: Beta 
+          Actions: 
+            - 
+              Name: BetaAction 
+              InputArtifacts: 
+                -
+                  Name: SourceOutput 
+              ActionTypeId: 
+                Category: Deploy 
+                Owner: AWS 
+                Version: 1 
+                Provider: CodeDeploy
+              Configuration: 
+                ApplicationName: 
+                  Ref: ApplicationName 
+                DeploymentGroupName: 
+                  Ref: DeploymentGroupName 
+              RunOrder: 1 
+        - 
+          Name: Release 
+          Actions: 
+            - 
+              Name: ReleaseAction
+              InputArtifacts: 
+                - 
+                  Name: SourceOutput 
+              ActionTypeId: 
+                Category: Deploy 
+                Owner: AWS 
+                Version: 1
+                Provider: CodeDeploy 
+              Configuration: 
+                ApplicationName: 
+                  Ref: ApplicationName
+                DeploymentGroupName: 
+                  Ref: DeploymentGroupName 
+              RunOrder: 1 
+      ArtifactStore: 
+        Type: S3 
+        Location:
+          Ref: ArtifactStoreS3Location 
+        EncryptionKey:
+          Id: arn:aws:kms:useast-1:ACCOUNT-ID:key/KEY-ID
+          Type: KMS
+      DisableInboundStageTransitions: 
+        - 
+          StageName: Release 
+          Reason: "Disabling the transition until integration tests are completed"
+      Tags:
+        - Key: Project
+          Value: ProjectA
+        - Key: IsContainerBased
+          Value: 'true'
+  
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - !Ref CodePipelineServiceRolePolicy
+  
+  CodePipelneServiceRolePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+        ManagedPolicyName: CodePipelineServiceRolePolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Sid: CloudWatchLogsPolicy
+              Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+            - Sid: CodeCommitPolicy
+              Effect: Allow
+              Action:
+                - 'codecommit:GitPull'
+              Resource: '*'
+            - Sid: S3GetObjectPolicy
+              Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:GetObjectVersion'
+              Resource: '*'
+            - Sid: S3PutObjectPolicy
+              Effect: Allow
+              Action:
+                - 's3:PutObject'
+              Resource: '*'
+            - Sid: S3BucketIdentity
+              Effect: Allow
+              Action:
+                - 's3:GetBucketAcl'
+                - 's3:GetBucketLocation'
+              Resource: '*'
+
+  CodePipelineArtifactStore:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration: 
+        Status: Enabled
