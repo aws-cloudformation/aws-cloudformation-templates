@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: tests DatetimeNow macro
+
+Resources:
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: DatetimeNow
+          Value:
+            'Fn::Transform':
+              - Name: DatetimeNow
+                Parameters:
+                  format: '%Y-%m-%dT%H:%M:%SZ'

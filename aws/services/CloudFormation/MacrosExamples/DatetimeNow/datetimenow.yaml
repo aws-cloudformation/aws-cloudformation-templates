@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+
+  TransformFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      MemorySize: 128
+      Timeout: 3
+      InlineCode: |
+        import datetime
+        def handler(event, context):
+            response = {
+                'requestId': event['requestId'],
+                'status': 'success'
+            }
+            try:
+                format = event['params']['format']
+                response['fragment'] = datetime.datetime.now().strftime(format)
+            except Exception as e:
+                response['status'] = 'failure'
+                response['errorMessage'] = str(e)
+            return response
+
+  Transform:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: DatetimeNow
+      Description: Provides the current datetime as string in the format requested.
+      FunctionName: !GetAtt TransformFunction.Arn
