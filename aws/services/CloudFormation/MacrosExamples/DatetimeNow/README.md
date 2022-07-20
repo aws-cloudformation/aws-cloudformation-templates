@@ -1,6 +1,6 @@
 # DatetimeNow functions
 
-Provides the current datetime as a formated string.
+Provides the current datetime as a formatted string.
 
 ## Basic Usage
 
