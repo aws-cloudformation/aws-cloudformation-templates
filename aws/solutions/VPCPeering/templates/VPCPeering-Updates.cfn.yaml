@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template updates the specified route tables & security groups to allow communications via the VPC peering connection.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - RouteTableIds
+          - NumberOfRouteTables
+          - VPCPeeringConnectionId
+      - Label:
+          default: Security Groups Configuration
+        Parameters:
+          - SecurityGroupIds
+          - NumberOfSecurityGroups
+      - Label:
+          default: VPC Peering Configuration
+        Parameters:
+          - PeerName
+          - PeerVPCCIDR
+    ParameterLabels:
+      NumberOfRouteTables:
+        default: Number of Route Tables
+      NumberOfSecurityGroups:
+        default: Number of Security Groups
+      PeerName:
+        default: Peer Name
+      PeerVPCCIDR:
+        default: Peer VPC CIDR
+      RouteTableIds:
+        default: Route Table IDs
+      SecurityGroupIds:
+        default: Security Group IDs
+      VPCPeeringConnectionId:
+        default: VPC Peering Connection ID
+Parameters:
+  NumberOfRouteTables:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Route Table IDs to update. This must match your items in the comma-separated list of RouteTableIds parameter.
+    Type: String
+  NumberOfSecurityGroups:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Security Group IDs. This must match your selections in the list of SecurityGroupIds parameter.
+    Type: String
+  PeerName:
+    Description: Name of the VPC Peer
+    MaxLength: 255
+    Type: String
+  PeerVPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Description: CIDR of the VPC Peer
+    Type: String
+  RouteTableIds:
+    AllowedPattern: '^(rtb-[0-9a-f]{17})$|^((rtb-[0-9a-f]{17}(,|, ))*rtb-[0-9a-f]{17})$'
+    ConstraintDescription:
+      Must have a prefix of "rtb-". Followed by 17 characters (numbers, letters "a-f"). Additional route tables can be provided, separated by a
+      "comma".
+    Description: Route Table IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: String
+  SecurityGroupIds:
+    Description: Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  VPCPeeringConnectionId:
+    AllowedPattern: '^pcx-[0-9a-f]{17}$'
+    ConstraintDescription: Must have a prefix of "pcx-". Followed by 17 characters (numbers, letters "a-f")
+    Description: ID of the VPC Peering Connection
+    Type: String
+Conditions:
+  2RouteTableCondition: !Or
+    - !Equals [!Ref NumberOfRouteTables, 2]
+    - !Condition 3RouteTableCondition
+    - !Condition 4RouteTableCondition
+    - !Condition 5RouteTableCondition
+    - !Condition 6RouteTableCondition
+  3RouteTableCondition: !Or
+    - !Equals [!Ref NumberOfRouteTables, 3]
+    - !Condition 4RouteTableCondition
+    - !Condition 5RouteTableCondition
+    - !Condition 6RouteTableCondition
+  4RouteTableCondition: !Or
+    - !Equals [!Ref NumberOfRouteTables, 4]
+    - !Condition 5RouteTableCondition
+    - !Condition 6RouteTableCondition
+  5RouteTableCondition: !Or
+    - !Equals [!Ref NumberOfRouteTables, 5]
+    - !Condition 6RouteTableCondition
+  6RouteTableCondition: !Equals [!Ref NumberOfRouteTables, 6]
+  2SecurityGroupCondition: !Or
+    - !Equals [!Ref NumberOfSecurityGroups, 2]
+    - !Condition 3SecurityGroupCondition
+    - !Condition 4SecurityGroupCondition
+    - !Condition 5SecurityGroupCondition
+    - !Condition 6SecurityGroupCondition
+  3SecurityGroupCondition: !Or
+    - !Equals [!Ref NumberOfSecurityGroups, 3]
+    - !Condition 4SecurityGroupCondition
+    - !Condition 5SecurityGroupCondition
+    - !Condition 6SecurityGroupCondition
+  4SecurityGroupCondition: !Or
+    - !Equals [!Ref NumberOfSecurityGroups, 4]
+    - !Condition 5SecurityGroupCondition
+    - !Condition 6SecurityGroupCondition
+  5SecurityGroupCondition: !Or
+    - !Equals [!Ref NumberOfSecurityGroups, 5]
+    - !Condition 6SecurityGroupCondition
+  6SecurityGroupCondition: !Equals [!Ref NumberOfSecurityGroups, 6]
+Resources:
+  PeerRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [0, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerRoute2:
+    Condition: 2RouteTableCondition
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [1, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerRoute3:
+    Condition: 3RouteTableCondition
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [2, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerRoute4:
+    Condition: 4RouteTableCondition
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [3, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerRoute5:
+    Condition: 5RouteTableCondition
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [4, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerRoute6:
+    Condition: 6RouteTableCondition
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Select [5, !Split [',', !Ref RouteTableIds]]
+      DestinationCidrBlock: !Ref PeerVPCCIDR
+      VpcPeeringConnectionId: !Ref VPCPeeringConnectionId
+  PeerIngressRule1:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      GroupId: !Select [0, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR
+  PeerIngressRule2:
+    Condition: 2SecurityGroupCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer CIDR, ${PeerName}
+      GroupId: !Select [1, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR
+  PeerIngressRule3:
+    Condition: 3SecurityGroupCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      GroupId: !Select [2, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR
+  PeerIngressRule4:
+    Condition: 4SecurityGroupCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      GroupId: !Select [3, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR
+  PeerIngressRule5:
+    Condition: 5SecurityGroupCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      GroupId: !Select [4, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR
+  PeerIngressRule6:
+    Condition: 6SecurityGroupCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from VPC Peer CIDR (for Lab purposes)
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      Description: !Sub LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}
+      GroupId: !Select [5, !Ref SecurityGroupIds]
+      CidrIp: !Ref PeerVPCCIDR

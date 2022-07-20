@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'AWS CloudFormation Sample Template:
+  Sample template which will create a bucket policy to enable cross account
+  acccess. The template requires you to provide an AWS account ID to provide
+  cross account access to, and the name of the target bucket.'
+Parameters:
+  BucketName:
+    Type: String
+    Description: 'The existing S3 Bucket to create the policy for'
+  PublisherAccountID:
+    Type: String
+    Description: 'The AWS account ID with whom you are sharing access'    
+Resources:
+  S3BUCKETPOL:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Id: CrossAccessPolicy
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CrossAccPolicyDoc
+            Action: "s3:ListBucket"
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${BucketName}'
+            Principal:
+              AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
+          - Sid: CrossAccPolicyDoc
+            Action: "s3:GetObject"
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${BucketName}/*'
+            Principal:
+              AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
+          - Sid: HttpsOnly
+            Action: '*'
+            Effect: Deny
+            Resource: !Sub arn:aws:s3:::${BucketName}/*
+            Principal: '*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+Outputs:
+  Bucket:
+    Description: S3 Bucket Name
+    Value: !Ref BucketName
+  BucketPolicy:
+    Description: S3 Bucket Policy Name
+    Value: !Ref S3BUCKETPOL

@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template enables VPC Flow Logs to CloudWatch.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPCID
+      - Label:
+          default: VPC Flow Logs Configuration
+        Parameters:
+          - VPCFlowLogsLogFormat
+          - VPCFlowLogsMaxAggregationInterval
+          - VPCFlowLogsTrafficType
+          - VPCFlowLogsLogGroupRetention
+          - VPCFlowLogsCloudWatchKMSKey
+    ParameterLabels:
+      VPCFlowLogsCloudWatchKMSKey:
+        default: CloudWatch Logs KMS Key for VPC flow logs
+      VPCFlowLogsLogFormat:
+        default: VPC Flow Logs - Log Format
+      VPCFlowLogsLogGroupRetention:
+        default: CloudWatch log retention days for VPC flow logs
+      VPCFlowLogsMaxAggregationInterval:
+        default: VPC Flow Logs - Max Aggregation Interval
+      VPCFlowLogsTrafficType:
+        default: VPC Flow Logs - Traffic Type
+      VPCID:
+        default: VPC ID
+Parameters:
+  VPCFlowLogsCloudWatchKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the VPC flow logs data. If empty, encryption is enabled with CloudWatch Logs managing the
+      server-side encryption keys.
+    Type: String
+  VPCFlowLogsLogFormat:
+    AllowedPattern: '^(\$\{[a-z-]+\})$|^((\$\{[a-z-]+\} )*\$\{[a-z-]+\})$'
+    Default:
+      '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action}
+      ${log-status}'
+    Description:
+      The fields to include in the flow log record, in the order in which they should appear. Specify the fields using the ${field-id} format,
+      separated by spaces. Using the Default Format as the default value.
+    Type: String
+  VPCFlowLogsLogGroupRetention:
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+    Default: 14
+    Description: Number of days to retain the VPC Flow Logs in CloudWatch
+    Type: String
+  VPCFlowLogsMaxAggregationInterval:
+    AllowedValues: [60, 600]
+    Default: 600
+    Description:
+      The maximum interval of time during which a flow of packets is captured and aggregated into a flow log record. You can specify 60 seconds (1
+      minute) or 600 seconds (10 minutes).
+    Type: String
+  VPCFlowLogsTrafficType:
+    AllowedValues: [ACCEPT, ALL, REJECT]
+    Default: REJECT
+    Description: The type of traffic to log. You can log traffic that the resource accepts or rejects, or all traffic.
+    Type: String
+  VPCID:
+    Description: ID of the VPC (e.g., vpc-0343606e)
+    Type: AWS::EC2::VPC::Id
+Conditions:
+  VPCFlowLogsCloudWatchKMSKeyCondition: !Not [!Equals [!Ref VPCFlowLogsCloudWatchKMSKey, '']]
+Resources:
+  VPCFlowLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Rights to Publish VPC Flow Logs to CloudWatch Logs
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - vpc-flow-logs.amazonaws.com
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+      Policies:
+        - PolicyName: CloudWatchLogGroup
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt VPCFlowLogsLogGroup.Arn
+  VPCFlowLogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: !Ref VPCFlowLogsLogGroupRetention
+      KmsKeyId: !If
+        - VPCFlowLogsCloudWatchKMSKeyCondition
+        - !Ref VPCFlowLogsCloudWatchKMSKey
+        - !Ref AWS::NoValue
+  VPCFlowLogsToCloudWatch:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref VPCFlowLogsLogGroup
+      DeliverLogsPermissionArn: !GetAtt VPCFlowLogsRole.Arn
+      LogFormat: !Ref VPCFlowLogsLogFormat
+      MaxAggregationInterval: !Ref VPCFlowLogsMaxAggregationInterval
+      ResourceId: !Ref VPCID
+      ResourceType: VPC
+      TrafficType: !Ref VPCFlowLogsTrafficType
+      Tags:
+        - Key: Name
+          Value: VPC Flow Logs CloudWatch
+Outputs:
+  VPCFlowLogsLogGroup:
+    Description: CloudWatch Log Group where VPC Flow Log data will be published
+    Value: !Ref VPCFlowLogsLogGroup

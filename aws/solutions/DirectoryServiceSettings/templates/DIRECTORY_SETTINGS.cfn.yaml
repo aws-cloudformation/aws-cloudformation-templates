@@ -1,0 +1,310 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:
+  This templates updates the settings for an AD Connector or AWS Managed AD directory. Tasks accomplied, (1) enables directory monitoring (2) option
+  to create a custom access url (alias) (3) option to enable SSO via directory services. Note, deleting the directory, will only remove directory
+  monitoring, directory SSO or alias settings will not be touched.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Directory Services Configuration
+        Parameters:
+          - DirectoryID
+          - DirectoryMonitoringEmail
+          - DirectoryMonitoringSNSTopicKMSKey
+          - EnableDirectorySSO
+          - CreateDirectoryAlias
+          - DirectoryAlias
+          - CreateDirectoryConsoleDelegatedAccessRoles
+      - Label:
+          default: Lambda Function Configuration (Directory Settings Custom Resource)
+        Parameters:
+          - LambdaFunctionName
+          - LambdaS3BucketName
+          - LambdaZipFileName
+          - LambdaLogsLogGroupRetention
+          - LambdaLogsCloudWatchKMSKey
+          - LambdaLogLevel
+    ParameterLabels:
+      CreateDirectoryConsoleDelegatedAccessRoles:
+        default: Create Directory Console Delegated Access Roles
+      CreateDirectoryAlias:
+        default: Create Directory Alias
+      DirectoryAlias:
+        default: Directory Alias
+      DirectoryID:
+        default: ID of the Directory (e.g., d-906764663a)
+      DirectoryMonitoringEmail:
+        defaut: Directory Monitoring Email
+      DirectoryMonitoringSNSTopicKMSKey:
+        default: SNS Topic KMS Key for Directory Monitoring messages
+      EnableDirectorySSO:
+        default: Enable Directory SSO
+      LambdaFunctionName:
+        default: Lambda Function Name
+      LambdaLogLevel:
+        default: Lambda Log Level
+      LambdaLogsLogGroupRetention:
+        default: CloudWatch log retention days for Lambda logs
+      LambdaLogsCloudWatchKMSKey:
+        default: CloudWatch Logs KMS Key for Lambda logs
+      LambdaS3BucketName:
+        default: Lambda S3 Bucket Name
+      LambdaZipFileName:
+        default: Lambda Zip File Name
+Parameters:
+  CreateDirectoryConsoleDelegatedAccessRoles:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description:
+      Create sample IAM ROLES that can be used to delegate users/groups access to certain areas of the AWS Management Console. User/Group assignment
+      to these IAM roles has to be done manually via Directory Services -> Directory -> Application Management Tab.
+    Type: String
+  CreateDirectoryAlias:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description:
+      Create an alias for the directory. The alias is used to construct the access URL for the directory, such as http://<alias>.awsapps.com. NOTE,
+      after an alias has been created, it cannot be deleted or reused. Hence if a different alias already exists, then you must use the existing alias
+      (also shown in CloudFormation error).
+    Type: String
+  DirectoryAlias:
+    AllowedPattern: '^$|^(?!d-)([\da-zA-Z]+)([-]*[\da-zA-Z])*$'
+    Description:
+      (Optional) Specifies an alias to be assigned to the directory, such as http://<alias>.awsapps.com. Note, after alias is created it cannot be
+      deleted or reused. Note, will only be set, if `CreateDirectoryAlias` parameter, has a value of `Yes`.
+    MaxLength: 62
+    Type: String
+  DirectoryID:
+    AllowedPattern: '^d-[0-9a-f]{10}$'
+    Description: Directory ID that will have settings updated
+    Type: String
+  DirectoryMonitoringEmail:
+    AllowedPattern: ^[\w%+.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}$
+    Description: Email for SNS Topic to monitor directory changes.
+    Type: String
+  DirectoryMonitoringSNSTopicKMSKey:
+    AllowedPattern: '^$|^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$'
+    ConstraintDescription: 'Key ID example: 1234abcd-12ab-34cd-56ef-1234567890ab'
+    Description:
+      (Optional) KMS Key ID to use for encrypting the directory monitoring SNS topic messages. If empty, encryption is enabled with SNS managing the
+      server-side encryption keys.
+    Type: String
+  EnableDirectorySSO:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description:
+      Enable single sign-on for a directory. Single sign-on allows users in your directory to access certain AWS services from a computer joined to
+      the directory without having to enter their credentials separately. If true, "DirectoryAlias" must also be true, & "DirectoryAlias" parameter
+      input required.
+    Type: String
+  LambdaFunctionName:
+    AllowedPattern: '^[\w-]{1,64}$'
+    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
+    Default: CR-DirectorySettings
+    Description: Lambda Function Name for Custom Resource
+    Type: String
+  LambdaLogLevel:
+    AllowedValues: ['INFO', 'DEBUG']
+    Default: INFO
+    Description: Lambda logging level
+    Type: String
+  LambdaLogsLogGroupRetention:
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+    Default: 14
+    Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
+    Type: String
+  LambdaLogsCloudWatchKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
+      encryption keys.
+    Type: String
+  LambdaS3BucketName:
+    AllowedPattern: '(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
+    ConstraintDescription:
+      Lambda S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Description:
+      Lambda S3 bucket name for the Lambda deployment package. Lambda bucket name can include numbers, lowercase letters, uppercase letters, and
+      hyphens (-). It cannot start or end with a hyphen (-).
+    Type: String
+  LambdaZipFileName:
+    Default: directory_settings_custom_resource.zip
+    Description: Amazon S3 key of the deployment package.
+    MaxLength: 1024
+    MinLength: 1
+    Type: String
+Rules:
+  CreateDirectoryAlias:
+    RuleCondition: !Equals [!Ref CreateDirectoryAlias, 'Yes']
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DirectoryAlias, '']]
+        AssertDescription: To create directory alias, the parameter, `DirectoryAlias` must be set
+  EnableDirectorySSO:
+    RuleCondition: !Equals [!Ref EnableDirectorySSO, 'Yes']
+    Assertions:
+      - Assert: !Equals [!Ref CreateDirectoryAlias, 'Yes']
+        AssertDescription: To enable directory SSO, the parameter, `CreateDirectoryAlias` must be set to `Yes`
+Conditions:
+  DirectoryConsoleDelegatedAccessRolesCondition: !Equals [!Ref CreateDirectoryConsoleDelegatedAccessRoles, 'Yes']
+  DirectoryMonitoringSNSTopicKMSKeyCondition: !Not [!Equals [!Ref DirectoryMonitoringSNSTopicKMSKey, '']]
+  LambdaLogsCloudWatchKMSKeyCondition: !Not [!Equals [!Ref LambdaLogsCloudWatchKMSKey, '']]
+Resources:
+  DirectoryConsoleDelegatedAccessEC2ReadOnlyRole:
+    Condition: DirectoryConsoleDelegatedAccessRolesCondition
+    Type: AWS::IAM::Role
+    Properties:
+      Description: IAM Role for Directory Service 'AWS Management Console' Delegated Access for "EC2 ReadOnly"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ReadOnlyAccess
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  DirectoryConsoleDelegatedAccessSecurityAuditRole:
+    Condition: DirectoryConsoleDelegatedAccessRolesCondition
+    Type: AWS::IAM::Role
+    Properties:
+      Description: IAM Role for Directory Service 'AWS Management Console' Delegated Access for "Security Audit"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/SecurityAudit
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  DirectoryMonitoringTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !If
+        - DirectoryMonitoringSNSTopicKMSKeyCondition
+        - !Ref DirectoryMonitoringSNSTopicKMSKey
+        - aws/sns
+      Subscription:
+        - Endpoint: !Ref DirectoryMonitoringEmail
+          Protocol: email
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: DirectoryID
+          Value: !Ref DirectoryID
+  DirectorySettingsLambdaFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: Permissions to write to CloudWatch Logs provided by the attached IAM role
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Handler: directory_settings_custom_resource.lambda_handler
+      Role: !GetAtt DirectorySettingsLambdaRole.Arn
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 120
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LambdaLogLevel
+      Code:
+        S3Bucket: !Ref LambdaS3BucketName
+        S3Key: !Ref LambdaZipFileName
+  DirectorySettingsLambdaLogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunctionName}
+      RetentionInDays: !Ref LambdaLogsLogGroupRetention
+      KmsKeyId: !If
+        - LambdaLogsCloudWatchKMSKeyCondition
+        - !Ref LambdaLogsCloudWatchKMSKey
+        - !Ref AWS::NoValue
+  DirectorySettingsLambdaRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: Allow * in resource when required
+          - id: W28
+            reason: The role name is defined to identify automation resources
+    Properties:
+      RoleName: !Sub ${LambdaFunctionName}-LambdaRole
+      Description: !Sub Rights to Setup Directory Settings for Directory ID, ${DirectoryID}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+      Policies:
+        - PolicyName: CloudWatchLogGroup
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: CreateLogGroup
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DirectorySettingsLambdaLogsLogGroup}
+              - Sid: CreateLogStreamAndEvents
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${DirectorySettingsLambdaLogsLogGroup}:log-stream:*
+        - PolicyName: DirectorySettings
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: SnsTopic
+                Effect: Allow
+                Action:
+                  - ds:RegisterEventTopic
+                  - ds:DeregisterEventTopic
+                  - ds:DescribeEventTopics
+                Resource: !Sub arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryID}
+              - Sid: DescribeDirectories
+                Effect: Allow
+                Action: ds:DescribeDirectories
+                Resource: '*'
+              - Sid: AliasSso
+                Effect: Allow
+                Action:
+                  - ds:CreateAlias
+                  - ds:EnableSso
+                  - ds:DisableSso
+                Resource: !Sub arn:${AWS::Partition}:ds:${AWS::Region}:${AWS::AccountId}:directory/${DirectoryID}
+  DirectorySettingsResource:
+    Type: Custom::DirectorySettingsResource
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt DirectorySettingsLambdaFunction.Arn
+      DirectoryId: !Ref DirectoryID
+      CreateDirectoryAlias: !Ref CreateDirectoryAlias
+      EnableDirectorySSO: !Ref EnableDirectorySSO
+      DirectoryAlias: !Ref DirectoryAlias
+      DirectoryMonitoringTopicName: !GetAtt DirectoryMonitoringTopic.TopicName
+Outputs:
+  DirectoryAliasUrl:
+    Description: Directory Alias
+    Value: !GetAtt DirectorySettingsResource.AliasUrl

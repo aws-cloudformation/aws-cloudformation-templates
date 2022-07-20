@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template accomplishes the following tasks: (1) applies a name tag to the specified VPC peering connection. (2) updates the specified route
+  tables and security groups to allow communications via the VPC peering connection. Note, this is for the VPC Peering Accepter account.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - RouteTableIds
+          - NumberOfRouteTables
+          - VPCPeeringConnectionId
+      - Label:
+          default: Security Groups Configuration
+        Parameters:
+          - SecurityGroupIds
+          - NumberOfSecurityGroups
+      - Label:
+          default: VPC Peering Configuration
+        Parameters:
+          - PeerName
+          - PeerVPCCIDR
+      - Label:
+          default: Lambda Function
+        Parameters:
+          - LambdaLogLevel
+          - LambdaRoleName
+          - LambdaFunctionName
+          - LambdaLogsLogGroupRetention
+          - LambdaLogsCloudWatchKMSKey
+    ParameterLabels:
+      LambdaFunctionName:
+        default: Lambda Function Name
+      LambdaLogLevel:
+        default: Lambda Log Level
+      LambdaLogsCloudWatchKMSKey:
+        default: CloudWatch Logs KMS Key for Lambda logs
+      LambdaLogsLogGroupRetention:
+        default: Lambda Log Group Retention
+      LambdaRoleName:
+        default: Lambda Role Name
+      NumberOfRouteTables:
+        default: Number of Route Tables
+      NumberOfSecurityGroups:
+        default: Number of Security Groups
+      PeerName:
+        default: Peer Name
+      PeerVPCCIDR:
+        default: Peer VPC CIDR
+      RouteTableIds:
+        default: Route Table IDs
+      SecurityGroupIds:
+        default: Security Group IDs
+      TemplatesS3BucketName:
+        default: Templates S3 Bucket Name
+      TemplatesS3BucketRegion:
+        default: Templates S3 bucket region
+      TemplatesS3KeyPrefix:
+        default: Templates S3 Key Prefix
+      VPCPeeringConnectionId:
+        default: VPC Peering Connection ID
+Parameters:
+  LambdaFunctionName:
+    AllowedPattern: '^[\w-]{1,64}$'
+    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
+    Default: CR-TagVpcPeeringConnections
+    Description: Lambda Function Name for Custom Resource
+    Type: String
+  LambdaLogLevel:
+    AllowedValues: [INFO, DEBUG]
+    Default: INFO
+    Type: String
+  LambdaLogsCloudWatchKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Default: ''
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
+      encryption keys.
+    Type: String
+  LambdaLogsLogGroupRetention:
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+    Default: 14
+    Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
+    Type: String
+  LambdaRoleName:
+    AllowedPattern: '^[\w+=,.@-]{1,64}$'
+    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [+, =, ., @, -]
+    Default: Lambda-Role-CR-TagVpcPeeringConnections
+    Description: Lambda Execution Role Name for the Custom Resource to Tag VPC Peering Connections
+    Type: String
+  NumberOfRouteTables:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Route Table IDs to update. This must match your items in the comma-separated list of RouteTableIds parameter.
+    Type: String
+  NumberOfSecurityGroups:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Security Group IDs. This must match your selections in the list of SecurityGroupIds parameter.
+    Type: String
+  PeerName:
+    Description: Name of the VPC Peer
+    MaxLength: 255
+    Type: String
+  PeerVPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Description: CIDR of the VPC Peer
+    Type: String
+  RouteTableIds:
+    AllowedPattern: '^(rtb-[0-9a-f]{17})$|^((rtb-[0-9a-f]{17}(,|, ))*rtb-[0-9a-f]{17})$'
+    ConstraintDescription:
+      Must have a prefix of "rtb-". Followed by 17 characters (numbers, letters "a-f"). Additional route tables can be provided, separated by a
+      "comma".
+    Description: Route Table IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: String
+  SecurityGroupIds:
+    Description: Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  TemplatesS3BucketName:
+    AllowedPattern: '^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
+    ConstraintDescription:
+      Templates S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Description:
+      Templates S3 bucket name for the CloudFormation templates. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  TemplatesS3BucketRegion:
+    Description: AWS Region where the S3 bucket (TemplatesS3BucketName) is hosted.
+    Type: String
+  TemplatesS3KeyPrefix:
+    AllowedPattern: '^[0-9a-zA-Z-/]*$'
+    ConstraintDescription: Templates key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).
+    Description:
+      S3 key prefix for the AWS CloudFormation templates. Key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  VPCPeeringConnectionId:
+    AllowedPattern: '^pcx-[0-9a-f]{17}$'
+    ConstraintDescription: Must have a prefix of "pcx-". Followed by 17 characters (numbers, letters "a-f")
+    Description: ID of the VPC Peering Connection
+    Type: String
+Resources:
+  VPCPeeringAccepterTagStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${S3KeyPrefix}templates/VPCPeering-Accepter-Tag.cfn.yaml
+        - S3Bucket: !Ref TemplatesS3BucketName
+          S3KeyPrefix: !Ref TemplatesS3KeyPrefix
+          S3Region: !Ref TemplatesS3BucketRegion
+      Parameters:
+        LambdaFunctionName: !Ref LambdaFunctionName
+        LambdaLogLevel: !Ref LambdaLogLevel
+        LambdaLogsCloudWatchKMSKey: !Ref LambdaLogsCloudWatchKMSKey
+        LambdaLogsLogGroupRetention: !Ref LambdaLogsLogGroupRetention
+        LambdaRoleName: !Ref LambdaRoleName
+        PeerName: !Ref PeerName
+        VPCPeeringConnectionId: !Ref VPCPeeringConnectionId
+  VPCPeeringUpdatesStack:
+    DependsOn: VPCPeeringAccepterTagStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${S3KeyPrefix}templates/VPCPeering-Updates.cfn.yaml
+        - S3Bucket: !Ref TemplatesS3BucketName
+          S3KeyPrefix: !Ref TemplatesS3KeyPrefix
+          S3Region: !Ref TemplatesS3BucketRegion
+      Parameters:
+        NumberOfRouteTables: !Ref NumberOfRouteTables
+        NumberOfSecurityGroups: !Ref NumberOfSecurityGroups
+        PeerName: !Ref PeerName
+        PeerVPCCIDR: !Ref PeerVPCCIDR
+        RouteTableIds: !Ref RouteTableIds
+        SecurityGroupIds: !Join [',', !Ref SecurityGroupIds]
+        VPCPeeringConnectionId: !Ref VPCPeeringConnectionId

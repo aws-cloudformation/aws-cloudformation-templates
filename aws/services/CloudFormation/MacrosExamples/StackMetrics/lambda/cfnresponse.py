@@ -1,13 +1,9 @@
 #  Copyright 2016 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.
-#  This file is licensed to you under the AWS Customer Agreement (the "License").
-#  You may not use this file except in compliance with the License.
-#  A copy of the License is located at http://aws.amazon.com/agreement/ .
-#  This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
-#  See the License for the specific language governing permissions and limitations under the License.
+#  SPDX-License-Identifier: Apache-2.0
 
-from botocore.vendored import requests
+import urllib3
 import json
-
+http = urllib3.PoolManager()
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
@@ -36,9 +32,8 @@ def send(event, context, responseStatus, responseData, physicalResourceId=None, 
     }
 
     try:
-        response = requests.put(responseUrl,
-                                data=json_responseBody,
-                                headers=headers)
+        
+        response = http.request('PUT',responseUrl,body=json_responseBody.encode('utf-8'),headers=headers)
         print("Status code: " + response.reason)
     except Exception as e:
         print("send(..) failed executing requests.put(..): " + str(e))

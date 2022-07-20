@@ -1,0 +1,398 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description:
+  This templates creates an AWS Managed Microsoft AD directory. Tasks accomplished, (1) create AWS Managed Microsoft AD directory (2) option to create
+  seamless domain join resources for Windows & Linux EC2 instances (3) option to create a domain members security group that allows all PrivateIP
+  communications inbound (4) option to create DHCPOptionSet pointing to AWS Managed Microsoft AD DNS servers
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: Network Configuration
+        Parameters:
+          - VPCID
+          - PrivateSubnet1ID
+          - PrivateSubnet2ID
+          - CreateDomainMembersSG
+          - CreateDHCPOptionSet
+      - Label:
+          default: AWS Managed Microsoft AD Configuration
+        Parameters:
+          - AWSManagedADAdminPassword
+          - AWSManagedADDomainDNSName
+          - AWSManagedADDomainNetBiosName
+          - AWSManagedADEdition
+          - SecretsManagerDomainCredentialsSecretsKMSKey
+          - CreateWindowsEC2DomainJoinResources
+          - CreateLinuxEC2DomainJoinResources
+          - SSMLogsBucketName
+    ParameterLabels:
+      AWSManagedADAdminPassword:
+        default: AWS Managed Microsoft AD Admin Password
+      AWSManagedADDomainDNSName:
+        default: AWS Managed Microsoft AD Domain DNS Name
+      AWSManagedADDomainNetBiosName:
+        default: AWS Managed Microsoft AD Domain NetBIOS Name
+      AWSManagedADEdition:
+        default: AWS Managed Microsoft AD Edition
+      CreateDHCPOptionSet:
+        default: Create DHCP Option Set
+      CreateDomainMembersSG:
+        default: Create Domain Members Security Group
+      CreateLinuxEC2DomainJoinResources:
+        default: Create AWS resources to support seamless domain join Linux EC2 instances
+      CreateWindowsEC2DomainJoinResources:
+        default: Create AWS resources to support seamless domain join Windows EC2 instances
+      PrivateSubnet1ID:
+        default: Private Subnet 1 ID
+      PrivateSubnet2ID:
+        default: Private Subnet 2 ID
+      SecretsManagerDomainCredentialsSecretsKMSKey:
+        default: Secrets Manager KMS Key for domain credentials secret
+      SSMLogsBucketName:
+        default: Systems Manager (SSM) Logs Bucket Name
+      VPCID:
+        default: VPC ID
+Parameters:
+  AWSManagedADDomainDNSName:
+    AllowedPattern: '[a-zA-Z0-9-]+\..+'
+    Default: awsmad.lab
+    Description: Fully qualified domain name for the AWS Managed Microsoft AD directory, such as corp.example.com.
+    Type: String
+  AWSManagedADDomainNetBiosName:
+    AllowedPattern: '[a-zA-Z0-9-]+'
+    Default: AWSMAD
+    Description: NetBIOS name for your domain, such as CORP.
+    MaxLength: 15
+    MinLength: 1
+    Type: String
+  AWSManagedADAdminPassword:
+    AllowedPattern: '(?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*'
+    Description:
+      Password for the default administrative user named Admin. 8-64 characters, and must match at least 3 of the 4. (1) lowercase letters (2)
+      Uppercase letters (3) numbers (4) non-alphanumeric characters "~!@#$%^&*_-+=`|\(){}[]:;"'<>,.?/"
+    NoEcho: true
+    Type: String
+  AWSManagedADEdition:
+    AllowedValues: [Standard, Enterprise]
+    Default: Standard
+    Description: AWS Managed AD Edition. Standard supports up to 30,000+ directory objects. Enterprise supports up to 500,000+ directory objects.
+    Type: String
+  CreateDHCPOptionSet:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create DHCP Option Set
+    Type: String
+  CreateDomainMembersSG:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create Domain Members Security Group. Note, using allow any type rules, restrict accordingly.
+    Type: String
+  CreateLinuxEC2DomainJoinResources:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create AWS resources (IAM role, instance profile, & secret) to support seamless domain join Linux EC2 instances
+    Type: String
+  CreateWindowsEC2DomainJoinResources:
+    AllowedValues: ['Yes', 'No']
+    Default: 'No'
+    Description: Create AWS resources (IAM role & instnace profile)to support seamless domain join Windows EC2 instances
+    Type: String
+  PrivateSubnet1ID:
+    Description: ID of the private subnet 1 in Availability Zone 1 (e.g., subnet-a0246dcd)
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2ID:
+    Description: ID of the private subnet 2 in Availability Zone 2 (e.g., subnet-a0246dcd)
+    Type: AWS::EC2::Subnet::Id
+  SecretsManagerDomainCredentialsSecretsKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Default: ''
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the SecretsManager domain credentials secret. If empty, encryption is enabled with SecretsManager
+      managing the server-side encryption keys.
+    Type: String
+  SSMLogsBucketName:
+    AllowedPattern: '^$|(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
+    ConstraintDescription:
+      SSM Logs bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Default: ''
+    Description:
+      (Optional) SSM Logs bucket name for where Systems Manager logs should store log files. SSM Logs bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Type: String
+  VPCID:
+    Description: ID of the VPC (e.g., vpc-0343606e)
+    Type: AWS::EC2::VPC::Id
+Conditions:
+  DHCPOptionSetCondition: !Equals [!Ref CreateDHCPOptionSet, 'Yes']
+  DomainMembersSGCondition: !Equals [!Ref CreateDomainMembersSG, 'Yes']
+  LinuxEC2DomainJoinResourcesCondition: !Equals [!Ref CreateLinuxEC2DomainJoinResources, 'Yes']
+  SecretsManagerDomainCredentialsSecretsKMSKeyCondition: !Not [!Equals [!Ref SecretsManagerDomainCredentialsSecretsKMSKey, '']]
+  SSMLogsBucketNameCondition: !Not [!Equals [!Ref SSMLogsBucketName, '']]
+  WindowsEC2DomainJoinResourcesCondition: !Equals [!Ref CreateWindowsEC2DomainJoinResources, 'Yes']
+Resources:
+  AWSManagedAD:
+    Type: AWS::DirectoryService::MicrosoftAD
+    Properties:
+      Name: !Ref AWSManagedADDomainDNSName
+      ShortName: !Ref AWSManagedADDomainNetBiosName
+      Password: !Ref AWSManagedADAdminPassword
+      Edition: !Ref AWSManagedADEdition
+      VpcSettings:
+        SubnetIds:
+          - !Ref PrivateSubnet1ID
+          - !Ref PrivateSubnet2ID
+        VpcId: !Ref VPCID
+  AWSManagedADDomainMembersSG:
+    Condition: DomainMembersSGCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W42
+            reason: Allow all inbound communications from Private IP CIDRs (for Lab purposes)
+          - id: W40
+            reason: Allow all outbound communications (for Lab purposes)
+          - id: W5
+            reason: Allow all outbound communications (for Lab purposes)
+          - id: W9
+            reason: Allow all inbound communications from Private IP CIDRs (for Lab purposes)
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${AWSManagedADDomainNetBiosName} Domain Members SG via AWS Managed Microsoft AD
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          Description: LAB - Allow All Private IP Communications
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: '-1'
+          Description: LAB - Allow All Private IP Communications
+          CidrIp: 172.16.0.0/12
+        - IpProtocol: '-1'
+          Description: LAB - Allow All Private IP Communications
+          CidrIp: 192.168.0.0/16
+      SecurityGroupEgress:
+        - Description: Allow All Outbound Communications
+          IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWSManagedADDomainNetBiosName}-DomainMembersSG-AWSManagedAD
+  AWSManagedADLinuxEC2DomainJoinInstanceProfile:
+    Condition: LinuxEC2DomainJoinResourcesCondition
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Ref AWSManagedADLinuxEC2DomainJoinRole
+      Path: /
+      Roles:
+        - !Ref AWSManagedADLinuxEC2DomainJoinRole
+  AWSManagedADLinuxEC2DomainJoinRole:
+    Condition: LinuxEC2DomainJoinResourcesCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: The role name is defined to identify automation resources
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWSManagedADDomainNetBiosName}-LinuxEC2DomainJoinRole-AWSManagedAD
+      Description: !Sub IAM Role to Seamlessly Join Linux EC2 Instances to ${AWSManagedADDomainNetBiosName} Domain via AWS Managed Microsoft AD
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+      Policies:
+        - PolicyName: SSMAgent
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::${AWS::Region}-birdwatcher-prod/*
+                  - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-ssm-distributor-file-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-ssm-document-attachments-${AWS::Region}/*
+        - !If
+          - SSMLogsBucketNameCondition
+          - PolicyName: SsmLogs
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:PutObject
+                    - s3:PutObjectAcl
+                    - s3:GetEncryptionConfiguration
+                  Resource:
+                    - !Sub arn:aws:s3:::${SSMLogsBucketName}
+                    - !Sub arn:aws:s3:::${SSMLogsBucketName}/*
+          - !Ref AWS::NoValue
+        - PolicyName: AWSManagedADLinuxEC2SeamlessDomainJoinSecret
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !Ref AWSManagedADLinuxEC2SeamlessDomainJoinSecret
+        - !If
+          - SecretsManagerDomainCredentialsSecretsKMSKeyCondition
+          - PolicyName: KMSKeyForSecret
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action: kms:Decrypt
+                  Resource: !Ref SecretsManagerDomainCredentialsSecretsKMSKey
+          - !Ref AWS::NoValue
+  AWSManagedADLinuxEC2SeamlessDomainJoinSecret:
+    Condition: LinuxEC2DomainJoinResourcesCondition
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub aws/directory-services/${AWSManagedAD}/seamless-domain-join
+      Description:
+        !Sub AD Credentials for Seamless Domain Join Windows/Linux EC2 instances to ${AWSManagedADDomainNetBiosName} Domain via AWS Managed Microsoft
+        AD
+      SecretString: !Sub '{ "awsSeamlessDomainUsername" : "Admin", "awsSeamlessDomainPassword" : "${AWSManagedADAdminPassword}" }'
+      KmsKeyId: !If
+        - SecretsManagerDomainCredentialsSecretsKMSKeyCondition
+        - !Ref SecretsManagerDomainCredentialsSecretsKMSKey
+        - !Ref AWS::NoValue
+  AWSManagedADWindowsEC2DomainJoinInstanceProfile:
+    Condition: WindowsEC2DomainJoinResourcesCondition
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Ref AWSManagedADWindowsEC2DomainJoinRole
+      Path: /
+      Roles:
+        - !Ref AWSManagedADWindowsEC2DomainJoinRole
+  AWSManagedADWindowsEC2DomainJoinRole:
+    Condition: WindowsEC2DomainJoinResourcesCondition
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: The role name is defined to identify automation resources
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWSManagedADDomainNetBiosName}-AWSManagedAD-WindowsEC2DomainJoinRole
+      Description: !Sub IAM Role to Seamlessly Join Windows EC2 Instances to ${AWSManagedADDomainDNSName} Domain via AWS Managed Microsoft AD
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+      Policies:
+        - PolicyName: SSMAgent
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::${AWS::Region}-birdwatcher-prod/*
+                  - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-ssm-distributor-file-${AWS::Region}/*
+                  - !Sub arn:aws:s3:::aws-ssm-document-attachments-${AWS::Region}/*
+        - !If
+          - SSMLogsBucketNameCondition
+          - PolicyName: SsmLogs
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:PutObject
+                    - s3:PutObjectAcl
+                    - s3:GetEncryptionConfiguration
+                  Resource:
+                    - !Sub arn:aws:s3:::${SSMLogsBucketName}
+                    - !Sub arn:aws:s3:::${SSMLogsBucketName}/*
+          - !Ref AWS::NoValue
+  DHCPOptions:
+    Condition: DHCPOptionSetCondition
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: !Ref AWSManagedADDomainDNSName
+      DomainNameServers: !GetAtt AWSManagedAD.DnsIpAddresses
+      Tags:
+        - Key: Name
+          Value: !Ref AWSManagedADDomainDNSName
+  DHCPOptionsVPCAssociation:
+    Condition: DHCPOptionSetCondition
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref VPCID
+      DhcpOptionsId: !Ref DHCPOptions
+Outputs:
+  AWSManagedADDirectoryId:
+    Description: AWS Managed Microsoft AD Directory ID
+    Value: !Ref AWSManagedAD
+    Export:
+      Name: !Sub ${AWS::StackName}-AWSManagedADDirectoryId
+  AWSManagedADDirectoryName:
+    Description: AWS Managed Microsoft AD Directory Name
+    Value: !Ref AWSManagedADDomainDNSName
+    Export:
+      Name: !Sub ${AWS::StackName}-AWSManagedADDirectoryName
+  AWSManagedADAWSManagedADDomainMembersSG:
+    Condition: DomainMembersSGCondition
+    Description: AWS Managed Microsoft AD Domain Members Security Group
+    Value: !Ref AWSManagedADDomainMembersSG
+    Export:
+      Name: !Sub ${AWS::StackName}-${AWSManagedADDomainNetBiosName}-AWSManagedADDomainMembersSG
+  AWSManagedADWindowsEC2SeamlessDomainJoinInstanceProfile:
+    Condition: WindowsEC2DomainJoinResourcesCondition
+    Description: IAM Instance Profile with SSM Document Rights to Join Windows Computers via AWS Managed Microsoft AD
+    Value: !Ref AWSManagedADWindowsEC2DomainJoinInstanceProfile
+    Export:
+      Name: !Sub ${AWS::StackName}-${AWSManagedADDomainNetBiosName}-AWSManagedADWindowsEC2DomainJoinProfile
+  AWSManagedADWindowsEC2SeamlessDomainJoinRole:
+    Condition: WindowsEC2DomainJoinResourcesCondition
+    Description: IAM Instance Profile with SSM Document Rights to Join Windows Computers via AWS Managed Microsoft AD
+    Value: !Ref AWSManagedADWindowsEC2DomainJoinRole
+    Export:
+      Name: !Sub ${AWS::StackName}-${AWSManagedADDomainNetBiosName}-AWSManagedADWindowsEC2DomainJoinRole
+  AWSManagedADLinuxEC2SeamlessDomainJoinInstanceProfile:
+    Condition: LinuxEC2DomainJoinResourcesCondition
+    Description: IAM Instance Profile with SSM Document Rights to Join Linux Computers via AWS Managed Microsoft AD
+    Value: !Ref AWSManagedADLinuxEC2DomainJoinInstanceProfile
+    Export:
+      Name: !Sub ${AWS::StackName}-${AWSManagedADDomainNetBiosName}-AWSManagedADLinuxEC2DomainJoinProfile
+  AWSManagedADLinuxEC2SeamlessDomainJoinRole:
+    Condition: LinuxEC2DomainJoinResourcesCondition
+    Description: IAM Instance Profile with SSM Document Rights to Join Linux Computers via AWS Managed Microsoft AD
+    Value: !Ref AWSManagedADLinuxEC2DomainJoinRole
+    Export:
+      Name: !Sub ${AWS::StackName}-${AWSManagedADDomainNetBiosName}-AWSManagedADLinuxEC2DomainJoinRole

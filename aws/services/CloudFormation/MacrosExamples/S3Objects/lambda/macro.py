@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,15 +18,27 @@ LAMBDA_ARN = os.environ["LAMBDA_ARN"]
 
 s3_client = boto3.client("s3")
 
+
 def handle_template(request_id, template):
     new_resources = {}
 
-    for name, resource in template.get("Resources", {}).items():
+    for name, resource in list(template.get("Resources", {}).items()):
         if resource["Type"] == "AWS::S3::Object":
             props = resource["Properties"]
 
-            if len([prop for prop in resource["Properties"] if prop in ["Body", "Base64Body", "Source"]]) != 1:
-                raise Exception("You must specify exactly one of: Body, Base64Body, Source")
+            if (
+                len(
+                    [
+                        prop
+                        for prop in resource["Properties"]
+                        if prop in ["Body", "Base64Body", "Source"]
+                    ]
+                )
+                != 1
+            ):
+                raise Exception(
+                    "You must specify exactly one of: Body, Base64Body, Source"
+                )
 
             target = props["Target"]
 
@@ -53,10 +65,11 @@ def handle_template(request_id, template):
                 "Properties": resource_props,
             }
 
-    for name, resource in new_resources.items():
+    for name, resource in list(new_resources.items()):
         template["Resources"][name] = resource
 
     return template
+
 
 def handler(event, context):
     try:

@@ -1,0 +1,197 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template uses a custom resource Lambda to apply a Name tag to the VPC peering connection on the Accepter Account.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: VPC Peering Configuration
+        Parameters:
+          - PeerName
+          - VPCPeeringConnectionId
+      - Label:
+          default: Lambda Function
+        Parameters:
+          - LambdaLogLevel
+          - LambdaFunctionName
+          - LambdaLogsLogGroupRetention
+          - LambdaLogsCloudWatchKMSKey
+    ParameterLabels:
+      LambdaFunctionName:
+        default: Lambda Function Name
+      LambdaLogLevel:
+        default: Lambda Log Level
+      LambdaLogsCloudWatchKMSKey:
+        default: CloudWatch Logs KMS Key for Lambda logs
+      LambdaLogsLogGroupRetention:
+        default: Lambda Log Group Retention
+      PeerName:
+        default: Peer Name
+      VPCPeeringConnectionId:
+        default: VPC Peering Connection ID
+Parameters:
+  LambdaFunctionName:
+    AllowedPattern: '^[\w-]{1,64}$'
+    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
+    Default: CR-TagVpcPeeringConnections
+    Description: Lambda Function Name for Custom Resource
+    Type: String
+  LambdaLogLevel:
+    AllowedValues: [INFO, DEBUG]
+    Default: INFO
+    Description: Lambda logging level
+    Type: String
+  LambdaLogsCloudWatchKMSKey:
+    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+    Description:
+      (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
+      encryption keys.
+    Type: String
+  LambdaLogsLogGroupRetention:
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+    Default: 14
+    Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
+    Type: String
+  PeerName:
+    Description: Name of the VPC Peer
+    MaxLength: 255
+    Type: String
+  VPCPeeringConnectionId:
+    AllowedPattern: '^pcx-[0-9a-f]{17}$'
+    ConstraintDescription: Must have a prefix of "pcx-". Followed by 17 characters (numbers, letters "a-f")
+    Description: ID of the VPC Peering Connection
+    Type: String
+Conditions:
+  LambdaLogsCloudWatchKMSKeyCondition: !Not [!Equals [!Ref LambdaLogsCloudWatchKMSKey, '']]
+Resources:
+  TagVpcPeeringConnectionsLambdaLogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunctionName}
+      RetentionInDays: !Ref LambdaLogsLogGroupRetention
+      KmsKeyId: !If
+        - LambdaLogsCloudWatchKMSKeyCondition
+        - !Ref LambdaLogsCloudWatchKMSKey
+        - !Ref AWS::NoValue
+  TagVpcPeeringConnectionsLambdaRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: The role name is defined to identify automation resources
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaFunctionName}-LambdaRole
+      Description: Rights to Tag VPC Peering Connection
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+      Policies:
+        - PolicyName: CloudWatchLogGroup
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: CreateLogGroup
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TagVpcPeeringConnectionsLambdaLogsLogGroup}
+              - Sid: CreateLogStreamAndEvents
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TagVpcPeeringConnectionsLambdaLogsLogGroup}:log-stream:*
+        - PolicyName: TagVpcPeeringConnections
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: Tagging
+                Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc-peering-connection/*
+  TagVpcPeeringConnectionsLambdaFunction:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: Permissions to write to CloudWatch Logs provided by the attached IAM role.
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Handler: index.handler
+      Role: !GetAtt TagVpcPeeringConnectionsLambdaRole.Arn
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 120
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LambdaLogLevel
+      Code:
+        ZipFile: |
+          import cfnresponse, json, os, logging, boto3
+
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+
+          try:
+            logging.getLogger("boto3").setLevel(logging.CRITICAL)
+
+            # Process Environment Variables
+            LOGGER.setLevel(os.environ.get("LOG_LEVEL", logging.ERROR))
+
+            ec2_client = boto3.client("ec2")
+          except Exception as error:
+            LOGGER.error(error)
+            cfnresponse.send(event, context, cfnresponse.FAILED, {})
+            raise
+
+
+          def apply_name_tag(resource, name):
+            return ec2_client.create_tags(Resources=[resource], Tags=[{"Key": "Name", "Value": name}])
+
+
+          def delete_name_tag(resource):
+            return ec2_client.delete_tags(Resources=[resource], Tags=[{"Key": "Name"}])
+
+
+          def handler(event, context):
+            try:
+              LOGGER.info(f"REQUEST RECEIVED: {json.dumps(event, default=str)}")
+              response_data = {}
+              physical_resource_id = event.get("PhysicalResourceId")
+              resource = event["ResourceProperties"].get("Resource")
+              name = event["ResourceProperties"].get("Name")
+
+              if event.get("RequestType") in ["Create", "Update"]:
+                response = apply_name_tag(resource, name)
+                LOGGER.info(f"response = {json.dumps(response, default=str)}")
+              if event.get("RequestType") == "Delete":
+                response = delete_name_tag(resource)
+                LOGGER.info(f"response = {json.dumps(response, default=str)}")
+
+              LOGGER.info("Sending Custom Resource Response")
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)
+              return
+            except Exception as error:
+              LOGGER.error(error)
+              cfnresponse.send(event, context, cfnresponse.FAILED, {})
+              return
+
+  TagVpcPeeringConnectionsResource:
+    Version: 1.0
+    Type: Custom::TagVpcPeeringConnection
+    Properties:
+      ServiceToken: !GetAtt TagVpcPeeringConnectionsLambdaFunction.Arn
+      Resource: !Ref VPCPeeringConnectionId
+      Name: !Ref PeerName

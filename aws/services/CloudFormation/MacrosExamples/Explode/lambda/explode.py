@@ -14,14 +14,22 @@ def walk_resource(resource, map_data):
     if isinstance(resource, dict):
         new_resource = {}
         for key, value in resource.items():
-            if isinstance(value, dict):
+            if isinstance(value, (dict, list)):
                 new_resource[key] = walk_resource(value, map_data)
-            elif isinstance(value, list):
-                new_resource[key] = [walk_resource(x, map_data) for x in value]
             elif isinstance(value, str):
                 new_resource[key] = replace_explode_in_string(value, map_data)
             else:
                 new_resource[key] = value
+    elif isinstance(resource, list):
+        new_resource = []
+        for value in resource:
+            if isinstance(value, (dict, list)):
+                new_resource.append(walk_resource(value, map_data))
+            elif isinstance(value, str):
+                new_resource.append(replace_explode_in_string(value, map_data))
+            else:
+                new_resource.append(value)
+           
     else:
         # if the resource is of type string
         new_resource = replace_explode_in_string(resource, map_data)
@@ -50,26 +58,24 @@ def replace_explode_in_string(value, map_data):
     return value
 
 
-def handle_transform(template):
-    """Go through template and explode resources."""
-    mappings = template['Mappings']
-    resources = template['Resources']
-    new_resources = {}
-    for resource_name, resource in resources.items():
+def handle_section_transform(section, mappings):
+    """Go through template and explode objects in the section."""
+    new_section = {}
+    for resource_name, resource in section.items():
         try:
             explode_map = resource['ExplodeMap']
             del resource['ExplodeMap']
         except KeyError:
             # This resource does not have an ExplodeMap, so copy it verbatim
             # and move on
-            new_resources[resource_name] = resource
+            new_section[resource_name] = resource
             continue
         try:
             explode_map_data = mappings[explode_map]
         except KeyError:
             # This resource refers to a mapping entry which doesn't exist, so
             # fail
-            print('Unable to find mapping for exploding resource {}'.format(resource_name))
+            print('Unable to find mapping for exploding object {}'.format(resource_name))
             raise
         resource_instances = explode_map_data.keys()
         for resource_instance in resource_instances:
@@ -78,9 +84,20 @@ def handle_transform(template):
                 new_resource_name = explode_map_data[resource_instance]['ResourceName']
             else:
                 new_resource_name = resource_name + resource_instance
-            new_resources[new_resource_name] = new_resource
-    template['Resources'] = new_resources
-    return template
+            new_section[new_resource_name] = new_resource
+    return new_section
+
+
+def handle_transform(fragment):
+    """Go through template and explode objects in the fragment."""
+    mappings = fragment['Mappings']
+    if 'Conditions' in fragment:
+        fragment['Conditions'] = handle_section_transform(fragment['Conditions'], mappings)
+    fragment['Resources'] = handle_section_transform(fragment['Resources'], mappings)
+    if 'Outputs' in fragment:
+        fragment['Outputs'] = handle_section_transform(fragment['Outputs'], mappings)
+    return fragment
+
 
 
 def handler(event, _context):
@@ -89,7 +106,7 @@ def handler(event, _context):
     status = "success"
 
     try:
-        fragment = handle_transform(event["fragment"])
+        fragment = handle_transform(fragment)
     except:
         status = "failure"
 
@@ -105,7 +122,7 @@ if __name__ == "__main__":
     If run from the command line, parse the file specified and output it
     This is quite naive; CF YAML tags like !GetAtt will break it (as will
     !Explode, but you can hide that in a string). Probably best to use JSON.
-    Releatedly, always outputs JSON.
+    Relatedly, always outputs JSON.
     """
     if len(sys.argv) == 2:
         import json

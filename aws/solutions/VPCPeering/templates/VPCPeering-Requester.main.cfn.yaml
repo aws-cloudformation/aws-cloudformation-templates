@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template accomplishes the following tasks: (1) creates a VPC peering connection. (2) updates the specified route tables and security groups to
+  allow communications via the VPC peering connection.  Note, this is for the VPC Peering Requester account.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - RouteTableIds
+          - NumberOfRouteTables
+          - VPCID
+      - Label:
+          default: Security Groups Configuration
+        Parameters:
+          - SecurityGroupIds
+          - NumberOfSecurityGroups
+      - Label:
+          default: VPC Peering Configuration
+        Parameters:
+          - PeerName
+          - PeerOwnerId
+          - PeerRoleARN
+          - PeerVPCID
+          - PeerVPCCIDR
+    ParameterLabels:
+      NumberOfRouteTables:
+        default: Number of Route Tables
+      NumberOfSecurityGroups:
+        default: Number of Security Groups
+      PeerName:
+        default: Peer Name
+      PeerOwnerId:
+        default: Peer Owner ID
+      PeerRoleARN:
+        default: Peer Role ARN
+      PeerVPCCIDR:
+        default: Peer VPC CIDR
+      PeerVPCID:
+        default: Peer VPC ID
+      RouteTableIds:
+        default: Route Table IDs
+      SecurityGroupIds:
+        default: Security Group IDs
+      TemplatesS3BucketName:
+        default: Templates S3 Bucket Name
+      TemplatesS3BucketRegion:
+        default: Templates S3 bucket region
+      TemplatesS3KeyPrefix:
+        default: Templates S3 Key Prefix
+      VPCID:
+        default: VPC ID
+Parameters:
+  NumberOfRouteTables:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Route Table IDs to update. This must match your items in the comma-separated list of RouteTableIds parameter.
+    Type: String
+  NumberOfSecurityGroups:
+    AllowedValues: [1, 2, 3, 4, 5, 6]
+    Description: Number of Security Group IDs. This must match your selections in the list of SecurityGroupIds parameter.
+    Type: String
+  PeerName:
+    Description: Name of the VPC Peer
+    MaxLength: 255
+    Type: String
+  PeerOwnerId:
+    AllowedPattern: '^\d{12}$'
+    ConstraintDescription: Must be 12 digits.
+    Description: AWS account ID of the owner of the accepter VPC
+    Type: String
+  PeerRoleARN:
+    AllowedPattern: '^arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role\/([\w+=,.@-]*\/)*[\w+=,.@-]+'
+    Description:
+      ARN of the VPC peer role for the peering connection in another AWS account. Required when you are peering a VPC in a different AWS account.
+    Type: String
+  PeerVPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
+    Description: CIDR of the VPC Peer
+    Type: String
+  PeerVPCID:
+    AllowedPattern: '^vpc-[0-9a-f]{17}$'
+    ConstraintDescription: Must have a prefix of "vpc-". Followed by 17 characters (numbers, letters "a-f")
+    Description: ID of the VPC with which you are creating the VPC peering connection
+    Type: String
+  RouteTableIds:
+    AllowedPattern: '^(rtb-[0-9a-f]{17})$|^((rtb-[0-9a-f]{17}(,|, ))*rtb-[0-9a-f]{17})$'
+    ConstraintDescription:
+      Must have a prefix of "rtb-". Followed by 17 characters (numbers, letters "a-f"). Additional route tables can be provided, separated by a
+      "comma".
+    Description: Route Table IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: String
+  SecurityGroupIds:
+    Description: Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  TemplatesS3BucketName:
+    AllowedPattern: '^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
+    ConstraintDescription:
+      Templates S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+    Description:
+      Templates S3 bucket name for the CloudFormation templates. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens
+      (-). It cannot start or end with a hyphen (-).
+    Type: String
+  TemplatesS3BucketRegion:
+    Description: AWS Region where the S3 bucket (TemplatesS3BucketName) is hosted.
+    Type: String
+  TemplatesS3KeyPrefix:
+    AllowedPattern: '^[0-9a-zA-Z-/]*$'
+    ConstraintDescription: Templates key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).
+    Description:
+      S3 key prefix for the AWS CloudFormation templates. Key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  VPCID:
+    Description: ID of the VPC
+    Type: AWS::EC2::VPC::Id
+Rules:
+  PeerRoleValidation:
+    RuleCondition: !Equals [!Ref PeerRoleARN, '']
+    Assertions:
+      - AssetDescription: ARN of the VPC peer role is required when you are peering a VPC in a different AWS account.
+        Assert: !Equals [!Ref PeerOwnerId, !Ref AWS::AccountId]
+Resources:
+  VPCPeeringRequesterSetupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${S3KeyPrefix}templates/VPCPeering-Requester-Setup.cfn.yaml
+        - S3Bucket: !Ref TemplatesS3BucketName
+          S3KeyPrefix: !Ref TemplatesS3KeyPrefix
+          S3Region: !Ref TemplatesS3BucketRegion
+      Parameters:
+        PeerName: !Ref PeerName
+        PeerOwnerId: !Ref PeerOwnerId
+        PeerRoleARN: !Ref PeerRoleARN
+        PeerVPCID: !Ref PeerVPCID
+        VPCID: !Ref VPCID
+  VPCPeeringUpdatesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${S3KeyPrefix}templates/VPCPeering-Updates.cfn.yaml
+        - S3Bucket: !Ref TemplatesS3BucketName
+          S3KeyPrefix: !Ref TemplatesS3KeyPrefix
+          S3Region: !Ref TemplatesS3BucketRegion
+      Parameters:
+        NumberOfRouteTables: !Ref NumberOfRouteTables
+        NumberOfSecurityGroups: !Ref NumberOfSecurityGroups
+        PeerName: !Ref PeerName
+        PeerVPCCIDR: !Ref PeerVPCCIDR
+        RouteTableIds: !Ref RouteTableIds
+        SecurityGroupIds: !Join [',', !Ref SecurityGroupIds]
+        VPCPeeringConnectionId: !GetAtt VPCPeeringRequesterSetupStack.Outputs.VPCPeeringConnectionId
