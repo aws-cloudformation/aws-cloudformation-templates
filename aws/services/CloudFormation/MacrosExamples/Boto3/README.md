@@ -100,7 +100,7 @@ Some properties enable special functionality when used. They are designed to enh
 
   This property is used to mimic the automatic naming capability of supported CloudFormation resources. The value supplied is the name of the `Boto3` property that you wish to be populated with a unique randomly generated name. If used the corresponding property must not be supplied. The name generated will be of the form:
 
-  `<StackName>-<LogicalResourceId>-<A random 12 alphumermic string>`
+  `<StackName>-<LogicalResourceId>-<A 12 character random alphumermic string>`
 
 * _Ref - `String` (optional*)
 
@@ -154,7 +154,7 @@ You can use the standard CloudFormation property `DependsOn` when you need to en
 The following resource:
 
 ```yaml
-ChangeBinaryTypes:
+ExecuteChangeSet:
   Type: Boto3::CloudFormation.execute_change_set
   Mode: [Create, Update]
   Properties:
@@ -232,6 +232,10 @@ It can also be updated/deleted with a stack just like any other CloudFormation r
 
 ## Author
 
-[Steve Engledow](https://linkedin.com/in/stilvoid)  
+[Steve Engledow](https://linkedin.com/in/stilvoid)
 Senior Solutions Builder  
+Amazon Web Services
+
+[Dan Johns](https://linkedin.com/in/danjhd)
+Senior SA Engineer
 Amazon Web Services

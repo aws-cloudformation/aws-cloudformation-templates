@@ -32,17 +32,16 @@ Resources:
 Outputs:
 
   Name:
-   Value: !Ref Repo
+    Value: !Ref Repo
 
   Id:
-   Value: !GetAtt Repo.Id
+    Value: !GetAtt Repo.Id
 
   Arn:
-   Value: !GetAtt Repo.Arn
+    Value: !GetAtt Repo.Arn
 
   CloneUrlHttp:
-   Value: !GetAtt Repo.CloneUrlHttp
+    Value: !GetAtt Repo.CloneUrlHttp
 
   CloneUrlSsh:
-   Value: !GetAtt Repo.CloneUrlSsh
-
+    Value: !GetAtt Repo.CloneUrlSsh
