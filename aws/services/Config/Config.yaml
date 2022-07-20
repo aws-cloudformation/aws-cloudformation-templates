@@ -130,7 +130,7 @@ Resources:
               });
           }
       Handler: index.handler
-      Runtime: nodejs
+      Runtime: nodejs16.x
       Timeout: '30'
       Role: !GetAtt [LambdaExecutionRole, Arn]
   LambdaExecutionRole:
