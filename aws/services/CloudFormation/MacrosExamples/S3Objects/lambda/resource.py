@@ -16,6 +16,7 @@ import base64
 import boto3
 import http.client
 import json
+import urllib.request
 
 s3_client = boto3.client("s3")
 
@@ -55,7 +56,7 @@ def handler(event, context):
     properties = event["ResourceProperties"]
 
     if "Target" not in properties or all(
-        prop not in properties for prop in ["Body", "Base64Body", "Source"]
+        prop not in properties for prop in ["Body", "URL", "Base64Body", "Source"]
     ):
         return sendResponse(event, context, "FAILED", "Missing required parameters")
 
@@ -66,6 +67,19 @@ def handler(event, context):
             target.update(
                 {
                     "Body": properties["Body"],
+                }
+            )
+
+            s3_client.put_object(**target)
+
+        elif "URL" in properties:
+
+            with urllib.request.urlopen(properties['URL']) as f:
+                content = f.read().decode('utf-8')
+
+            target.update(
+                {
+                    "Body": content,
                 }
             )
 

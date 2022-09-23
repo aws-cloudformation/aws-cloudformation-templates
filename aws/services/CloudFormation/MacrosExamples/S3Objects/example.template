@@ -38,3 +38,11 @@ Resources:
         Bucket: !Ref Bucket
         Key: README-copy.md
         ACL: public-read
+
+  Object4:
+    Type: AWS::S3::Object
+    Properties:
+      Target:
+        Bucket: !Ref Bucket
+        Key: nics-firearm-background-checks.csv
+      URL: https://raw.githubusercontent.com/BuzzFeedNews/nics-firearm-background-checks/master/data/nics-firearm-background-checks.csv
