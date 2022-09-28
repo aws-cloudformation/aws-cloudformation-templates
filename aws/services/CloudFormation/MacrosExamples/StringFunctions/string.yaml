@@ -67,7 +67,7 @@ Resources:
               return response
 
       Handler: index.handler
-      Runtime: python3.6
+      Runtime: python3.7
       Role: !GetAtt TransformExecutionRole.Arn
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
