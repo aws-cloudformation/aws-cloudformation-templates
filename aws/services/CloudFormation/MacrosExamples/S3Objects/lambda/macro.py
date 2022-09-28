@@ -31,13 +31,13 @@ def handle_template(request_id, template):
                     [
                         prop
                         for prop in resource["Properties"]
-                        if prop in ["Body", "Base64Body", "Source"]
+                        if prop in ["Body", "URL", "Base64Body", "Source"]
                     ]
                 )
                 != 1
             ):
                 raise Exception(
-                    "You must specify exactly one of: Body, Base64Body, Source"
+                    "You must specify exactly one of: Body, URL, Base64Body, Source"
                 )
 
             target = props["Target"]
@@ -52,6 +52,9 @@ def handle_template(request_id, template):
 
             if "Body" in props:
                 resource_props["Body"] = props["Body"]
+
+            elif "URL" in props:
+                resource_props["URL"] = props["URL"]
 
             elif "Base64Body" in props:
                 resource_props["Base64Body"] = props["Base64Body"]
