@@ -91,8 +91,17 @@ Resources:
     Properties:
       Tags:
         - Key: TestKey
+          Value: my bucket %d
+    Count: 3
+  NewBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
           Value: my %s bucket %d
     Count: ['foo','bar','thing']
+
+
 ```
 
 Using this example, the processed template will result become:
@@ -104,14 +113,32 @@ Resources:
     Properties:
       Tags:
         - Key: TestKey
-          Value: my foo bucket 1
+          Value: my bucket 1
   Bucket2:
     Type: AWS::S3::Bucket
     Properties:
       Tags:
         - Key: TestKey
-          Value: my bar bucket 2
+          Value: my bucket 2
   Bucket3:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bucket 3
+  NewBucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my foo bucket 1
+  NewBucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bar bucket 2
+  NewBucket3:
     Type: AWS::S3::Bucket
     Properties:
       Tags:
