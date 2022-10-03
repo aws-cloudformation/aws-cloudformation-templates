@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Count macro
-  A simple iterator for creating multipledentical resources
+  An iterator for creating multiple resources
 
 Resources:
   Macro:
@@ -16,5 +16,5 @@ Resources:
     Properties:
       CodeUri: src
       Handler: index.handler
-      Runtime: python3.6
+      Runtime: python3.9
       Timeout: 5

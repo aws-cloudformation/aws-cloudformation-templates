@@ -40,7 +40,7 @@ The `Count` macro provides a template-wide `Count` property for CloudFormation r
 
 To make use of the macro, add `Transform: Count` to the top level of your CloudFormation template.
 
-To create multiple copies of a resource, add a Count propert with an integer value.
+To create multiple copies of a resource, add a Count property with an integer value.
 
 ```yaml
 AWSTemplateFormatVersion: "2010-09-09"
@@ -56,8 +56,30 @@ Resources:
 #### Note
 This will cause the resource "Bucket" to be multiplied 3 times. The new template will contain Bucket1, Bucket2 and Bucket3 but will not contain Bucket as this will be removed.
 
-### Using decimal placeholders
-When resources are multiplied, you can put a decimal placeholder %d into any string value that you wish to be replaced with the iterator index number.
+### Enhanced Usage (using a List)
+
+To make use of the macro, add `Transform: Count` to the top level of your CloudFormation template.
+
+To create multiple copies of a resource, add a Count property with an list value.
+
+```yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: Count
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Count: ['foo','bar','thing']
+  SQS:
+    Type: AWS:::SQS::Queue
+    Count: ['sample','example']
+```
+#### Note
+This will cause the resource "Bucket" to be multiplied 3 times. The new template will contain Bucket1, Bucket2 and Bucket3 but will not contain Bucket as this will be removed.
+
+It is multiplied 3 times since the length of the list passed in the `Count` property is 3.
+
+### Using placeholders
+When resources are multiplied, you can put a decimal placeholder %d into any string value that you wish to be replaced with the iterator index number. If you are supplying a list instead of an integer you may also use a string placeholder %s to be replaced with the value in the list at that index.
 
 e.g. 
 ```yaml
@@ -71,6 +93,15 @@ Resources:
         - Key: TestKey
           Value: my bucket %d
     Count: 3
+  NewBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my %s bucket %d
+    Count: ['foo','bar','thing']
+
+
 ```
 
 Using this example, the processed template will result become:
@@ -95,6 +126,24 @@ Resources:
       Tags:
         - Key: TestKey
           Value: my bucket 3
+  NewBucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my foo bucket 1
+  NewBucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my bar bucket 2
+  NewBucket3:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: TestKey
+          Value: my thing bucket 3
 ```
 
 ### Important - Naming resources
@@ -111,9 +160,12 @@ Resources:
     Properties:
         BucketName: MyBucket%d
 ```
-
-## Author
+## Authors
 
 [Jose Ferraris](https://github.com/j0lly)
 AWS ProServ DevOps Consultant
+Amazon Web Services
+
+[Dan Johns](https://github.com/danjhd)
+Senior SA Engineer
 Amazon Web Services
