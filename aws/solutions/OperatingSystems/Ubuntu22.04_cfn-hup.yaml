@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Installing Cloudformation helper scripts in Ubuntu 16.04 LTS
+Description: Installing Cloudformation helper scripts in Ubuntu 22.04 LTS
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
