@@ -74,7 +74,7 @@ def multiply(resource_name, resource_structure, count):
             multipliedResourceStructure = update_placeholder(resource_structure,iteration)
             resources[resource_name+str(iteration)] = multipliedResourceStructure
     else:
-        for iteration, value in enumerate(count):
+        for iteration, value in enumerate(count, start=1):
             print("Multiplying '{}', iteration count {}".format(resource_name,iteration))
             multipliedResourceStructure = update_placeholder(resource_structure,iteration,value)
             resources[resource_name+str(iteration)] = multipliedResourceStructure
