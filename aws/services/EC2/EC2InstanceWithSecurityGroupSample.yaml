@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+**---AWSTemplateFormatVersion: '2010-09-09'---**
 Metadata:
   License: Apache-2.0
 Description: 'AWS CloudFormation Sample Template EC2InstanceWithSecurityGroupSample:
