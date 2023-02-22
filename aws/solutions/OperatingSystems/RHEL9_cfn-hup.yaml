@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Installing Cloudformation helper scripts in Ubuntu 18.04 LTS
+Description: Installing Cloudformation helper scripts in RHEL 9
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
@@ -73,31 +73,148 @@ Parameters:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 Mappings:
-  AWSRegionAMIEC2:
+  AWSInstanceType2Arch:
+    t1.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+    m1.small:
+      Arch: HVM64
+    m1.medium:
+      Arch: HVM64
+    m1.large:
+      Arch: HVM64
+    m1.xlarge:
+      Arch: HVM64
+    m2.xlarge:
+      Arch: HVM64
+    m2.2xlarge:
+      Arch: HVM64
+    m2.4xlarge:
+      Arch: HVM64
+    m3.medium:
+      Arch: HVM64
+    m3.large:
+      Arch: HVM64
+    m3.xlarge:
+      Arch: HVM64
+    m3.2xlarge:
+      Arch: HVM64
+    m4.large:
+      Arch: HVM64
+    m4.xlarge:
+      Arch: HVM64
+    m4.2xlarge:
+      Arch: HVM64
+    m4.4xlarge:
+      Arch: HVM64
+    m4.10xlarge:
+      Arch: HVM64
+    c1.medium:
+      Arch: HVM64
+    c1.xlarge:
+      Arch: HVM64
+    c3.large:
+      Arch: HVM64
+    c3.xlarge:
+      Arch: HVM64
+    c3.2xlarge:
+      Arch: HVM64
+    c3.4xlarge:
+      Arch: HVM64
+    c3.8xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+    r3.large:
+      Arch: HVM64
+    r3.xlarge:
+      Arch: HVM64
+    r3.2xlarge:
+      Arch: HVM64
+    r3.4xlarge:
+      Arch: HVM64
+    r3.8xlarge:
+      Arch: HVM64
+    i2.xlarge:
+      Arch: HVM64
+    i2.2xlarge:
+      Arch: HVM64
+    i2.4xlarge:
+      Arch: HVM64
+    i2.8xlarge:
+      Arch: HVM64
+    d2.xlarge:
+      Arch: HVM64
+    d2.2xlarge:
+      Arch: HVM64
+    d2.4xlarge:
+      Arch: HVM64
+    d2.8xlarge:
+      Arch: HVM64
+    hi1.4xlarge:
+      Arch: HVM64
+    hs1.8xlarge:
+      Arch: HVM64
+    cr1.8xlarge:
+      Arch: HVM64
+    cc2.8xlarge:
+      Arch: HVM64
+  AWSRegionArch2AMI:
     us-east-1:
-      Ubuntu18: ami-02fe94dee086c0c37
-    us-east-2:
-      Ubuntu18: ami-02aa7f3de34db391a
+      HVM64: ami-05723c3b9cf4bf4ff
     us-west-2:
-      Ubuntu18: ami-025102f49d03bec05
+      HVM64: ami-0b6ce9bcd0a2f720d
     us-west-1:
-      Ubuntu18: ami-0d9b7049d327ec00d
+      HVM64: ami-029465c1f346dd34f
     eu-west-1:
-      Ubuntu18: ami-0e5657f6d3c3ea350
+      HVM64: ami-0f11fb3119dc9fc60
+    eu-west-2:
+      HVM64: ami-023cd3f0d10fb8a9c
+    eu-west-3:
+      HVM64: ami-0c226b3aa389adbef
     eu-central-1:
-      Ubuntu18: ami-0932440befd74cdba
+      HVM64: ami-0c0000ceb18c73b8a
     ap-northeast-1:
-      Ubuntu18: ami-09dac16017637391f
+      HVM64: ami-083594d506bfbc152
+    ap-northeast-2:
+      HVM64: ami-07cc74f198bb9e86a
+    ap-northeast-3:
+      HVM64: ami-0ee7ab88ad9d14d40
     ap-southeast-1:
-      Ubuntu18: ami-0ae3e6717dc99c62b
+      HVM64: ami-0b2aec26bb1a5169d
     ap-southeast-2:
-      Ubuntu18: ami-080b87fdc6d5ca853
+      HVM64: ami-003cf7280eac7a28a
+    ap-south-1:
+      HVM64: ami-069d9fecd19e7ed40
+    us-east-2:
+      HVM64: ami-08d616b7fbe4bb9d0
+    ca-central-1:
+      HVM64: ami-093dddc44bec52167
+    sa-east-1:
+      HVM64: ami-07509c78b1456cc84
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT7M
+        Timeout: PT10M
         Count: '1'
     Metadata:
       AWS::CloudFormation::Init:
@@ -131,7 +248,7 @@ Resources:
                   - 'path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
 
                     '
-                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - 'action=/usr/local/bin/cfn-init -v '
                   - "         --stack "
                   - Ref: AWS::StackName
                   - "         --resource EC2Instance "
@@ -152,7 +269,7 @@ Resources:
                   - 'Type=simple
 
                     '
-                  - 'ExecStart=/opt/aws/bin/cfn-hup
+                  - 'ExecStart=/usr/local/bin/cfn-hup
 
                     '
                   - "Restart=always\n\n"
@@ -171,31 +288,28 @@ Resources:
       KeyName:
         Ref: KeyName
       ImageId:
-        Fn::FindInMap:
-        - AWSRegionAMIEC2
-        - Ref: AWS::Region
-        - Ubuntu18
+        Fn::FindInMap: 
+          - AWSRegionArch2AMI
+          - !Ref 'AWS::Region'
+          - !FindInMap 
+            - AWSInstanceType2Arch
+            - !Ref InstanceType
+            - Arch
       UserData:
         Fn::Base64:
           Fn::Join:
           - ''
           - - "#!/bin/bash -xe\n"
-            - 'apt-get update -y
+            - 'sudo yum update -y
 
               '
-            - 'apt-get install -y python3-setuptools
+            - 'sudo yum -y install python3-pip
 
               '
-            - 'mkdir -p /opt/aws/bin
+            - 'sudo pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
 
               '
-            - 'wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
-
-              '
-            - 'python3 -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-py3-latest.tar.gz
-
-              '
-            - "/opt/aws/bin/cfn-init -v "
+            - "/usr/local/bin/cfn-init -v "
             - "         --stack "
             - Ref: AWS::StackName
             - "         --resource EC2Instance "
@@ -203,7 +317,7 @@ Resources:
             - "         --region "
             - Ref: AWS::Region
             - "\n"
-            - "/opt/aws/bin/cfn-signal -e $? "
+            - "/usr/local/bin/cfn-signal -e $? "
             - "         --stack "
             - Ref: AWS::StackName
             - "         --resource EC2Instance "

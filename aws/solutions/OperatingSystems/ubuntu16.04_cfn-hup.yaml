@@ -95,7 +95,7 @@ Resources:
     Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT7M
+        Timeout: PT10M
         Count: '1'
     Metadata:
       AWS::CloudFormation::Init:
@@ -129,7 +129,7 @@ Resources:
                   - 'path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
 
                     '
-                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - 'action=/usr/local/bin/cfn-init -v '
                   - "         --stack "
                   - Ref: AWS::StackName
                   - "         --resource EC2Instance "
@@ -150,7 +150,7 @@ Resources:
                   - 'Type=simple
 
                     '
-                  - 'ExecStart=/opt/aws/bin/cfn-hup
+                  - 'ExecStart=/usr/local/bin/cfn-hup
 
                     '
                   - "Restart=always\n\n"
@@ -178,22 +178,22 @@ Resources:
           Fn::Join:
           - ''
           - - "#!/bin/bash -xe\n"
-            - 'apt-get update -y
+            - 'sudo apt-get update -y
 
               '
-            - 'apt-get install -y python-setuptools
+            - 'sudo apt-get -y install python3-pip
 
               '
-            - 'mkdir -p /opt/aws/bin
+            - 'mkdir -p /opt/aws/
 
               '
-            - 'wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            - 'sudo pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
 
               '
-            - 'python -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-latest.tar.gz
+            - 'sudo ln -s /usr/local/init/ubuntu/cfn-hup /etc/systemd/system/cfn-hup
 
               '
-            - "/opt/aws/bin/cfn-init -v "
+            - "/usr/local/bin/cfn-init -v "
             - "         --stack "
             - Ref: AWS::StackName
             - "         --resource EC2Instance "
@@ -201,7 +201,7 @@ Resources:
             - "         --region "
             - Ref: AWS::Region
             - "\n"
-            - "/opt/aws/bin/cfn-signal -e $? "
+            - "/usr/local/bin/cfn-signal -e $? "
             - "         --stack "
             - Ref: AWS::StackName
             - "         --resource EC2Instance "
