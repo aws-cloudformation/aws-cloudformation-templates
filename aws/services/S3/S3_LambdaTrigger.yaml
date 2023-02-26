@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  NotificationBucket:
+    Type: String
+    Description: S3 bucket name that is the trigger to lambda
+Resources:
+  S3TriggerLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: !Join 
+          - |+
+
+          - - import json
+            - 'def lambda_handler(event,context):'
+            - '    print(event)'
+            - '    return ''Hello... This is a test S3 trigger Lambda Function'''
+      Handler: index.lambda_handler
+      Role: !GetAtt 
+        - LambdaIAMRole
+        - Arn
+      Runtime: python3.9
+      Timeout: 30
+  LambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt 
+        - S3TriggerLambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub 'arn:aws:s3:::${NotificationBucket}'
+  LambdaIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+  S3BucketNotification:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - LambdaInvokePermission
+    Properties:
+      BucketName: !Sub '${NotificationBucket}'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:Put'
+            Function: !GetAtt 
+              - S3TriggerLambdaFunction
+              - Arn
