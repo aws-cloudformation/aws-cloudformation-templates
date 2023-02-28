@@ -100,7 +100,7 @@ Resources:
                     return r
 
             Handler: index.handler
-            Runtime: python3.6
+            Runtime: python3.9
             Timeout: '60'
             Role: !GetAtt TransformExecutionRole.Arn
     Transform:
