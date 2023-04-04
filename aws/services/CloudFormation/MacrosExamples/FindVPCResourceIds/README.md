@@ -15,7 +15,7 @@ Tags:
 - Key: Env
   Value: qa
 ```
-This [Macro](https://gitlab.aws.dev/vivgoyal/aws-cfn-macro-samples/tree/main/FindVPCResourceIds) can be used to find following VPC ResourceId(s) by tags.
+This Macro can be used to find following VPC ResourceId(s) by tags.
 - VpcId
 - SubnetIds
 - SecurityGroupIds
@@ -107,7 +107,8 @@ Following table describes the parameters that control the behavior of the macro.
 | ReturnType | No (Default: StringList) | StringList | Return list of strings. |
 | TagKey: TagValue | Yes | any: any | Find the requested `ResourceType` by matching tags.<br/>To find SubnetIds and SecurityGroupIds within a VPC, specify the VPC tags by prefixing it with "VPC::". |
 
-## Security
-See [CONTRIBUTING](https://gitlab.aws.dev/vivgoyal/aws-cfn-macro-samples/blob/main/CONTRIBUTING.md#security-issue-notifications) for more information.
-## License
-This library is licensed under the MIT-0 License. See the [LICENSE](https://gitlab.aws.dev/vivgoyal/aws-cfn-macro-samples/blob/main/LICENSE) file.
+## Authors
+
+[Vivek Goyal](https://github.com/vivgoyal-aws) AWS ProServ Sr. Cloud Infrastructure Architect
+
+
