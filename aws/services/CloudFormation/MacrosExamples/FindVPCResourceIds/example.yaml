@@ -1,0 +1,146 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template for testing macro
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. DEV
+    Type: String
+    Default: dev
+
+Resources:
+  rParamVPCId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: !Sub "VPC Id for the project ${pProject} environment ${pEnv}."
+      Name: !Sub "/${pProject}/${pEnv}/vpc-id"
+      Type: String
+      Value:
+        Fn::Transform:
+          Name: FindVPCResourceIds
+          Parameters:
+            ResourceType: VpcId
+            #Search by following tags
+            Project: !Ref pProject
+            Env: !Ref pEnv
+      Tags:
+        Project: !Ref pProject
+        Env: !Ref pEnv
+        CreatedBy: !Ref AWS::StackId
+  rParamSubnetIds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: !Sub "Subnet Ids for the project ${pProject} environment ${pEnv}."
+      Name: !Sub "/${pProject}/${pEnv}/subnet-ids"
+      Type: StringList
+      Value:
+        Fn::Transform:
+          Name: FindVPCResourceIds
+          Parameters:
+            ResourceType: SubnetIds
+            ReturnType: String # or StringList
+            #Search VPC by following tags VPC::<tag-name>
+            VPC::Project: !Ref pProject
+            VPC::Env: !Ref pEnv
+            #Search Subnets by following tags
+            Project: !Ref pProject
+            Env: !Ref pEnv
+            Private: 1
+      Tags:
+        Project: !Ref pProject
+        Env: !Ref pEnv
+        CreatedBy: !Ref AWS::StackId
+  rParamSecurityGroupIds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: !Sub "Security Group Ids for the project ${pProject} environment ${pEnv}."
+      Name: !Sub "/${pProject}/${pEnv}/security-group-ids"
+      Type: StringList
+      Value:
+        Fn::Transform:
+          Name: FindVPCResourceIds
+          Parameters:
+            ResourceType: SecurityGroupIds
+            ReturnType: String # or StringList
+            #Search VPC by following tags VPC::<tag-name>
+            VPC::Project: !Ref pProject
+            VPC::Env: !Ref pEnv
+            #Search Subnets by following tags
+            Project: !Ref pProject
+            Env: !Ref pEnv
+            VPCE: 1
+      Tags:
+        Project: !Ref pProject
+        Env: !Ref pEnv
+        CreatedBy: !Ref AWS::StackId
+
+  rSampleSG:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "SG Name is used for identification, it is OK to replace"
+          - id: W5
+            reason: "Allow https outbound to world"
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${pProject}-${pEnv}-sample-sg
+      GroupDescription: Sample Security Group.
+      VpcId:
+        Fn::Transform:
+          Name: FindVPCResourceIdsByTags
+          Parameters:
+            ResourceType: VpcId
+            #Search by following tags
+            Project: !Ref pProject
+            Env: !Ref pEnv
+      SecurityGroupEgress:
+        - Description: Allow https outbound
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+
+Outputs:
+  oVPCId:
+    Description: VPC Id.
+    Value: !GetAtt rParamVPCId.Value
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCId"
+  oSubnetIds:
+    Description: Subnet Ids."
+    Value: !GetAtt rParamSubnetIds.Value
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetIds"
+  oSampleSGId:
+    Description: Security Group Id.
+    Value: !GetAtt rSampleSG.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-SampleSGId"
