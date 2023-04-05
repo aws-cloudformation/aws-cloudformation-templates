@@ -1,0 +1,184 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template is to provision the CloudFormation macro that expands the AWS::EC2::VPCEndpoint resource
+  1. Lambda Execution role is created.
+  2. Lambda is created that implements the macro logic.
+  3. Macro is created that uses the Lambda
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. dev
+    Type: String
+    Default: dev
+
+Resources:
+  rMacroLambdaExecRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Role Name is used for identification, it is OK to replace"
+          - id: W11
+            reason: "Only 'Describe*' is allowed"
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cfn-macro-expand-vpce-exec-role-${pProject}-${pEnv}
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      #PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/Permission_Boundary_if_any
+      Policies:
+        - PolicyName: lambda-cw-access
+          PolicyDocument:
+            Statement:
+              - Sid: LambdaAccessForCWLogGroup
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: LambdaAccessForCWLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+
+  rExpandVPCEndpointFunction:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "VPC Access not required"
+          - id: W58
+            reason: "Permission to write CloudWatch logs is provided via execution role in security template"
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "Expand a Resource of Type AWS::EC2::VPCEndpoint"
+      FunctionName: !Sub cfn-macro-expand-vpce-${pProject}-${pEnv}
+      Handler: index.handler
+      Role: !GetAtt "rMacroLambdaExecRole.Arn"
+      Timeout: 300
+      Runtime: python3.9
+      ReservedConcurrentExecutions: 2
+      Code:
+        ZipFile: !Sub |
+          import json
+          import copy
+          import re
+
+          def handle_section_transform(section, templateParameterValues):
+              new_section = {}
+              for resource_name, resource in section.items():
+                  if 'Type' in resource:
+                      resource_type = resource['Type']
+                      if resource_type != 'AWS::EC2::VPCEndpoint' :
+                          #Not interested, copy as it is an check next resource
+                          new_section[resource_name] = resource
+                          continue
+                  else:
+                      #Not interested, copy as it is an check next resource
+                      new_section[resource_name] = resource
+                      continue
+
+                  new_resource_keys = []
+                  resource_prop_items = {}
+                  new_resource_param = ""
+                  resource_props = resource['Properties']
+
+                  for resource_prop, resource_prop_value in resource_props.items():
+                      if resource_prop == 'ExpandServiceCodes' :
+                          print(type(resource_prop_value))
+                          if isinstance(resource_prop_value, dict):
+                              #Only Ref is supported
+                              templateParamKey = resource_prop_value['Ref']
+                              resource_keys = templateParameterValues[templateParamKey].split(',')
+                          else:
+                              resource_keys = resource_prop_value.split(',')
+                          new_resource_prop = 'ServiceName'
+                      else:
+                          resource_prop_items[resource_prop] = resource_prop_value
+                  print(f"{resource_keys}")
+                  try:
+                      for key in resource_keys :
+                          new_resource =  copy.deepcopy(resource)
+                          new_resource_prop_items = copy.deepcopy(resource_prop_items)
+                          new_resource_prop_items[new_resource_prop] = {
+                              "Fn::Sub": "com.amazonaws.${AWS::Region}." + key
+                          }
+                          new_resource['Properties'] = new_resource_prop_items
+                          resource_suffix = "".join([word.capitalize() for word in re.split(r'-|_|\.|\/', key)])
+                          new_section[resource_name + resource_suffix] = new_resource
+                  except Exception as e:
+                      print( str(e) )
+              return new_section
+
+          def handle_transform(fragment, templateParameterValues):
+              fragment['Resources'] = handle_section_transform(fragment['Resources'], templateParameterValues)
+              if 'Outputs' in fragment:
+                  fragment['Outputs'] = handle_section_transform(fragment['Outputs'])
+              return fragment
+
+          def handler(event, context):
+              print( json.dumps(event, indent=2))
+
+              fragment = event["fragment"]
+              templateParameterValues = event["templateParameterValues"]
+              status = "success"
+
+              try:
+                  fragment = handle_transform(fragment, templateParameterValues)
+              except:
+                  status = "success"
+
+              return {
+                  "requestId": event["requestId"],
+                  "status": status,
+                  "fragment": fragment,
+              }
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+  mExpandVPCEndpoint:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: ExpandVPCEndpoint
+      Description: Expand a Resource of Type AWS::EC2::VPCEndpoint
+      FunctionName: !GetAtt rExpandVPCEndpointFunction.Arn

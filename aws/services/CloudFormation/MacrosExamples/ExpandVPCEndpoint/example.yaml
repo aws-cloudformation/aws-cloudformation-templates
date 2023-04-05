@@ -1,0 +1,56 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: ExpandVPCEndpoint
+
+Description: >
+  This CloudFormation template for testing macro
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: VPC Configuration
+        Parameters:
+          - pVPCId
+          - pSubnetIds
+          - pSecurityGroupIds
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pVPCId:
+        default: VPC Id
+      pSubnetIds:
+        default: Subnet Ids
+      pSecurityGroupIds:
+        default: Security Group Ids
+
+Parameters:
+  pVPCId:
+    Description: >
+      VPC Id of an existing VPC.
+    Type: String
+  pSubnetIds:
+    Description: >
+      Comma delimited list of existing Subnet Ids.
+    Type: CommaDelimitedList
+  pSecurityGroupIds:
+    Description: >
+      Comma delimited list of existing Security Group Ids.
+    Type: CommaDelimitedList
+
+Resources:
+  VPCEndpoint:
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3002 #Using Transform to build ServiceName
+            - E3003 #Using Transform to build ServiceName
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ExpandServiceCodes: "ssm,ssmmessages,ec2,ec2messages"
+      VpcEndpointType: Interface
+      VpcId: !Ref pVPCId
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref pSubnetIds
+      SecurityGroupIds: !Ref pSecurityGroupIds

@@ -1,0 +1,14 @@
+[
+    {
+        "ParameterKey": "pVPCId",
+        "ParameterValue": "vpc-xxx"
+    },
+    {
+        "ParameterKey": "pSubnetIds",
+        "ParameterValue": "subnet-aaa,subnet-bbb"
+    },
+    {
+        "ParameterKey": "pSecurityGroupIds",
+        "ParameterValue": "sg-xxx"
+    }
+]
