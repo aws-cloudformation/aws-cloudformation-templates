@@ -1,0 +1,235 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template is to provision the CloudFormation macro that find supported VPC ResourceId(s) by tags
+  1. Lambda Execution role is created.
+  2. Lambda is created that implements the macro logic.
+  3. Macro is created that uses the Lambda
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. dev
+    Type: String
+    Default: dev
+
+
+Resources:
+  rMacroLambdaExecRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Role Name is used for identification, it is OK to replace"
+          - id: W11
+            reason: "Only 'Describe*' is allowed"
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cfn-macro-find-vpc-resource-exec-role-${pProject}-${pEnv}
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      #PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/Permission_Boundary_if_any
+      Policies:
+        - PolicyName: lambda-cw-access
+          PolicyDocument:
+            Statement:
+              - Sid: LambdaAccessForCWLogGroup
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: LambdaAccessForCWLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*
+        - PolicyName: lambda-ec2-access
+          PolicyDocument:
+            Statement:
+              - Sid: LambdaEC2Access
+                Effect: Allow
+                Action:
+                  - ec2:Describe*
+                Resource: "*"
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+
+  rFindVPCResourceIdsFunction:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "VPC Access not required"
+          - id: W58
+            reason: "Permission to write CloudWatch logs is provided via execution role in security template"
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "Find supported VPCResource(s) Id(s) by tags"
+      FunctionName: !Sub cfn-macro-find-vpc-resource-${pProject}-${pEnv}
+      Handler: index.handler
+      Role: !GetAtt "rMacroLambdaExecRole.Arn"
+      Timeout: 120
+      Runtime: python3.9
+      ReservedConcurrentExecutions: 2
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          vpc_client = boto3.client('ec2')
+
+          def handle_filters(params):
+              filters = []
+              for k in params :
+                  filters.append(
+                      {
+                          "Name": f"tag:{k}",
+                          "Values": [ str(params[k]) ]
+                      }
+                  )
+              return filters
+
+          def find_vpc_id(params):
+              result = ""
+              #Search for VPC
+              try:
+                  filters = handle_filters(params)
+                  vpcs = vpc_client.describe_vpcs( Filters=filters, MaxResults=5 )
+                  if len(vpcs["Vpcs"]) > 0 :
+                      result = vpcs["Vpcs"][0]["VpcId"]
+              except Exception as e:
+                  print( str(e) )
+              return result
+
+          def find_subnet_ids(vpc_id, params):
+              result = []
+              #Search for SubnetIds
+              try:
+                  filters = handle_filters(params)
+                  filters.append(
+                      {
+                          "Name": "vpc-id",
+                          "Values": [ vpc_id ]
+                      }
+                  )
+
+                  subnets = vpc_client.describe_subnets( Filters=filters, MaxResults=6 )
+                  for subnet in subnets["Subnets"]:
+                      result.append(subnet["SubnetId"])
+              except Exception as e:
+                  print( str(e) )
+              return result
+
+          def find_sg_ids(vpc_id, params):
+              result = []
+              #Search for SecurityGroupIds
+              try:
+                  filters = handle_filters(params)
+                  filters.append(
+                      {
+                          "Name": "vpc-id",
+                          "Values": [ vpc_id ]
+                      }
+                  )
+
+                  sgs = vpc_client.describe_security_groups( Filters=filters, MaxResults=6 )
+                  for sg in sgs["SecurityGroups"]:
+                      result.append(sg["GroupId"])
+              except Exception as e:
+                  print( str(e) )
+              return result
+
+          def handler(event, context):
+              print( json.dumps(event, indent=2))
+
+              status = "success"
+              fragment = event["fragment"]
+              templateParameterValues = event["params"]
+              params = event["params"]
+
+              resource_type = params.pop("ResourceType")
+
+              return_type = "StringList"
+              if "ReturnType" in params :
+                return_type = params.pop("ReturnType")
+
+              if resource_type == "VpcId":
+                  fragment = find_vpc_id(params)
+              elif resource_type == "SubnetIds":
+                  vpc_params = {}
+                  subnet_params = {}
+                  for k in params :
+                      if k.startswith("VPC::"):
+                          vpc_params[k.replace("VPC::", "")] = params[k]
+                      else:
+                          subnet_params[k] = params[k]
+                  result = find_subnet_ids(find_vpc_id(vpc_params), subnet_params)
+                  if return_type == 'String' :
+                    fragment = ",".join(result)
+                  else :
+                    fragment = result
+              elif resource_type == "SecurityGroupIds":
+                  vpc_params = {}
+                  sg_params = {}
+                  for k in params :
+                      if k.startswith("VPC::"):
+                          vpc_params[k.replace("VPC::", "")] = params[k]
+                      else:
+                          sg_params[k] = params[k]
+                  result = find_sg_ids(find_vpc_id(vpc_params), sg_params)
+                  if return_type == 'String' :
+                    fragment = ",".join(result)
+                  else :
+                    fragment = result
+
+              return {
+                  "requestId": event["requestId"],
+                  "status": status,
+                  "fragment": fragment,
+              }
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+
+  mFindVPCResourceIds:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: FindVPCResourceIds
+      Description: Find supported VPC ResourceId(s) by tags
+      FunctionName: !GetAtt rFindVPCResourceIdsFunction.Arn
