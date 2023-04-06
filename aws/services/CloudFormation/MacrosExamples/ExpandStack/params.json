@@ -1,0 +1,14 @@
+[
+    {
+        "ParameterKey": "pTemplateBucket",
+        "ParameterValue": "<your-template-bucket>"
+    },
+    {
+        "ParameterKey": "pProject",
+        "ParameterValue": "myp"
+    },
+    {
+        "ParameterKey": "pEnv",
+        "ParameterValue": "dev"
+    }
+]

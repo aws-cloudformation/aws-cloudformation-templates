@@ -1,0 +1,83 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template is meant to be used as nested stack to create a private repository
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: "Private Repository Configuration"
+        Parameters:
+          - pNamespace
+          - pRepoName
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pNamespace:
+        default: Private repository namespace
+      pRepoName:
+        default: Private repository name
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pNamespace:
+    Description: The private repository namespace.
+    Type: String
+    Default: myp
+    MinLength: 3
+    MaxLength: 16
+  pRepoName:
+    Description: The private repository name.
+    Type: String
+    Default: hello-world
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. DEV
+    Type: String
+    Default: dev
+
+Resources:
+  rPvtRepo:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Application requires explicit name for the repository."
+          - id: W79
+            reason: "Scanning will be enabled at the registry level."
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${pNamespace}/${pRepoName}"
+      ImageTagMutability: IMMUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: ecr:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
