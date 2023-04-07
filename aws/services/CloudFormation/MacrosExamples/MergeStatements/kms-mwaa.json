@@ -1,0 +1,34 @@
+{
+    "Statement": [
+        {
+            "Sid": "Allow access for use on MWAA SQS",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": [
+                "kms:Encrypt*",
+                "kms:Decrypt*",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:Describe*"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "kms:CallerAccount": {
+                        "Ref": "AWS::AccountId"
+                    },
+                    "kms:ViaService": {
+                        "Fn::Sub": "airflow.${AWS::Region}.amazonaws.com"
+                    }
+                },
+                "ArnLike": {
+                    "kms:EncryptionContext:aws:sqs:arn": {
+                        "Fn::Sub": "arn:${AWS::Partition}:sqs:${AWS::Region}:*:airflow-celery-*"
+                    }
+                }
+            }
+        }
+    ]
+}

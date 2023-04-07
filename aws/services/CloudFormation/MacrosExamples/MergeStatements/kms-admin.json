@@ -1,0 +1,66 @@
+{
+    "Statement": [
+        {
+            "Sid": "Allow access for Key Administrators",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": {
+                    "Ref": "pKMSAdminRoles"
+                }
+            },
+            "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Allow granting of the key to Key Administrators",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": {
+                    "Ref": "pKMSAdminRoles"
+                }
+            },
+            "Action": [
+                "kms:CreateGrant",
+                "kms:ListGrants",
+                "kms:RevokeGrant"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "Bool": {
+                    "kms:GrantIsForAWSResource": true
+                }
+            }
+        },
+        {
+            "Sid": "Allow direct access to key metadata to the account",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": {
+                    "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                }
+            },
+            "Action": [
+                "kms:Describe*",
+                "kms:Get*",
+                "kms:List*",
+                "kms:RevokeGrant"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

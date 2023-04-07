@@ -1,0 +1,197 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template is to provision the CloudFormation macro that merges local tags with common tags.
+  1. Lambda Execution role is created, if not provided
+  2. Lambda is created that implements the macro logic.
+  3. Macro is created that uses the Lambda
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: "Macro Configuration"
+        Parameters:
+          - pMacroLambdaExecRoleARN
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pBucketName
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pMacroLambdaExecRoleARN:
+        default: Macro Lambda execution role ARN
+      pBucketName:
+        default: Amazon S3 bucket name
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pMacroLambdaExecRoleARN:
+    Description: If empty, new Macro Lambda execution role will be created
+    Type: String
+    Default: ""
+  pBucketName:
+    Description: The bucket where common tag file(s) are available.
+    Type: String
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. dev
+    Type: String
+    Default: dev
+
+Conditions:
+  cCreateMacroLambdaExecRole: !Equals
+    - !Ref pMacroLambdaExecRoleARN
+    - ""
+
+Resources:
+  rMacroLambdaExecRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Role Name is used for identification, it is OK to replace"
+          - id: W11
+            reason: "Only 'Describe*' is allowed"
+    Type: AWS::IAM::Role
+    Condition: cCreateMacroLambdaExecRole
+    Properties:
+      RoleName: !Sub cfn-macro-merge-tags-exec-role-${pProject}-${pEnv}
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      #PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/Permission_Boundary_if_any
+      Policies:
+        - PolicyName: lambda-cw-access
+          PolicyDocument:
+            Statement:
+              - Sid: LambdaAccessForCWLogGroup
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Sid: LambdaAccessForCWLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*
+        - PolicyName: lambda-s3-access
+          PolicyDocument:
+            Statement:
+              - Sid: ListObjectsInBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${pBucketName}"
+              - Sid: AllObjectActions
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${pBucketName}/*"
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+
+  rMergeTagsFunction:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "VPC Access not required"
+          - id: W58
+            reason: "Permission to write CloudWatch logs provided via execution role in security template"
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "Merge local tags with common tags in a JSON file"
+      FunctionName: !Sub cfn-macro-merge-tags-${pProject}-${pEnv}
+      Handler: index.handler
+      Role: !If
+        - cCreateMacroLambdaExecRole
+        - !GetAtt "rMacroLambdaExecRole.Arn"
+        - !Ref pMacroLambdaExecRoleARN
+      Timeout: 300
+      Runtime: python3.9
+      ReservedConcurrentExecutions: 2
+      Code:
+        ZipFile: !Sub |
+          import json
+          import boto3
+
+          s3 = boto3.client('s3')
+
+          def handler(event, context):
+              print( json.dumps(event, indent=2))
+
+              response = {
+                  "requestId": event["requestId"],
+                  "status": "success"
+              }
+
+              response["fragment"] = []
+              params = event["params"]
+              templateParams = event["templateParameterValues"]
+
+              tags = {
+                  "Tags" : []
+              }
+
+              try:
+                  tagsFile = params.pop("TagsFile")
+                  pEnv = templateParams["pEnv"]
+                  s3Object = s3.get_object(Bucket="${pBucketName}", Key=tagsFile)
+                  strContent = s3Object['Body'].read().decode("utf-8")
+                  tags = json.loads(strContent)
+              except Exception as e:
+                  print( str(e) )
+
+              # print( json.dumps(tags, indent=2))
+
+              for tag in tags["Tags"] :
+                  response["fragment"].append( tag )
+
+              for k in params :
+                  response["fragment"].append(
+                      {
+                          "Key": k,
+                          "Value": params[k]
+                      }
+                  )
+
+              # print( json.dumps(response, indent=2))
+              return response
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+
+  mMergeTags:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: MergeTags
+      Description: Merge local tags with common tags
+      FunctionName: !GetAtt rMergeTagsFunction.Arn

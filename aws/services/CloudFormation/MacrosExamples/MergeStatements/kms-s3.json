@@ -1,0 +1,29 @@
+{
+    "Statement": [
+        {
+            "Sid": "Allow access through Amazon S3 for all principals in the account that are authorized to use Amazon S3",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "kms:CallerAccount": {
+                        "Ref": "AWS::AccountId"
+                    },
+                    "kms:ViaService": {
+                        "Fn::Sub": "s3.${AWS::Region}.amazonaws.com"
+                    }
+                }
+            }
+        }
+    ]
+}
