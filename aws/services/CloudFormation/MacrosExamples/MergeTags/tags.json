@@ -1,0 +1,38 @@
+{
+    "Tags": [
+        {
+            "Key": "Project",
+            "Value": {
+                "Ref": "pProject"
+            }
+        },
+        {
+            "Key": "Env",
+            "Value": {
+                "Ref": "pEnv"
+            }
+        },
+        {
+            "Key": "CreatedBy",
+            "Value": {
+                "Ref": "AWS::StackId"
+            }
+        },
+        {
+            "Key": "Team",
+            "Value": "my-team"
+        },
+        {
+            "Key": "Owner",
+            "Value": "my-team@example.com"
+        },
+        {
+            "Key": "Org",
+            "Value": "my-org"
+        },
+        {
+            "Key": "CostCenter",
+            "Value": "99999"
+        }
+    ]
+}

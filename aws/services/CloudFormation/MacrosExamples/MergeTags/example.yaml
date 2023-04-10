@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template for testing macro
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. DEV
+    Type: String
+    Default: dev
+
+Resources:
+  rCustomerDataBucket:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "sample"
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3002 #Fn:transform is used
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketName: !Sub "${pProject}-${pEnv}-customer-data-${AWS::AccountId}-${AWS::Region}"
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      Tags:
+        Fn::Transform:
+          Name: MergeTags
+          Parameters:
+            TagsFile: !Sub templates/${pEnv}/tags.json
+            Purpose: customer-data
+            Confidentiality: L3
+  rCustomerDataBucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket:
+        Ref: rCustomerDataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ForceSSLOnlyAccess
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${rCustomerDataBucket}"
+              - !Sub "arn:${AWS::Partition}:s3:::${rCustomerDataBucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+          - Sid: EnforceTLSv12orHigher
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${rCustomerDataBucket}"
+              - !Sub "arn:${AWS::Partition}:s3:::${rCustomerDataBucket}/*"
+            Condition:
+              NumericLessThan:
+                s3:TlsVersion: 1.2

@@ -1,0 +1,29 @@
+{
+    "Statement": [
+        {
+            "Sid": "Allow access to the service CloudWatch Logs",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": {
+                    "Fn::Sub": "logs.${AWS::Region}.amazonaws.com"
+                }
+            },
+            "Action": [
+                "kms:Encrypt*",
+                "kms:Decrypt*",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:Describe*",
+                "kms:CreateGrant"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "ArnLike": {
+                    "kms:EncryptionContext:aws:logs:arn": {
+                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+                    }
+                }
+            }
+        }
+    ]
+}

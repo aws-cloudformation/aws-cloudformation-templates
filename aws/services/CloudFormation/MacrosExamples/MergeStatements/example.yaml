@@ -1,0 +1,157 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  This CloudFormation template for testing macro
+
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E3002 #used via transform
+        - E2507 #used via transform
+        - W2001 #used via transform
+  AWS::CloudFormation::Interface:
+    #Define user friendly Parameter Groups
+    ParameterGroups:
+      - Label:
+          default: Project Configuration
+        Parameters:
+          - pKMSAdminRoles
+          - pProject
+          - pEnv
+    #Define user friendly names for the parameters
+    ParameterLabels:
+      pKMSAdminRoles:
+        default: AWS KMS Key admin role ARNs
+      pProject:
+        default: Project name
+      pEnv:
+        default: Environment
+
+Parameters:
+  #Referred in the Statement files
+  pKMSAdminRoles:
+    Description: >
+      Provide comma separated IAM Role ARNs that has Admin access to the created AWS KMS key(s).
+    Type: CommaDelimitedList
+  pProject:
+    Description: The project name e.g. myp.
+    Type: String
+    Default: myp
+  pEnv:
+    Description: The environment identifier e.g. DEV
+    Type: String
+    Default: dev
+
+Resources:
+  rS3KMSKey:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F76
+            reason: "Principal * is used with condition"
+    Type: AWS::KMS::Key
+    Properties:
+      Description: AWS KMS key for encrypting Amazon S3
+      Enabled: true
+      EnableKeyRotation: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      MultiRegion: false
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: kms-key-s3
+        Statement:
+          Fn::Transform:
+            Name: MergeStatements
+            Parameters:
+              #Merge statements in these files
+              Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-s3.json
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+  rS3KMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${pProject}/example/s3
+      TargetKeyId: !Ref rS3KMSKey
+
+  rMWAAKMSKey:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F76
+            reason: "Principal * is used with condition"
+    Type: AWS::KMS::Key
+    Properties:
+      Description: AWS KMS key for encrypting Amazon MWAA
+      Enabled: true
+      EnableKeyRotation: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      MultiRegion: false
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: kms-key-mwaa
+        Statement:
+          Fn::Transform:
+            Name: MergeStatements
+            Parameters:
+              #Merge statements in these files
+              Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-s3.json,templates/${pEnv}/kms-logs.json,templates/${pEnv}/kms-mwaa.json
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+  rMWAAKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${pProject}/example/mwaa
+      TargetKeyId: !Ref rMWAAKMSKey
+
+  rLogsKMSKey:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F76
+            reason: "Principal * is used with condition"
+    Type: AWS::KMS::Key
+    Properties:
+      Description: AWS KMS key for encrypting Amazon CloudWatch logs
+      Enabled: true
+      EnableKeyRotation: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      MultiRegion: false
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: kms-key-ebs
+        Statement:
+          Fn::Transform:
+            Name: MergeStatements
+            Parameters:
+              #Merge statements in these files
+              Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-logs.json
+      Tags:
+        - Key: Project
+          Value: !Ref pProject
+        - Key: Env
+          Value: !Ref pEnv
+        - Key: CreatedBy
+          Value: !Ref AWS::StackId
+  rLogsKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${pProject}/example/logs
+      TargetKeyId: !Ref rLogsKMSKey

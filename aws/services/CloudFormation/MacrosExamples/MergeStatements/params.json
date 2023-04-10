@@ -1,0 +1,18 @@
+[
+    {
+        "ParameterKey": "pBucketName",
+        "ParameterValue": "<your-template-bucket>"
+    },
+    {
+        "ParameterKey": "pKMSAdminRoles",
+        "ParameterValue": "<comma-delimited-list-of-admin-role-arns>"
+    },
+    {
+        "ParameterKey": "pProject",
+        "ParameterValue": "myp"
+    },
+    {
+        "ParameterKey": "pEnv",
+        "ParameterValue": "dev"
+    }
+]
