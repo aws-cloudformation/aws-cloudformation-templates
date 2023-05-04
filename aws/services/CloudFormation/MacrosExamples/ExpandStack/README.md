@@ -75,7 +75,9 @@ Resources:
   ```bash
   aws cloudformation deploy --stack-name myp-dev-ExpandStack-macro --template-file ./macro.yaml --capabilities CAPABILITY_NAMED_IAM
   ```
-- Provide the parameters, as per your environment, in `params.json` parameter file. Provide the name of an existing bucket in `pTemplateBucket`.
+- Resource type `AWS::CloudFormation::Stack` requires the stack template(s) be available on an Amazon S3 bucket (e.g. `pTemplateBucket`).
+  - If you don't have one already, create one with `aws s3 mb s3://${pTemplateBucket}`
+- Provide the parameters, as per your environment, in `params.json` parameter file. Provide the name of an existing bucket for templates in `pTemplateBucket`.
   ```json
   [
     {
@@ -92,11 +94,11 @@ Resources:
     }
   ]
   ```
-- Copy the sample `ecr-repo.yaml` template to bucket. For example:
+- Copy the sample `ecr-repo.yaml` template to `pTemplateBucket` bucket. For example:
   ```bash
   aws s3 cp ecr-repo.yaml s3://${pTemplateBucket}/templates/${pEnv}/ecr/ecr-repo.yaml
   ```
-- Copy the sample `s3-bucket.yaml` template to bucket. For example:
+- Copy the sample `s3-bucket.yaml` template to `pTemplateBucket` bucket. For example:
   ```bash
   aws s3 cp s3-bucket.yaml s3://${pTemplateBucket}/templates/${pEnv}/s3/s3-bucket.yaml
   ```

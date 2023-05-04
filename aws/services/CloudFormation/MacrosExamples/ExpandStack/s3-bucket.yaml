@@ -2,14 +2,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Description: >
-  his CloudFormation template is meant to be used as nested stack to create a S3 bucket.
+  This CloudFormation template is meant to be used as nested stack to create a S3 bucket.
 
 Metadata:
   AWS::CloudFormation::Interface:
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
-          default: "Storage Configuration"
+          default: Storage Configuration
         Parameters:
           - pBucketName
       - Label:
@@ -46,7 +46,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W35
-            reason: "sample"
+            reason: sample
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
@@ -74,7 +74,7 @@ Resources:
         - Key: CreatedBy
           Value: !Ref AWS::StackId
   rPvtBucketPolicy:
-    Type: "AWS::S3::BucketPolicy"
+    Type: AWS::S3::BucketPolicy
     Properties:
       Bucket:
         Ref: rPvtBucket

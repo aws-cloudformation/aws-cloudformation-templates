@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: ExpandStack1
+Transform: ExpandStack
 
 Description: >
   This CloudFormation template for testing macro
