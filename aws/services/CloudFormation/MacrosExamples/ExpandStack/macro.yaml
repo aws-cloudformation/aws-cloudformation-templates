@@ -39,9 +39,9 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W28
-            reason: "Role Name is used for identification, it is OK to replace"
+            reason: Role Name is used for identification, it is OK to replace
           - id: W11
-            reason: "Only 'Describe*' is allowed"
+            reason: Only Describe* is allowed
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub cfn-macro-expand-stack-exec-role-${pProject}-${pEnv}
@@ -82,12 +82,12 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: W89
-            reason: "VPC Access not required"
+            reason: VPC Access not required
           - id: W58
-            reason: "Permission to write CloudWatch logs provided via execution role in security template"
-    Type: "AWS::Lambda::Function"
+            reason: Permission to write CloudWatch logs provided via execution role in security template
+    Type: AWS::Lambda::Function
     Properties:
-      Description: "Expand a Resource of Type AWS::CloudFormation::Stack"
+      Description: Expand a Resource of Type AWS::CloudFormation::Stack
       FunctionName: !Sub cfn-macro-expand-stack-${pProject}-${pEnv}
       Handler: index.handler
       Role: !GetAtt "rMacroLambdaExecRole.Arn"
