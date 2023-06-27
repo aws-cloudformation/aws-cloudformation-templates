@@ -7,8 +7,8 @@ Metadata:
       - Label:
           default: Domain Configuration
         Parameters:
-          - HostedZone
           - DomainName
+          - HostedZone
       - Label:
           default: Network Configuration
         Parameters:
@@ -21,32 +21,32 @@ Metadata:
           - Port
           - InVpc
 Parameters:
-  HostedZone:
-    Type: AWS::Route53::HostedZone::Id
-    Description: The hostedZone with privateLink DNS name, leave this empty if you don't have hostedZone in this account
   DomainName:
     Type: String
-    Description: The privateLink domain name
+    Description: The Fully Qualified Domain Name (FQDN) of PrivateLink DNS
+  HostedZone:
+    Type: AWS::Route53::HostedZone::Id
+    Description: The public hostedZone of above FQDN
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VpcId of your existing Virtual Private Cloud (VPC) where SAP resides
   Subnets:
     Type: List<AWS::EC2::Subnet::Id>
-    Description: The list of private SubnetIds in your Virtual Private Cloud (VPC), must select at least two covering different AZs
+    Description: The private subnets (must include one where SAP resides) of above VPC, recommend choose multiple covering different AZs
   IP:
     Type: String
-    Description: The SAP server's private IP address
+    Description: SAP Gateway's private IP address within VPC
   Port:
     Type: Number
     Default: 50000
-    Description: The SAP server's port number
+    Description: SAP Gateway's HTTP/HTTPS port number
   InVpc:
     Type: String
     AllowedValues:
       - "Yes"
       - "No"
     Default: "Yes"
-    Description: If the SAP in above mentioned VPC, choose No if this is just a peering VPC
+    Description: Choose Yes if SAP resides in above VPC; choose No otherwise (in cases of above VPC just peers with another SAP residing VPC)
 Conditions:
   IpInVpc: !Equals [!Ref InVpc, "Yes"]
 Rules:
