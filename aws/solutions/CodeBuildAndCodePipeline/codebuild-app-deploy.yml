@@ -1,0 +1,14 @@
+version: 0.2
+
+env:
+  variables:
+    ENVIRONMENT: "Locally_Set_Environment"
+
+phases:
+  pre_build:
+    commands:
+      - echo $ENVIRONMENT
+      - echo $SAMPLEENVVAR
+  build:
+    commands:
+      - echo "Put build commands here"

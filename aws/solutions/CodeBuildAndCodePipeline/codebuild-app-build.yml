@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+  variables:
+    SampleRepository: https://github.com/aws-samples/serverless-test-samples.git
+    RelativePathToProject: "serverless-test-samples/dotnet-test-samples/apigw-lambda-ddb/src/GetProduct/GetProduct.csproj"
+    RelativePathToTestProject: "serverless-test-samples/dotnet-test-samples/apigw-lambda-ddb/tests/ApiTests.UnitTest"
+    OutputLocation: "output/src/lambda/sample-lambda-code.zip"
+phases:
+  pre_build:
+    commands: 
+      - git clone $SampleRepository
+      - dotnet restore $RelativePathToProject 
+  build:
+    commands:
+      - dotnet publish $RelativePathToProject -c Release -r linux-x64 -o ./publish_output
+      - dotnet test $RelativePathToTestProject -c Release --logger trx --results-directory ./testresults
+  post_build:
+    commands:
+      - cd publish_output
+      - zip -q -r $CODEBUILD_SRC_DIR/app.zip .
+
+artifacts:
+  files:
+    - $CODEBUILD_SRC_DIR/app.zip
+  name: $AWS_REGION-$(date +%Y-%m-%d)/$CODEBUILD_BUILD_NUMBER
+  discard-paths: no
+
+reports:
+  MiltonTests:
+    file-format: VisualStudioTrx
+    files:
+      - "**/*"
+    base-directory: "./testresults"
