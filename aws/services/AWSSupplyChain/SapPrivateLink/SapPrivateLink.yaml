@@ -28,7 +28,7 @@ Parameters:
     Description: The fully qualified or wildcard domain name of DNS
   HostedZone:
     Type: AWS::Route53::HostedZone::Id
-    Description: The public hostedZone of above FQDN
+    Description: The public hostedZone of above domain name
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VpcId of your existing Virtual Private Cloud (VPC) where SAP resides
@@ -145,7 +145,7 @@ Resources:
                               'Action': 'UPSERT',
                               'ResourceRecordSet': {
                                 'Type': validationRecord['Type'],
-                                'Name': '{}.{}'.format(validationRecord['Name'], domainName),
+                                'Name': '{}.{}'.format(validationRecord['Name'], domainName[2:] if domainName.startswith('*') else domainName),
                                 'ResourceRecords': [{'Value': '"{}"'.format(validationRecord['Value'])}],
                                 'TTL': 300
                               }
