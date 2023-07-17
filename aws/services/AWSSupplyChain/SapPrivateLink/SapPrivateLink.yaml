@@ -18,15 +18,17 @@ Metadata:
           default: SAP Configuration
         Parameters:
           - IP
+          - Protocol
           - Port
+          - HealthCheckPath
           - InVpc
 Parameters:
   DomainName:
     Type: String
-    Description: The Fully Qualified Domain Name (FQDN) of PrivateLink DNS
+    Description: The fully qualified or wildcard domain name of DNS
   HostedZone:
     Type: AWS::Route53::HostedZone::Id
-    Description: The public hostedZone of above FQDN
+    Description: The public hostedZone of above domain name
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VpcId of your existing Virtual Private Cloud (VPC) where SAP resides
@@ -36,10 +38,21 @@ Parameters:
   IP:
     Type: String
     Description: SAP Gateway's private IP address within VPC
+  Protocol:
+    Type: String
+    AllowedValues:
+      - "HTTP"
+      - "HTTPS"
+    Default: "HTTP"
+    Description: SAP Gateway's connect protocol
   Port:
     Type: Number
     Default: 50000
-    Description: SAP Gateway's HTTP/HTTPS port number
+    Description: SAP Gateway's HTTP or HTTPS (match with protocol you choose above) port number
+  HealthCheckPath:
+    Type: String
+    Default: /sap/public/ping
+    Description: SAP Gateway's ping path to do health check
   InVpc:
     Type: String
     AllowedValues:
@@ -49,6 +62,7 @@ Parameters:
     Description: Choose Yes if SAP resides in above VPC; choose No otherwise (in cases of above VPC just peers with another SAP residing VPC)
 Conditions:
   IpInVpc: !Equals [!Ref InVpc, "Yes"]
+  SapUseHttps: !Equals [!Ref Protocol, "HTTPS"]
 Rules:
   SubnetsInVPC:
     Assertions:
@@ -58,10 +72,17 @@ Rules:
             - Ref: VpcId
         AssertDescription: All subnets must in the VPC
 Resources:
+  ASCPrivateLinkCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZone
   ASCPrivateLinkLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "ASCPrivateLinkLambdaRole-${AWS::Region}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -73,7 +94,7 @@ Resources:
                 - lambda.amazonaws.com
       Path: "/"
       Policies:
-        - PolicyName: !Sub "ASCPrivateLinkLambdaPolicy-${AWS::Region}"
+        - PolicyName: ASCPrivateLinkLambdaPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -90,7 +111,6 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Description: Lambda function to help with private link infrastructure setup
-      FunctionName: ASCPrivateLinkLambdaFunction
       Handler: index.handler
       Role: !GetAtt ASCPrivateLinkLambdaRole.Arn
       Timeout: 900
@@ -125,7 +145,7 @@ Resources:
                               'Action': 'UPSERT',
                               'ResourceRecordSet': {
                                 'Type': validationRecord['Type'],
-                                'Name': '{}.{}'.format(validationRecord['Name'], domainName),
+                                'Name': '{}.{}'.format(validationRecord['Name'], domainName[2:] if domainName.startswith('*') else domainName),
                                 'ResourceRecords': [{'Value': '"{}"'.format(validationRecord['Value'])}],
                                 'TTL': 300
                               }
@@ -151,14 +171,6 @@ Resources:
       DomainName: !Ref DomainName
       HostedZoneId: !Ref HostedZone
     DependsOn: ASCPrivateLinkVPCES
-  ASCPrivateLinkCertificate:
-    Type: AWS::CertificateManager::Certificate
-    Properties:
-      DomainName: !Ref DomainName
-      ValidationMethod: DNS
-      DomainValidationOptions:
-        - DomainName: !Ref DomainName
-          HostedZoneId: !Ref HostedZone
   ASCPrivateLinkNLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -172,15 +184,15 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       VpcId: !Ref VpcId
-      Protocol: TCP # use TCP and HTTP for health check as already TLS-terminated and traffic in local network
-      Port: !Ref Port
+      Protocol: !If [SapUseHttps, "TLS", "TCP"]
+      Port: 443
       TargetType: ip
       Targets:
         - AvailabilityZone: !If [IpInVpc, !Ref AWS::NoValue, "all"]
           Id: !Ref IP
           Port: !Ref Port
-      HealthCheckPath: /sap/public/ping
-      HealthCheckProtocol: HTTP
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: !Ref Protocol
   ASCPrivateLinkListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
