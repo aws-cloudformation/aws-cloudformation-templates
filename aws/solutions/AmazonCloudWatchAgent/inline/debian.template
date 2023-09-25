@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Template to install CloudWatchAgent on debian. It was validated on debian 8'
+Description: 'Template to install CloudWatchAgent on debian. It was validated on debian 12.0'
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
@@ -133,10 +133,10 @@ Resources:
            wget https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb
            dpkg -i /tmp/amazon-cloudwatch-agent.deb
            apt-get update -y
-           apt-get  install -y python-pip
-           easy_install --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
+           apt-get install -y python3 pipx && pipx ensurepath
+           pipx install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+           cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
+           cfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
         Count: 1
