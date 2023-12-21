@@ -1,5 +1,7 @@
 # Deploy containers using Elastic Container Service and CloudFormation
 
+__Note: For more modern CloudFormation examples, see [Containers on AWS patterns for CloudFormation](https://containersonaws.com/pattern/?tool=cloudformation). This large collection of patterns has CloudFormation snippets and entire reference applications that you can deploy for a variety of different real world use cases.__
+
 Several combinations of template are available in this folder. You can deploy containers with two different networking approaches:
 
 - Public VPC subnet with direct internet access
