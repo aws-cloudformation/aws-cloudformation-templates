@@ -27,29 +27,44 @@
         "Description" : "The ARN for Valid Public Certificate emited by ACM"
       }
     },
-  
-    "Mappings" : {
-      "Region2S3WebsiteSuffix": {
-        "us-east-1"      : { "Suffix": ".s3-website-us-east-1.amazonaws.com" },
-        "us-west-1"      : { "Suffix": ".s3-website-us-west-1.amazonaws.com" },
-        "us-west-2"      : { "Suffix": ".s3-website-us-west-2.amazonaws.com" },
-        "eu-west-1"      : { "Suffix": ".s3-website-eu-west-1.amazonaws.com" },
-        "eu-west-2"      : { "Suffix": ".s3-website-eu-west-2.amazonaws.com" },
-        "eu-west-3"      : { "Suffix": ".s3-website-eu-west-3.amazonaws.com" },
-        "ap-northeast-1" : { "Suffix": ".s3-website-ap-northeast-1.amazonaws.com" },
-        "ap-northeast-2" : { "Suffix": ".s3-website-ap-northeast-2.amazonaws.com" },
-        "ap-northeast-3" : { "Suffix": ".s3-website-ap-northeast-3.amazonaws.com" },
-        "ap-southeast-1" : { "Suffix": ".s3-website-ap-southeast-1.amazonaws.com" },
-        "ap-southeast-2" : { "Suffix": ".s3-website-ap-southeast-2.amazonaws.com" },
-        "ap-south-1"     : { "Suffix": ".s3-website-ap-south-1.amazonaws.com" },
-        "us-east-2"      : { "Suffix": ".s3-website-us-east-2.amazonaws.com" },
-        "ca-central-1"   : { "Suffix": ".s3-website-ca-central-1.amazonaws.com" },
-        "sa-east-1"      : { "Suffix": ".s3-website-sa-east-1.amazonaws.com" },
-        "cn-north-1"     : { "Suffix": ".s3-website.cn-north-1.amazonaws.com.cn" },
-        "cn-northwest-1" : { "Suffix": ".s3-website.cn-northwest-1.amazonaws.com.cn" },
-        "eu-central-1"   : { "Suffix": ".s3-website-eu-central-1.amazonaws.com" }
+    "Metadata": {
+      "cfn-lint": {
+        "config": {
+          "regions": [
+            "af-south-1",
+            "ap-east-1",
+            "ap-northeast-1",
+            "ap-northeast-2",
+            "ap-northeast-3",
+            "ap-south-1",
+            "ap-south-2",
+            "ap-southeast-1",
+            "ap-southeast-2",
+            "ap-southeast-3",
+            "ap-southeast-4",
+            "ca-central-1",
+            "ca-west-1",
+            "cn-north-1",
+            "cn-northwest-1",
+            "il-central-1",
+            "eu-central-1",
+            "eu-central-2",
+            "eu-north-1",
+            "eu-south-1",
+            "eu-south-2",
+            "eu-west-1",
+            "eu-west-2",
+            "eu-west-3",
+            "me-south-1",
+            "me-central-1",
+            "sa-east-1",
+            "us-east-1",
+            "us-east-2",
+            "us-west-1",
+            "us-west-2"
+          ]
+        }
       }
-  
     },
   
     "Resources" : {

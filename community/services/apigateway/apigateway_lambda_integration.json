@@ -193,7 +193,7 @@
           "Ref": "LambdaFunctionName"
         },
         "MemorySize": "128",
-        "Runtime": "python3.6",
+        "Runtime": "python3.8",
         "Timeout": "10",
         "Role": {
           "Fn::GetAtt": [
@@ -235,7 +235,7 @@
                     "logs:CreateLogGroup"
                   ],
                   "Resource": {
-                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
                   }
                 },
                 {
@@ -245,7 +245,7 @@
                     "logs:PutLogEvents"
                   ],
                   "Resource": {
-                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*"
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*"
                   }
                 }
               ]
