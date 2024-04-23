@@ -108,8 +108,7 @@ Resources:
       Timeout: 900
       Runtime: python3.10
       Code:
-        ZipFile: !Sub
-          - |
+        ZipFile: |
             import boto3
             import cfnresponse
             import logging
@@ -137,7 +136,6 @@ Resources:
               except Exception as e:
                 logging.exception(e)
                 cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
-          - Region: !Ref AWS::Region
   ASCPrivateLinkEnablePrivateDNS:
     Type: Custom::CustomResource
     Properties:

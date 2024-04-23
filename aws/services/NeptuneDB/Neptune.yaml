@@ -26,6 +26,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation template to automatically provision AWS Neptune Graph Database through optimized CI/CD method with AWS CloudWatch and AWS SNS.
 
 Metadata:
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
+      - us-west-2
   AWS::CloudFormation::Interface:
     ParameterGroups:
       -
@@ -34,9 +39,6 @@ Metadata:
         Parameters:
           - Env
           - AppName
-          - AppEnv
-          - Compliance
-          - Dept
           - User
           - Owner
           - Tier
@@ -62,7 +64,6 @@ Metadata:
           default: "Neptune Security Group Parameters"
         Parameters:
           - Port
-          - AttributeType
       -
         Label:
           default: "Neptune Backup and Monitoring Parameters"
@@ -70,7 +71,6 @@ Metadata:
           - HighCpuAlarmThreshold
           - LowMemoryAlarmThreshold
           - UploadAuditLogs
-          - NeptuneEnableAuditLog
           - BackupRetentionPeriod
           - NeptuneDBClusterPreferredMaintenanceWindow
           - NeptuneDBInstancePreferredMaintenanceWindow
@@ -99,15 +99,6 @@ Parameters:
     Description:    Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.
     Type:           String
     Default:        "appname"
-
-# Compliance Type
-  Compliance:
-    Description:    Please specify the Compliance Type. Used for tagging
-    Type:           String
-    Default:        "pci"
-    AllowedValues:
-      - 'itar'
-      - 'pci'
 
 # User
   User:
@@ -248,15 +239,6 @@ Parameters:
       - Yes
       - No
 
-  # Neptune DB audit logs
-  NeptuneEnableAuditLog:
-    Description:    Neptune DB parameters. Allowed values "0, 1"
-    Type:           String
-    Default:        0
-    AllowedValues:
-      - 0
-      - 1
-
   # Backup retention period (in days)
   BackupRetentionPeriod:
     Description:    Backup retention period (in days).  Must be between 1 - 35
@@ -349,7 +331,7 @@ Resources:
       DBClusterParameterGroupName: !Ref NeptuneDBClusterParameterGroup
       DBSubnetGroupName: !Ref NeptuneDBSubnetGroup
       IamAuthEnabled: !Ref IAMAuthEnabled
-      Port: !Ref Port
+      DBPort: !Ref Port
       PreferredBackupWindow: !Ref NeptuneDBClusterPreferredBackupWindow
       PreferredMaintenanceWindow: !Ref NeptuneDBClusterPreferredMaintenanceWindow
 #      SnapshotIdentifier: # Enable for the DB cluster snapshot from which you want to restore
@@ -365,7 +347,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  'Compliance'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
@@ -398,7 +380,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  'Compliance'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
@@ -427,7 +409,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  'Compliance'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
@@ -456,7 +438,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  'Compliance'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
@@ -485,7 +467,7 @@ Resources:
         - Key:    App
           Value:  !Sub '${AppName}'
         - Key:    Compliance
-          Value:  !Sub 'Compliance'
+          Value:  'Compliance'
         - Key:    Env
           Value:  !Sub '${Env}'
         - Key:    User
@@ -579,7 +561,7 @@ Resources:
               - 's3:Get*'
               - 's3:List*'
             Resource:
-              - !Sub 'arn:aws:s3:::*' # S3 Bucket needs to be added here
+              - !Sub 'arn:${AWS::Partition}:s3:::*' # S3 Bucket needs to be added here
 
 ### CloudWatch Alarms setup ###
 

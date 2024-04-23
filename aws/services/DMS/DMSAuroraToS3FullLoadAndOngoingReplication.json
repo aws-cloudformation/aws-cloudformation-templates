@@ -184,7 +184,7 @@
       "Type" : "AWS::RDS::DBInstance",
       "Properties" : {
       	"DBClusterIdentifier" : { "Ref" : "AuroraCluster" },
-        "DBInstanceClass" : "db.t2.medium",
+        "DBInstanceClass" : "db.t3.medium",
         "DBInstanceIdentifier" : "dms-sample",
         "DBSubnetGroupName" : { "Ref" : "AuroraDBSubnetGroup" },
         "Engine" : "aurora",

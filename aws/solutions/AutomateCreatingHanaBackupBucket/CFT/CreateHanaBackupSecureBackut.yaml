@@ -66,7 +66,6 @@ Metadata:
 Resources:
   S3KmsSourceBucket:
     Type: AWS::KMS::Key
-    Description: Enter Role ARN for EC2 Role to Encrypt backup on S3
     Properties:
       Description: "To Encrypt S3 backup bucket"
       EnableKeyRotation: true
@@ -366,8 +365,8 @@ Resources:
                     - s3:GetObjectVersionTagging
                  Effect: Allow
                  Resource: [
-                  !Sub 'arn:aws:s3:::${OriginalBucketName}',
-                  !Sub 'arn:aws:s3:::${OriginalBucketName}/*']
+                  !Sub 'arn${AWS::Partition}s3:::${OriginalBucketName}',
+                  !Sub 'arn${AWS::Partition}s3:::${OriginalBucketName}/*']
                -
                  Action:
                     - s3:ReplicateObject
@@ -384,7 +383,7 @@ Resources:
                         's3:x-amz-server-side-encryption-aws-kms-key-id': [
                           !GetAtt 'TriggerLambdaKmsKey.Message'
                         ]
-                 Resource: !Sub 'arn:aws:s3:::${ReplicationBucketName}/*'
+                 Resource: !Sub 'arn${AWS::Partition}s3:::${ReplicationBucketName}/*'
                -
                  Action:
                     - kms:Decrypt
@@ -393,7 +392,7 @@ Resources:
                     StringLike:
                         'kms:ViaService': !Sub 's3.${AWS::Region}.amazonaws.com'
                         'kms:EncryptionContext:aws:s3:arn': [
-                            !Sub 'arn:aws:s3:::${OriginalBucketName}/*']
+                            !Sub 'arn${AWS::Partition}s3:::${OriginalBucketName}/*']
                  Resource: [ !GetAtt S3KmsSourceBucket.Arn ]
                -
                  Action:
@@ -403,7 +402,7 @@ Resources:
                     StringLike:
                         'kms:ViaService': !Sub 's3.${RepRegion}.amazonaws.com'
                         'kms:EncryptionContext:aws:s3:arn': [
-                            !Sub 'arn:aws:s3:::${ReplicationBucketName}/*' ]
+                            !Sub 'arn${AWS::Partition}s3:::${ReplicationBucketName}/*' ]
                  Resource: [ !GetAtt 'TriggerLambdaKmsKey.Message' ]
   DenyPutNonEncrypt:
     Type: AWS::S3::BucketPolicy
@@ -416,7 +415,7 @@ Resources:
              Effect: Deny
              Principal: "*"
              Action: s3:PutObject
-             Resource: !Sub 'arn:aws:s3:::${OriginalBucketName}/*'
+             Resource: !Sub 'arn${AWS::Partition}s3:::${OriginalBucketName}/*'
              Condition:
                  StringNotEquals:
                        's3:x-amz-server-side-encryption': 'aws:kms'
@@ -425,7 +424,7 @@ Resources:
              Effect: Deny
              Principal: "*"
              Action: s3:PutObject
-             Resource: !Sub 'arn:aws:s3:::${OriginalBucketName}/*'
+             Resource: !Sub 'arn${AWS::Partition}s3:::${OriginalBucketName}/*'
              Condition:
                  'Null':
                        's3:x-amz-server-side-encryption': true

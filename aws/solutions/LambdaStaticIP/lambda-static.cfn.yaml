@@ -200,7 +200,7 @@ Resources:
       FunctionName: StaticExternalIp
       Description: Lambda Function with code to call an external service
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
           const https = require('https');
 
           exports.handler = async (event) => {

@@ -22,6 +22,11 @@ Description:
   **WARNING**
   This template creates AWS Service Catalog Product, please make sure you review billing costs for AWS Service Catalog."
 Metadata:
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
+      - us-west-2
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -46,10 +51,6 @@ Metadata:
           - SCProductDistributor
           - SCSupportEmail
           - SCSupportUrl
-      - Label:
-          default: "Service Catalog Portfolio Display Name"
-        Parameters:
-          - PortfolioDisplayName
       - Label:
           default: "Service Catalog Product Details"
         Parameters:

@@ -4,7 +4,7 @@ templates:
   - community/**/*.yaml
   - community/**/*.json
 ignore_templates:
-  - aws/services/CloudFormation/MacrosExamples/Count/event.json
+  - aws/services/CloudFormation/MacrosExamples/**/*
 ignore_checks:
   - W3002  # This is for having to deploy templates using aws cloudformation package
   - W3005

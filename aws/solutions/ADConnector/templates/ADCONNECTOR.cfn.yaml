@@ -169,7 +169,6 @@ Parameters:
   LambdaLogsCloudWatchKMSKey:
     AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
     ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Default: ''
     Description:
       (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
       encryption keys.
@@ -197,7 +196,6 @@ Parameters:
   SecretsManagerDomainCredentialsSecretsKMSKey:
     AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
     ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Default: ''
     Description:
       (Optional) KMS Key ARN to use for encrypting the SecretsManager domain credentials secret. If empty, encryption is enabled with SecretsManager
       managing the server-side encryption keys.
@@ -278,6 +276,8 @@ Resources:
         S3Bucket: !Ref LambdaS3BucketName
         S3Key: !Ref LambdaZipFileName
   ADConnectorLambdaLogsLogGroup:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/lambda/${LambdaFunctionName}
@@ -423,14 +423,14 @@ Resources:
               - Effect: Allow
                 Action: s3:GetObject
                 Resource:
-                  - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::${AWS::Region}-birdwatcher-prod/*
-                  - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-ssm-distributor-file-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-ssm-document-attachments-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-windows-downloads-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-packages-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::${AWS::Region}-birdwatcher-prod/*
+                  - !Sub arn${AWS::Partition}s3:::patch-baseline-snapshot-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-distributor-file-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-document-attachments-${AWS::Region}/*
         - !If
           - SSMLogsBucketNameCondition
           - PolicyName: SsmLogs
@@ -444,8 +444,8 @@ Resources:
                     - s3:PutObjectAcl
                     - s3:GetEncryptionConfiguration
                   Resource:
-                    - !Sub arn:aws:s3:::${SSMLogsBucketName}
-                    - !Sub arn:aws:s3:::${SSMLogsBucketName}/*
+                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}
+                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}/*
           - !Ref AWS::NoValue
         - PolicyName: ADConnectorLinuxEC2SeamlessDomainJoinSecret
           PolicyDocument:
@@ -467,6 +467,8 @@ Resources:
                   Resource: !Ref SecretsManagerDomainCredentialsSecretsKMSKey
           - !Ref AWS::NoValue
   ADConnectorLinuxEC2SeamlessDomainJoinSecret:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Condition: LinuxEC2DomainJoinResourcesCondition
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -492,6 +494,8 @@ Resources:
       DOMAIN_NETBIOS_NAME: !Ref DomainNetBiosName
       DOMAIN_JOIN_SECRET_ID: !Ref ADConnectorServiceAccountSecret
   ADConnectorServiceAccountSecret:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: !Sub ADConnector-ServiceAccount-${DomainNetBiosName}-Domain
@@ -543,14 +547,14 @@ Resources:
               - Effect: Allow
                 Action: s3:GetObject
                 Resource:
-                  - !Sub arn:aws:s3:::aws-ssm-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-windows-downloads-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::amazon-ssm-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::amazon-ssm-packages-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::${AWS::Region}-birdwatcher-prod/*
-                  - !Sub arn:aws:s3:::patch-baseline-snapshot-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-ssm-distributor-file-${AWS::Region}/*
-                  - !Sub arn:aws:s3:::aws-ssm-document-attachments-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-windows-downloads-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-packages-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::${AWS::Region}-birdwatcher-prod/*
+                  - !Sub arn${AWS::Partition}s3:::patch-baseline-snapshot-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-distributor-file-${AWS::Region}/*
+                  - !Sub arn${AWS::Partition}s3:::aws-ssm-document-attachments-${AWS::Region}/*
         - !If
           - SSMLogsBucketNameCondition
           - PolicyName: SsmLogs
@@ -564,8 +568,8 @@ Resources:
                     - s3:PutObjectAcl
                     - s3:GetEncryptionConfiguration
                   Resource:
-                    - !Sub arn:aws:s3:::${SSMLogsBucketName}
-                    - !Sub arn:aws:s3:::${SSMLogsBucketName}/*
+                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}
+                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}/*
           - !Ref AWS::NoValue
   DHCPOptions:
     Condition: DHCPOptionSetCondition
