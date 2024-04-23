@@ -1,12 +1,9 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
 
 set -eou pipefail
 
-CFN_LINT_IGNORE="-i W3005"
-
 echo "Linting..."
-cfn-lint "${CFN_LINT_IGNORE}" **/*.yaml
-cfn-lint "${CFN_LINT_IGNORE}" **/*.json
+cfn-lint
 
 echo "Guard..."
 cfn-guard validate --data . \

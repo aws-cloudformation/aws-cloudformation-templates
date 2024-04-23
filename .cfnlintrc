@@ -1,0 +1,16 @@
+templates:
+  - aws/**/*.yaml
+  - aws/**/*.json
+  - community/**/*.yaml
+  - community/**/*.json
+ignore_templates:
+  - aws/services/CloudFormation/MacrosExamples/Count/event.json
+ignore_checks:
+  - W3002  # This is for having to deploy templates using aws cloudformation package
+  - W3005
+  - I1022  # Prefer sub over join on empty delimiter
+  - I3011  # Set explicit values for UpdateReplacePolicy / DeletionPolicy on potentially stateful resource
+include_checks:
+  - I
+regions:
+  - ALL_REGIONS
