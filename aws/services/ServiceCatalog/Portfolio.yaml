@@ -21,6 +21,11 @@ Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS Service
              **WARNING**
              This template creates AWS Service Catalog Portfolio, please make sure you review billing costs for AWS Service Catalog.'
 Metadata:
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
+      - us-west-2
   AWS::CloudFormation::Interface:
     ParameterGroups:
       -
@@ -34,7 +39,6 @@ Metadata:
         Label:
           default: "Service Catalog Portfolio Tags"
         Parameters:
-          - Name
           - Dept
           - Env
           - User
@@ -184,19 +188,33 @@ Resources:
         - Key:    Owner
           Value:  !Sub '${Owner}'
 
-  ServiceCatalogProductTagOptions:
+  ServiceCatalogProductTagOptionsDept:
     Type: "AWS::ServiceCatalog::TagOption"
     Properties:
       Active:     !Ref 'ActivateProductTagOptions'
-      Tags:
-        - Key:        Dept
-          Value:      !Sub '${ProductDept}'
-        - Key:        Env
-          Value:      !Sub '${ProductEnv}'
-        - Key:        User
-          Value:      !Sub '${ProductUser}'
-        - Key:        Owner
-          Value:      !Sub '${ProductOwner}'
+      Key:        Dept
+      Value:      !Sub '${ProductDept}'
+
+  ServiceCatalogProductTagOptionsEnv:
+    Type: "AWS::ServiceCatalog::TagOption"
+    Properties:
+      Active:     !Ref 'ActivateProductTagOptions'
+      Key:        Env
+      Value:      !Sub '${ProductEnv}'
+  
+  ServiceCatalogProductTagOptionsUser:
+    Type: "AWS::ServiceCatalog::TagOption"
+    Properties:
+      Active:     !Ref 'ActivateProductTagOptions'
+      Key:        User
+      Value:      !Sub '${ProductUser}'
+  
+  ServiceCatalogProductTagOptionsOwner:
+    Type: "AWS::ServiceCatalog::TagOption"
+    Properties:
+      Active:     !Ref 'ActivateProductTagOptions'
+      Key:        Owner
+      Value:      !Sub '${ProductOwner}'
 
   ServiceCatalogPortfolioShare:
     Type: "AWS::ServiceCatalog::PortfolioShare"
@@ -217,7 +235,7 @@ Outputs:
     Export:
       Name:   !Sub '${AWS::StackName}-ServiceCatalogPortfolioName'
 
-  ServiceCatalogProductTagOptions:
-    Value:    !Ref 'ServiceCatalogProductTagOptions'
+  ServiceCatalogProductTagOptionsDept:
+    Value:    !Ref 'ServiceCatalogProductTagOptionsDept'
     Export:
-      Name:   !Sub '${AWS::StackName}-ServiceCatalogProductTagOptions'
+      Name:   !Sub '${AWS::StackName}-ServiceCatalogProductTagOptionsDept'

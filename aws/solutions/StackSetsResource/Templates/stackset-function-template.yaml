@@ -61,14 +61,14 @@ Resources:
                   Effect: Allow
                   Action: logs:CreateLogGroup
                   Resource:
-                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                    - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*'
                 -
                   Effect: Allow
                   Action:
                     - logs:CreateLogStream
                     - logs:PutLogEvents
                   Resource:
-                    - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+                    - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
           -
             PolicyName: "S3Permissions"
             PolicyDocument:
@@ -87,7 +87,7 @@ Resources:
       Description: Custom CloudFormation resource for managing Stack Sets
       Code: ../FunctionCode
       Handler: !Sub "${ModuleName}.handler"
-      Runtime: python3.6
+      Runtime: python3.8
       Timeout: 900
       Role: !GetAtt StackSetResourceRole.Arn
 

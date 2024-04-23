@@ -96,7 +96,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
           var aws  = require('aws-sdk');
           var config = new aws.ConfigService();
           var ec2 = new aws.EC2();

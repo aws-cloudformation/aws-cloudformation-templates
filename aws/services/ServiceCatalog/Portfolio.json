@@ -2,6 +2,14 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Portfolio creation. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates AWS Service Catalog Portfolio, please make sure you review billing costs for AWS Service Catalog.",
     "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
                 {
@@ -19,7 +27,6 @@
                         "default": "Service Catalog Portfolio Tags"
                     },
                     "Parameters": [
-                        "Name",
                         "Dept",
                         "Env",
                         "User",
@@ -204,38 +211,52 @@
                 ]
             }
         },
-        "ServiceCatalogProductTagOptions": {
+        "ServiceCatalogProductTagOptionsDept": {
             "Type": "AWS::ServiceCatalog::TagOption",
             "Properties": {
                 "Active": {
                     "Ref": "ActivateProductTagOptions"
                 },
-                "Tags": [
-                    {
-                        "Key": "Dept",
-                        "Value": {
-                            "Fn::Sub": "${ProductDept}"
-                        }
-                    },
-                    {
-                        "Key": "Env",
-                        "Value": {
-                            "Fn::Sub": "${ProductEnv}"
-                        }
-                    },
-                    {
-                        "Key": "User",
-                        "Value": {
-                            "Fn::Sub": "${ProductUser}"
-                        }
-                    },
-                    {
-                        "Key": "Owner",
-                        "Value": {
-                            "Fn::Sub": "${ProductOwner}"
-                        }
-                    }
-                ]
+                "Key": "Dept",
+                "Value": {
+                    "Fn::Sub": "${ProductDept}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsEnv": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "Env",
+                "Value": {
+                    "Fn::Sub": "${ProductEnv}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsUser": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "User",
+                "Value": {
+                    "Fn::Sub": "${ProductUser}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsOwner": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "Owner",
+                "Value": {
+                    "Fn::Sub": "${ProductOwner}"
+                }
             }
         },
         "ServiceCatalogPortfolioShare": {
@@ -275,13 +296,13 @@
                 }
             }
         },
-        "ServiceCatalogProductTagOptions": {
+        "ServiceCatalogProductTagOptionsDept": {
             "Value": {
-                "Ref": "ServiceCatalogProductTagOptions"
+                "Ref": "ServiceCatalogProductTagOptionsDept"
             },
             "Export": {
                 "Name": {
-                    "Fn::Sub": "${AWS::StackName}-ServiceCatalogProductTagOptions"
+                    "Fn::Sub": "${AWS::StackName}-ServiceCatalogProductTagOptionsDept"
                 }
             }
         }

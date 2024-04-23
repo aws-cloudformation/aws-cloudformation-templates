@@ -39,7 +39,7 @@
                     "Ref": "AWS::AccountId"
                 },
                 "SourceArn": {
-                    "Fn::Sub": "arn:aws:s3:::${NotificationBucket}"
+                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${NotificationBucket}"
                 }
             }
         },

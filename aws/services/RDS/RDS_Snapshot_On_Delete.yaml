@@ -6,17 +6,23 @@ Description: 'AWS CloudFormation Sample Template RDS_Snapshot_On_Delete: Sample 
   This template creates an Amazon RDS database instance. When the stack is deleted
   a database snapshot will be left in your account. You will be billed for the AWS
   resources used if you create a stack from this template.'
+Parameters:
+  MyPassword:
+    NoEcho: "true"
+    Type: String
 Resources:
   MyDB:
     Type: AWS::RDS::DBInstance
     Properties:
       DBName: MyDatabase
       AllocatedStorage: '5'
-      DBInstanceClass: db.t2.small
+      DBInstanceClass: db.t3.small
+      BackupRetentionPeriod: 7
       Engine: MySQL
       MasterUsername: myName
-      MasterUserPassword: myPassword
+      MasterUserPassword: !Ref MyPassword
     DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
 Outputs:
   JDBCConnectionString:
     Description: JDBC connection string for the database

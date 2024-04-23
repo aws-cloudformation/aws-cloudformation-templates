@@ -23,6 +23,13 @@
                     "default": "Hosted Zone Domain Name"
                 }
             }
+        },
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1"
+                ]
+            }
         }
     },
     "Parameters": {
@@ -76,12 +83,12 @@
                             "Effect": "Allow",
                             "Principal": {
                                 "AWS": {
-                                    "Fn::Sub": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
                                 }
                             },
                             "Action": "s3:ListBucket",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${S3BucketForWebsiteContent}"
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}"
                             }
                         },
                         {
@@ -89,14 +96,14 @@
                             "Effect": "Allow",
                             "Principal": {
                                 "AWS": {
-                                    "Fn::Sub": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+                                    "Fn::Sub": "arn${AWS::Partition}iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
                                 }
                             },
                             "Action": [
                                 "s3:GetObject"
                             ],
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${S3BucketForWebsiteContent}/*"
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}/*"
                             }
                         }
                     ]

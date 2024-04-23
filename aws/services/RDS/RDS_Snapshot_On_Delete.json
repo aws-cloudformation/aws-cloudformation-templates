@@ -4,17 +4,27 @@
     "Metadata": {
         "License": "Apache-2.0"
     },
+    "Parameters": {
+        "MyPassword": {
+            "Type": "String",
+            "NoEcho": "true"
+        }
+    },
     "Resources": {
         "MyDB": {
             "DeletionPolicy": "Snapshot",
+            "UpdateReplacePolicy": "Snapshot",
             "Type": "AWS::RDS::DBInstance",
             "Properties": {
                 "DBName": "MyDatabase",
                 "AllocatedStorage": "5",
-                "DBInstanceClass": "db.t2.small",
+                "DBInstanceClass": "db.t3.small",
+                "BackupRetentionPeriod": 7,
                 "Engine": "MySQL",
                 "MasterUsername": "myName",
-                "MasterUserPassword": "myPassword"
+                "MasterUserPassword": {
+                    "Ref": "MyPassword"
+                }
             }
         }
     },

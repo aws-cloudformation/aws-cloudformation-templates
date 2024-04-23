@@ -27,7 +27,7 @@
                             "Action": "s3:ListBucket",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${BucketName}"
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${BucketName}"
                             },
                             "Principal": {
                                 "AWS": {
@@ -49,7 +49,7 @@
                             "Action": "s3:GetObject",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${BucketName}/*"
                             },
                             "Principal": {
                                 "AWS": {
@@ -71,7 +71,7 @@
                             "Action": "*",
                             "Effect": "Deny",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${BucketName}/*"
                             },
                             "Principal": "*",
                             "Condition": {

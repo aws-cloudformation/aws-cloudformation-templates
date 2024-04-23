@@ -7,6 +7,7 @@
     "Resources": {
         "S3Bucket": {
             "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
             "Type": "AWS::S3::Bucket",
             "Properties": {
                 "AccessControl": "PublicRead",

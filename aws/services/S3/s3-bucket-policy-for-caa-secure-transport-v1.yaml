@@ -22,19 +22,19 @@ Resources:
           - Sid: CrossAccPolicyDoc
             Action: "s3:ListBucket"
             Effect: Allow
-            Resource: !Sub 'arn:aws:s3:::${BucketName}'
+            Resource: !Sub 'arn${AWS::Partition}s3:::${BucketName}'
             Principal:
               AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
           - Sid: CrossAccPolicyDoc
             Action: "s3:GetObject"
             Effect: Allow
-            Resource: !Sub 'arn:aws:s3:::${BucketName}/*'
+            Resource: !Sub 'arn${AWS::Partition}s3:::${BucketName}/*'
             Principal:
               AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
           - Sid: HttpsOnly
             Action: '*'
             Effect: Deny
-            Resource: !Sub arn:aws:s3:::${BucketName}/*
+            Resource: !Sub arn${AWS::Partition}s3:::${BucketName}/*
             Principal: '*'
             Condition:
               Bool:

@@ -2,6 +2,14 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "AWS CloudFormation template to automatically provision AWS Neptune Graph Database through optimized CI/CD method with AWS CloudWatch and AWS SNS.",
     "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
                 {
@@ -11,9 +19,6 @@
                     "Parameters": [
                         "Env",
                         "AppName",
-                        "AppEnv",
-                        "Compliance",
-                        "Dept",
                         "User",
                         "Owner",
                         "Tier",
@@ -44,8 +49,7 @@
                         "default": "Neptune Security Group Parameters"
                     },
                     "Parameters": [
-                        "Port",
-                        "AttributeType"
+                        "Port"
                     ]
                 },
                 {
@@ -56,7 +60,6 @@
                         "HighCpuAlarmThreshold",
                         "LowMemoryAlarmThreshold",
                         "UploadAuditLogs",
-                        "NeptuneEnableAuditLog",
                         "BackupRetentionPeriod",
                         "NeptuneDBClusterPreferredMaintenanceWindow",
                         "NeptuneDBInstancePreferredMaintenanceWindow",
@@ -90,15 +93,6 @@
             "Description": "Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.",
             "Type": "String",
             "Default": "appname"
-        },
-        "Compliance": {
-            "Description": "Please specify the Compliance Type. Used for tagging",
-            "Type": "String",
-            "AllowedValues": [
-                "itar",
-                "pci"
-            ],
-            "Default": "pci"
         },
         "User": {
             "Description": "Please specify the User. Used for tagging",
@@ -212,15 +206,6 @@
                 "No"
             ],
             "Default": "Yes"
-        },
-        "NeptuneEnableAuditLog": {
-            "Description": "Neptune DB parameters. Allowed values \"0, 1\"",
-            "Type": "String",
-            "AllowedValues": [
-                0,
-                1
-            ],
-            "Default": 0
         },
         "BackupRetentionPeriod": {
             "Description": "Backup retention period (in days).  Must be between 1 - 35",
@@ -340,7 +325,7 @@
                 "IamAuthEnabled": {
                     "Ref": "IAMAuthEnabled"
                 },
-                "Port": {
+                "DBPort": {
                     "Ref": "Port"
                 },
                 "PreferredBackupWindow": {
@@ -372,9 +357,7 @@
                     },
                     {
                         "Key": "Compliance",
-                        "Value": {
-                            "Fn::Sub": "Compliance"
-                        }
+                        "Value": "Compliance"
                     },
                     {
                         "Key": "Env",
@@ -454,9 +437,7 @@
                     },
                     {
                         "Key": "Compliance",
-                        "Value": {
-                            "Fn::Sub": "Compliance"
-                        }
+                        "Value": "Compliance"
                     },
                     {
                         "Key": "Env",
@@ -531,9 +512,7 @@
                     },
                     {
                         "Key": "Compliance",
-                        "Value": {
-                            "Fn::Sub": "Compliance"
-                        }
+                        "Value": "Compliance"
                     },
                     {
                         "Key": "Env",
@@ -604,9 +583,7 @@
                     },
                     {
                         "Key": "Compliance",
-                        "Value": {
-                            "Fn::Sub": "Compliance"
-                        }
+                        "Value": "Compliance"
                     },
                     {
                         "Key": "Env",
@@ -683,9 +660,7 @@
                     },
                     {
                         "Key": "Compliance",
-                        "Value": {
-                            "Fn::Sub": "Compliance"
-                        }
+                        "Value": "Compliance"
                     },
                     {
                         "Key": "Env",
@@ -849,7 +824,7 @@
                             ],
                             "Resource": [
                                 {
-                                    "Fn::Sub": "arn:aws:s3:::*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::*"
                                 }
                             ]
                         }

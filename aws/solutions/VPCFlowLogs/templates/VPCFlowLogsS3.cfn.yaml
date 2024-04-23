@@ -104,7 +104,7 @@ Resources:
       LogDestination: !If
         - VPCFlowLogsNewBucketCondition
         - !GetAtt VPCFlowLogsBucket.Arn
-        - !Sub arn:aws:s3:::${VPCFlowLogsBucketName}
+        - !Sub arn:${AWS::Partition}:s3:::${VPCFlowLogsBucketName}
       LogFormat: !Ref VPCFlowLogsLogFormat
       MaxAggregationInterval: !Ref VPCFlowLogsMaxAggregationInterval
       ResourceId: !Ref VPCID

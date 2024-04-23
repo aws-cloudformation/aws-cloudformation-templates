@@ -35,10 +35,13 @@ Parameters:
 Resources:
   MyDB:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       DBName: !Ref 'DBName'
       AllocatedStorage: '5'
-      DBInstanceClass: db.t2.small
+      DBInstanceClass: db.t3.small
+      BackupRetentionPeriod: 7
       Engine: MySQL
       EngineVersion: 5.6.19
       MasterUsername: !Ref 'DBUser'

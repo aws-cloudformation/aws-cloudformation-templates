@@ -44,7 +44,7 @@
                             "Action": "s3:ListBucket",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${S3BUCKET}"
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${S3BUCKET}"
                             },
                             "Principal": {
                                 "AWS": {
@@ -66,7 +66,7 @@
                             "Action": "s3:GetObject",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn:aws:s3:::${S3BUCKET}/*"
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${S3BUCKET}/*"
                             },
                             "Principal": {
                                 "AWS": {

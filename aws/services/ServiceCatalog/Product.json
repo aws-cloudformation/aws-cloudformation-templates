@@ -2,6 +2,14 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Product creation. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates AWS Service Catalog Product, please make sure you review billing costs for AWS Service Catalog.",
     "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
                 {
@@ -36,14 +44,6 @@
                         "SCProductDistributor",
                         "SCSupportEmail",
                         "SCSupportUrl"
-                    ]
-                },
-                {
-                    "Label": {
-                        "default": "Service Catalog Portfolio Display Name"
-                    },
-                    "Parameters": [
-                        "PortfolioDisplayName"
                     ]
                 },
                 {

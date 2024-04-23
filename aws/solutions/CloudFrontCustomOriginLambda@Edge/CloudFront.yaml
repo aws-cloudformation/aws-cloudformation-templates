@@ -30,6 +30,13 @@ Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS CloudFr
              This template creates one Amazon EC2 instance and an Application Load Balancer, KMS Keys, S3 bucket, CloudFront Distribution resources.
              You will be billed for the AWS resources used if you create a stack from this template.'
 
+Metadata:
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
+      - us-west-2
+
 Parameters:
 
   Environment:
@@ -72,12 +79,12 @@ Parameters:
     Type:           String
     Default:        "true"
     AllowedValues:
-      - true
-      - false
+      - "true"
+      - "false"
 
   EC2ImageId:
     Description:    EC2 AMI Id
-    Type:           String
+    Type:           AWS::EC2::Image::Id
     Default:        "ami-xxx"
 
   EC2InstanceType:
@@ -152,12 +159,12 @@ Parameters:
       - https-only
 
   Compress:
-    Description:    CloudFront should support gzip compression requests: Accept-Encoding: gzip.
+    Description:    "CloudFront should support gzip compression requests: Accept-Encoding: gzip."
     Type:           String
     Default:        "false"
     AllowedValues:
-      - true
-      - false
+      - "true"
+      - "false"
 
   DefaultTTL:
     Description:    The default time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 86400 seconds (one day).
@@ -174,21 +181,13 @@ Parameters:
     Type:           String
     Default:        "0"
 
-  SmoothStreaming:
-    Description:    Indicates whether to use the origin that is associated with this cache behavior to distribute media files in the Microsoft Smooth Streaming format.
-    Type:           String
-    Default:        "false"
-    AllowedValues:
-      - true
-      - false
-
   QueryString:
     Description:    CIndicates whether you want CloudFront to forward query strings to the origin that is associated with this cache behavior.
     Type:           String
     Default:        "true"
     AllowedValues:
-      - true
-      - false
+      - "true"
+      - "false"
 
   ForwardCookies:
     Description:    Forwards specified cookies to the origin of the cache behavior.
@@ -284,16 +283,16 @@ Parameters:
     Type:           String
     Default:        "false"
     AllowedValues:
-      - true
-      - false
+      - "true"
+      - "false"
 
   ALBAttributeRoutingHttp2:
     Description:    Origin ALB Target Group Unhealthy Threshold Count.
     Type:           String
     Default:        "true"
     AllowedValues:
-      - true
-      - false
+      - "true"
+      - "false"
 
   ALBTargetGroupAttributeDeregistration:
     Description:    Origin ALB Target Group Deregistration Timeout.
@@ -331,11 +330,10 @@ Resources:
 # IAM ROLE USED FOR LOGGING KMS KEY ACCESS
   AdministratorAccessIAMRole:
     Type: 'AWS::IAM::Role'
-    Description: "Administrator Access IAM Role"
     Properties:
       RoleName: !Sub "AdministratorAccess-${AppName}"
       ManagedPolicyArns:
-        - !Sub "arn:aws:iam::aws:policy/AdministratorAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -350,7 +348,6 @@ Resources:
 # IAM ROLE USED FOR LAMBDA EDGE
   LambdaEdgeIAMRole:
     Type: 'AWS::IAM::Role'
-    Description: "Lambda Edge IAM Role"
     Properties:
       RoleName: !Sub "${AppName}-iam-lambda-edge-role-${Environment}"
       AssumeRolePolicyDocument:
@@ -392,7 +389,7 @@ Resources:
           - Sid: Enable IAM policies to allow access to the Key
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
             Action:
               - 'kms:*'
             Resource: '*'
@@ -400,7 +397,7 @@ Resources:
             Effect: Allow
             Principal:
               AWS:
-                - !Sub 'arn:aws:iam::${AWS::AccountId}:role/AdministratorAccess-${AppName}'
+                - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AdministratorAccess-${AppName}'
             Action:
               - 'kms:Put*'
               - 'kms:ScheduleKeyDeletion'
@@ -425,7 +422,8 @@ Resources:
 # LOGGING S3 BUCKET
   LoggingBucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: 'Retain'
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     DependsOn: LoggingBucketKMSKey
     Properties:
       BucketName: !Sub '${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}'
@@ -448,10 +446,10 @@ Resources:
           - Sid: LoggingBucketPermissions
             Effect: 'Allow'
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
             Action: 's3:PutObject'
             Resource:
-              - !Sub 'arn:aws:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*'
+              - !Sub 'arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*'
 
 # EC2 INSTANCE
   EC2Instance:
@@ -567,7 +565,7 @@ Resources:
       Port: '443'
       Protocol: 'HTTPS'
       Certificates:
-        - CertificateArn: !Sub 'arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
+        - CertificateArn: !Sub 'arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
       SslPolicy: 'ELBSecurityPolicy-FS-2018-06'
 
 # ORIGIN ALB HTTPS LISTENER RULE
@@ -679,7 +677,7 @@ Resources:
               LambdaFunctionARN: !Ref 'LambdaEdgeVersion'
         PriceClass: !Ref 'PriceClass'
         ViewerCertificate:
-          AcmCertificateArn: !Sub 'arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
+          AcmCertificateArn: !Sub 'arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
           SslSupportMethod:  !Ref 'SslSupportMethod'
           MinimumProtocolVersion: !Ref 'MinimumProtocolVersion'
         IPV6Enabled: !Ref 'IPV6Enabled'
@@ -690,14 +688,14 @@ Resources:
   LambdaEdgeFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      Description: !Sub 'A custom Lambda@Edge function for serving custom headers from CloudFront Distribution'
+      Description: 'A custom Lambda@Edge function for serving custom headers from CloudFront Distribution'
       FunctionName: !Sub '${AppName}-lambda-edge-${Environment}'
       Handler: index.handler
       Role: !GetAtt 'LambdaEdgeIAMRole.Arn'
       MemorySize: 128
       Timeout: 5
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
           'use strict';
 
            exports.handler = (event, context, callback) => {
@@ -744,14 +742,14 @@ Resources:
   LambdaEdgeVersionFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
-      Description: !Sub 'A custom Lambda@Edge Version function'
+      Description: 'A custom Lambda@Edge Version function'
       FunctionName: !Sub '${AppName}-lambda-edge-version-${Environment}'
       Handler: index.handler
       Role: !GetAtt 'LambdaEdgeIAMRole.Arn'
       MemorySize: 128
       Timeout: 30
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
           var AWS = require('aws-sdk');
           var response = require('cfn-response');
           exports.handler = (event, context) => {
@@ -825,12 +823,6 @@ Outputs:
     Export:
       Name:      !Sub '${AppName}-${Environment}-ec2-instance-id'
 
-  EC2InstanceSGID:
-    Description: "EC2 Instance Security Group ID"
-    Value:       !Ref 'EC2InstanceSG'
-    Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-sg'
-
   CloudFrontEndpoint:
     Description: "Endpoint for Cloudfront Distribution"
     Value:       !Ref 'CloudFrontDistribution'
@@ -843,7 +835,7 @@ Outputs:
 
   LambdaEdgeFunction:
     Description: "The Name of the Lambda@Edge Function"
-    Value:       !Sub 'LambdaEdgeFunction'
+    Value:       'LambdaEdgeFunction'
     Export:
       Name:      !Sub '${AppName}-${Environment}-lambda-edge-function-3'
 

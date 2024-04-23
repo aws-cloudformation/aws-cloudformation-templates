@@ -29,7 +29,8 @@
             "Type": "AWS::RDS::DBInstance",
             "Properties": {
                 "AllocatedStorage": "100",
-                "DBInstanceClass": "db.t2.small",
+                "DBInstanceClass": "db.t3.small",
+                "BackupRetentionPeriod": 7,
                 "Engine": "MySQL",
                 "Iops": "1000",
                 "MasterUsername": {

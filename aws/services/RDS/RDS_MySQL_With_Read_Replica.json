@@ -44,38 +44,23 @@
             "Description": "The database instance type",
             "Type": "String",
             "AllowedValues": [
-                "db.t1.micro",
-                "db.m1.small",
-                "db.m1.medium",
-                "db.m1.large",
-                "db.m1.xlarge",
-                "db.m2.xlarge",
-                "db.m2.2xlarge",
-                "db.m2.4xlarge",
-                "db.m3.medium",
-                "db.m3.large",
-                "db.m3.xlarge",
-                "db.m3.2xlarge",
-                "db.m4.large",
-                "db.m4.xlarge",
-                "db.m4.2xlarge",
-                "db.m4.4xlarge",
-                "db.m4.10xlarge",
-                "db.r3.large",
-                "db.r3.xlarge",
-                "db.r3.2xlarge",
-                "db.r3.4xlarge",
-                "db.r3.8xlarge",
-                "db.m2.xlarge",
-                "db.m2.2xlarge",
-                "db.m2.4xlarge",
-                "db.cr1.8xlarge",
-                "db.t2.micro",
-                "db.t2.small",
-                "db.t2.medium",
-                "db.t2.large"
+                "db.m5.xlarge",
+                "db.m5.2xlarge",
+                "db.m5.4xlarge",
+                "db.r5.large",
+                "db.r5.xlarge",
+                "db.r5.2xlarge",
+                "db.r5.4xlarge",
+                "db.r5.8xlarge",
+                "db.m5.xlarge",
+                "db.m5.2xlarge",
+                "db.m5.4xlarge",
+                "db.t3.micro",
+                "db.t3.small",
+                "db.t3.medium",
+                "db.t3.large"
             ],
-            "Default": "db.t2.small",
+            "Default": "db.t3.small",
             "ConstraintDescription": "must select a valid database instance type."
         },
         "EC2SecurityGroup": {
@@ -164,17 +149,20 @@
         "DBSecurityGroup": {
             "Type": "AWS::RDS::DBSecurityGroup",
             "Properties": {
-                "DBSecurityGroupIngress": {
-                    "EC2SecurityGroupName": {
-                        "Ref": "EC2SecurityGroup"
+                "DBSecurityGroupIngress": [
+                    {
+                        "EC2SecurityGroupName": {
+                            "Ref": "EC2SecurityGroup"
+                        }
                     }
-                },
+                ],
                 "GroupDescription": "database access"
             },
             "Condition": "Is-EC2-Classic"
         },
         "MasterDB": {
             "DeletionPolicy": "Snapshot",
+            "UpdateReplacePolicy": "Snapshot",
             "Type": "AWS::RDS::DBInstance",
             "Properties": {
                 "DBName": {
@@ -183,6 +171,7 @@
                 "AllocatedStorage": {
                     "Ref": "DBAllocatedStorage"
                 },
+                "BackupRetentionPeriod": 7,
                 "DBInstanceClass": {
                     "Ref": "DBInstanceClass"
                 },
@@ -234,8 +223,11 @@
             }
         },
         "ReplicaDB": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
             "Type": "AWS::RDS::DBInstance",
             "Properties": {
+                "BackupRetentionPeriod": 7,
                 "SourceDBInstanceIdentifier": {
                     "Ref": "MasterDB"
                 },

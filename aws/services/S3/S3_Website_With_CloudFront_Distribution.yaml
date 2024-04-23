@@ -27,6 +27,10 @@ Metadata:
         default: ACM Certificate ARN
       HostedZone:
         default: Hosted Zone Domain Name
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
 Conditions:
   HasHostedZone: !Not
     - !Equals
@@ -51,18 +55,18 @@ Resources:
           - Sid: 403Permissions
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity
+              AWS: !Sub 'arn:${AWS::Partition}:iam::cloudfront:user/CloudFront Origin Access Identity
                 ${CloudFrontOriginAccessIdentity}'
             Action: "s3:ListBucket"
-            Resource: !Sub 'arn:aws:s3:::${S3BucketForWebsiteContent}'
+            Resource: !Sub 'arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}'
           - Sid: ObjectAccess
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity
+              AWS: !Sub 'arn${AWS::Partition}iam::cloudfront:user/CloudFront Origin Access Identity
                 ${CloudFrontOriginAccessIdentity}'
             Action:
               - s3:GetObject
-            Resource: !Sub 'arn:aws:s3:::${S3BucketForWebsiteContent}/*'
+            Resource: !Sub 'arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}/*'
   WebsiteCDN:
     Type: AWS::CloudFront::Distribution
     Properties:
