@@ -1,0 +1,1103 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation template to automatically provision AWS Neptune Graph Database through optimized CI/CD method with AWS CloudWatch and AWS SNS.",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Tags"
+                    },
+                    "Parameters": [
+                        "Env",
+                        "AppName",
+                        "User",
+                        "Owner",
+                        "Tier",
+                        "Version",
+                        "Storage"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Neptune Database Parameters"
+                    },
+                    "Parameters": [
+                        "DBInstanceClass",
+                        "DBClusterIdentifier",
+                        "MajorVersionUpgrade",
+                        "MinorVersionUpgrade",
+                        "NeptuneQueryTimeout",
+                        "StorageEncrypted",
+                        "NeptuneDBSubnetGroupName",
+                        "GremlinRequestsPerSecThreshold",
+                        "SparqlRequestsPerSecThreshold",
+                        "IAMAuthEnabled",
+                        "VPCStack"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Neptune Security Group Parameters"
+                    },
+                    "Parameters": [
+                        "Port"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Neptune Backup and Monitoring Parameters"
+                    },
+                    "Parameters": [
+                        "HighCpuAlarmThreshold",
+                        "LowMemoryAlarmThreshold",
+                        "UploadAuditLogs",
+                        "BackupRetentionPeriod",
+                        "NeptuneDBClusterPreferredMaintenanceWindow",
+                        "NeptuneDBInstancePreferredMaintenanceWindow",
+                        "NeptuneDBClusterPreferredBackupWindow"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Neptune Notifications Parameters"
+                    },
+                    "Parameters": [
+                        "NeptuneSNSTopicArn",
+                        "SNSEmailSubscription"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "Env": {
+            "Description": "Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "AllowedValues": [
+                "test",
+                "dev",
+                "prod"
+            ],
+            "Default": "dev"
+        },
+        "AppName": {
+            "Description": "Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "Default": "appname"
+        },
+        "User": {
+            "Description": "Please specify the User. Used for tagging",
+            "Type": "String",
+            "Default": "test"
+        },
+        "Owner": {
+            "Description": "Please specify the Owner. Used for tagging",
+            "Type": "String",
+            "Default": ""
+        },
+        "Tier": {
+            "Description": "Please specify the Tier. Used for tagging",
+            "Type": "String",
+            "Default": ""
+        },
+        "Version": {
+            "Description": "Please specify the Application Version. Used for tagging",
+            "Type": "String",
+            "Default": ""
+        },
+        "Storage": {
+            "Description": "Please specify the Storage Type. Used for tagging",
+            "Type": "String",
+            "AllowedValues": [
+                "ebs",
+                "efs",
+                "s3"
+            ],
+            "Default": "ebs"
+        },
+        "VPCStack": {
+            "Description": "Please specify the VPC Stack Name.",
+            "Type": "String",
+            "Default": "vpc"
+        },
+        "DBInstanceClass": {
+            "Description": "Neptune DB instance class that will be used for primary and all replicas",
+            "Type": "String",
+            "AllowedValues": [
+                "db.r4.large",
+                "db.r4.xlarge",
+                "db.r4.2xlarge",
+                "db.r4.4xlarge",
+                "db.r4.8xlarge"
+            ],
+            "Default": "db.r4.large"
+        },
+        "DBClusterIdentifier": {
+            "Description": "Neptune DB cluster identifier. Must contain from 1 to 63 alphanumeric characters or hyphens. First character must be a letter. Cannot end with a hyphen or contain two consecutive hyphens.",
+            "Type": "String"
+        },
+        "Port": {
+            "Description": "Port used to connect to the Neptune cluster. Must be a valid port number between",
+            "Type": "String",
+            "Default": 8182
+        },
+        "NeptuneQueryTimeout": {
+            "Description": "Neptune DB parameters. Allowed values \"10-2147483647\"",
+            "Type": "String",
+            "Default": 120000
+        },
+        "StorageEncrypted": {
+            "Description": "Data-at-rest encryption",
+            "Type": "String",
+            "AllowedValues": [
+                true,
+                false
+            ],
+            "Default": false
+        },
+        "NeptuneDBSubnetGroupName": {
+            "Description": "The name for the DB Subnet Group. This value is stored as a lowercase string. Constraints, Must contain no more than 255 letters, numbers, periods, underscores, spaces, or hyphens. Must not be default.",
+            "Type": "String"
+        },
+        "NeptuneSNSTopicArn": {
+            "Description": "Custom SNS topic alarm. Optional. If not provided, an new SNS topic will be created for you",
+            "Type": "String"
+        },
+        "SNSEmailSubscription": {
+            "Description": "SNS Email subscription. Optional. If not provided, no alarm subscriptions will be created",
+            "Type": "String",
+            "AllowedPattern": "^[\\w-\\+]+(\\.[\\w]+)*@[\\w-]+(\\.[\\w]+)*(\\.[a-z]{2,})$|^$"
+        },
+        "HighCpuAlarmThreshold": {
+            "Description": "High CPU alarm threshold. Alert when CPU goes above this value.  In percentage used",
+            "Type": "String",
+            "Default": 80,
+            "AllowedPattern": "(100|[1-9]?[0-9])$"
+        },
+        "LowMemoryAlarmThreshold": {
+            "Description": "Low memory alarm threshold. Alert when memory falls below this value.  In bytes",
+            "Type": "Number",
+            "Default": 700000000
+        },
+        "GremlinRequestsPerSecThreshold": {
+            "Description": "Gremlin Requests Per Sec alarm threshold. Alert when Gremlin Requests Per Sec goes above this value. In percentage used",
+            "Type": "String",
+            "Default": 10000
+        },
+        "SparqlRequestsPerSecThreshold": {
+            "Description": "Sparql Requests Per Sec alarm threshold. Alert when Sparql Requests Per Sec goes above this value. In percentage used",
+            "Type": "String",
+            "Default": 10000
+        },
+        "UploadAuditLogs": {
+            "Description": "Enable upload of audit logs?",
+            "Type": "String",
+            "AllowedValues": [
+                "Yes",
+                "No"
+            ],
+            "Default": "Yes"
+        },
+        "BackupRetentionPeriod": {
+            "Description": "Backup retention period (in days).  Must be between 1 - 35",
+            "Type": "String",
+            "Default": 31,
+            "AllowedPattern": "([1-9]|[12][0-9]|3[0-5])"
+        },
+        "NeptuneDBClusterPreferredMaintenanceWindow": {
+            "Description": "Neptune DB cluster preferred maintenance window. Format - ddd:hh24:mi-ddd:hh24:mi. Valid Days - Mon, Tue, Wed, Thu, Fri, Sat, Sun. Constraints - Minimum 30-minute window.",
+            "Type": "String",
+            "Default": "mon:03:00-mon:04:00"
+        },
+        "NeptuneDBInstancePreferredMaintenanceWindow": {
+            "Description": "Neptune DB instance preferred maintenance window. Format - ddd:hh24:mi-ddd:hh24:mi. Valid Days - Mon, Tue, Wed, Thu, Fri, Sat, Sun. Constraints - Minimum 30-minute window.",
+            "Type": "String",
+            "Default": "mon:03:00-mon:04:00"
+        },
+        "NeptuneDBClusterPreferredBackupWindow": {
+            "Description": "Neptune DB cluster preferred backup window. Constrains - Must be in the format hh24:mi-hh24:mi. Must be in Universal Coordinated Time (UTC). Must not conflict with the preferred maintenance window. Must be at least 30 minutes.",
+            "Type": "String",
+            "Default": "02:00-03:00"
+        },
+        "MajorVersionUpgrade": {
+            "Description": "Neptune DB major version upgrade",
+            "Type": "String",
+            "AllowedValues": [
+                true,
+                false
+            ],
+            "Default": true
+        },
+        "MinorVersionUpgrade": {
+            "Description": "Neptune DB minor version upgrade",
+            "Type": "String",
+            "AllowedValues": [
+                true,
+                false
+            ],
+            "Default": true
+        },
+        "IAMAuthEnabled": {
+            "Description": "Neptune DB IAM authentication",
+            "Type": "String",
+            "AllowedValues": [
+                true,
+                false
+            ],
+            "Default": false
+        }
+    },
+    "Conditions": {
+        "EnableAuditLogUpload": {
+            "Fn::Equals": [
+                {
+                    "Ref": "UploadAuditLogs"
+                },
+                "Yes"
+            ]
+        },
+        "CreateSnsTopic": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NeptuneSNSTopicArn"
+                },
+                ""
+            ]
+        },
+        "CreateSnsSubscription": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "SNSEmailSubscription"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "NeptuneDBSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "SG of Neptune DB",
+                "VpcId": {
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${VPCStack}-VPCID"
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${AWS::StackName}-neptune-sg"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneDBCluster": {
+            "Type": "AWS::Neptune::DBCluster",
+            "DependsOn": "NeptuneDBSG",
+            "Properties": {
+                "BackupRetentionPeriod": {
+                    "Ref": "BackupRetentionPeriod"
+                },
+                "DBClusterIdentifier": {
+                    "Ref": "DBClusterIdentifier"
+                },
+                "DBClusterParameterGroupName": {
+                    "Ref": "NeptuneDBClusterParameterGroup"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "NeptuneDBSubnetGroup"
+                },
+                "IamAuthEnabled": {
+                    "Ref": "IAMAuthEnabled"
+                },
+                "DBPort": {
+                    "Ref": "Port"
+                },
+                "PreferredBackupWindow": {
+                    "Ref": "NeptuneDBClusterPreferredBackupWindow"
+                },
+                "PreferredMaintenanceWindow": {
+                    "Ref": "NeptuneDBClusterPreferredMaintenanceWindow"
+                },
+                "StorageEncrypted": {
+                    "Ref": "StorageEncrypted"
+                },
+                "VpcSecurityGroupIds": [
+                    {
+                        "Ref": "NeptuneDBSG"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${Env}-${AppName}-Cluster"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Compliance",
+                        "Value": "Compliance"
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    },
+                    {
+                        "Key": "Tier",
+                        "Value": {
+                            "Fn::Sub": "${Tier}"
+                        }
+                    },
+                    {
+                        "Key": "Version",
+                        "Value": {
+                            "Fn::Sub": "${Version}"
+                        }
+                    },
+                    {
+                        "Key": "Storage",
+                        "Value": {
+                            "Fn::Sub": "${Storage}"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneDBInstance": {
+            "Type": "AWS::Neptune::DBInstance",
+            "Properties": {
+                "AllowMajorVersionUpgrade": {
+                    "Ref": "MajorVersionUpgrade"
+                },
+                "AutoMinorVersionUpgrade": {
+                    "Ref": "MinorVersionUpgrade"
+                },
+                "DBClusterIdentifier": {
+                    "Ref": "NeptuneDBCluster"
+                },
+                "DBInstanceClass": {
+                    "Ref": "DBInstanceClass"
+                },
+                "DBParameterGroupName": {
+                    "Ref": "NeptuneDBParameterGroup"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "NeptuneDBSubnetGroup"
+                },
+                "PreferredMaintenanceWindow": {
+                    "Ref": "NeptuneDBInstancePreferredMaintenanceWindow"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${Env}-${AppName}-Instance"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Compliance",
+                        "Value": "Compliance"
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    },
+                    {
+                        "Key": "Tier",
+                        "Value": {
+                            "Fn::Sub": "${Tier}"
+                        }
+                    },
+                    {
+                        "Key": "Version",
+                        "Value": {
+                            "Fn::Sub": "${Version}"
+                        }
+                    },
+                    {
+                        "Key": "Storage",
+                        "Value": {
+                            "Fn::Sub": "${Storage}"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneDBClusterParameterGroup": {
+            "Type": "AWS::Neptune::DBClusterParameterGroup",
+            "Properties": {
+                "Description": {
+                    "Fn::Sub": "CloudFormation managed Neptune DB Cluster Parameter Group - ${Env}-${AppName}-cluster-parameter-group"
+                },
+                "Parameters": {
+                    "neptune_enable_audit_log": {
+                        "Fn::If": [
+                            "EnableAuditLogUpload",
+                            1,
+                            0
+                        ]
+                    }
+                },
+                "Family": "neptune1",
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-cluster-parameter-group"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${Env}-${AppName}-cluster-parameter-group"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Compliance",
+                        "Value": "Compliance"
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    },
+                    {
+                        "Key": "Tier",
+                        "Value": {
+                            "Fn::Sub": "${Tier}"
+                        }
+                    },
+                    {
+                        "Key": "Version",
+                        "Value": {
+                            "Fn::Sub": "${Version}"
+                        }
+                    },
+                    {
+                        "Key": "Storage",
+                        "Value": {
+                            "Fn::Sub": "${Storage}"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneDBParameterGroup": {
+            "Type": "AWS::Neptune::DBParameterGroup",
+            "Properties": {
+                "Description": {
+                    "Fn::Sub": "CloudFormation managed Neptune DB Parameter Group - ${Env}-${AppName}-parameter-group"
+                },
+                "Parameters": {
+                    "neptune_query_timeout": {
+                        "Ref": "NeptuneQueryTimeout"
+                    }
+                },
+                "Family": "neptune1",
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-parameter-group"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${Env}-${AppName}-parameter-group"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Compliance",
+                        "Value": "Compliance"
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    },
+                    {
+                        "Key": "Tier",
+                        "Value": {
+                            "Fn::Sub": "${Tier}"
+                        }
+                    },
+                    {
+                        "Key": "Version",
+                        "Value": {
+                            "Fn::Sub": "${Version}"
+                        }
+                    },
+                    {
+                        "Key": "Storage",
+                        "Value": {
+                            "Fn::Sub": "${Storage}"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneDBSubnetGroup": {
+            "Type": "AWS::Neptune::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": {
+                    "Fn::Sub": "CloudFormation managed Neptune DB Subnet Group - ${Env}-${AppName}-subnet-group"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "NeptuneDBSubnetGroupName"
+                },
+                "SubnetIds": [
+                    {
+                        "Fn::ImportValue": {
+                            "Fn::Sub": "${VPCStack}-PrivateSubnet1"
+                        }
+                    },
+                    {
+                        "Fn::ImportValue": {
+                            "Fn::Sub": "${VPCStack}-PrivateSubnet2"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${Env}-${AppName}-subnet-group"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Compliance",
+                        "Value": "Compliance"
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    },
+                    {
+                        "Key": "Tier",
+                        "Value": {
+                            "Fn::Sub": "${Tier}"
+                        }
+                    },
+                    {
+                        "Key": "Version",
+                        "Value": {
+                            "Fn::Sub": "${Version}"
+                        }
+                    },
+                    {
+                        "Key": "Storage",
+                        "Value": {
+                            "Fn::Sub": "${Storage}"
+                        }
+                    }
+                ]
+            }
+        },
+        "NeptuneAlarmTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "DisplayName": {
+                    "Fn::Sub": "${AWS::StackName} alarm topic"
+                }
+            },
+            "Condition": "CreateSnsTopic"
+        },
+        "NeptuneAlarmSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Properties": {
+                "Endpoint": {
+                    "Ref": "SNSEmailSubscription"
+                },
+                "Protocol": "email",
+                "TopicArn": {
+                    "Fn::If": [
+                        "CreateSnsTopic",
+                        {
+                            "Ref": "NeptuneAlarmTopic"
+                        },
+                        {
+                            "Ref": "NeptuneSNSTopicArn"
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateSnsSubscription"
+        },
+        "NeptuneRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-iam-role-${AWS::Region}"
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "monitoring.rds.amazonaws.com",
+                                    "rds.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Ref": "NeptuneCloudWatchPolicy"
+                    },
+                    {
+                        "Ref": "NeptuneS3Policy"
+                    }
+                ]
+            },
+            "Condition": "EnableAuditLogUpload"
+        },
+        "NeptuneCloudWatchPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "Description": "Default policy for CloudWatch logs",
+                "ManagedPolicyName": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-cw-policy-${AWS::Region}"
+                },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "EnableLogGroups",
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:PutRetentionPolicy"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:log-group:/aws/neptune/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Sid": "EnableLogStreams",
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents",
+                                "logs:DescriptLogStreams",
+                                "logs:GetLogEvents"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:log-group:/aws/neptune/*:log-stream:*"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "NeptuneS3Policy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "Description": "Neptune default policy for S3 access for data load",
+                "ManagedPolicyName": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-s3-policy-${AWS::Region}"
+                },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "AllowNeptuneAccessToS3",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:Get*",
+                                "s3:List*"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::*"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "NeptunePrimaryCpuAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": {
+                    "Fn::Sub": "${Env}-${AppName} primary DB CPU over ${HighCpuAlarmThreshold}%"
+                },
+                "Namespace": "AWS/Neptune",
+                "MetricName": "CPUUtilization",
+                "Unit": "Percent",
+                "Statistic": "Average",
+                "Period": 300,
+                "EvaluationPeriods": 2,
+                "Threshold": {
+                    "Ref": "HighCpuAlarmThreshold"
+                },
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "DBClusterIdentifier",
+                        "Value": {
+                            "Ref": "NeptuneDBCluster"
+                        }
+                    }
+                ],
+                "AlarmActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "NeptunePrimaryMemoryAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": {
+                    "Fn::Sub": "${Env}-${AppName} primary DB memory under ${LowMemoryAlarmThreshold} bytes"
+                },
+                "Namespace": "AWS/Neptune",
+                "MetricName": "FreeableMemory",
+                "Unit": "Bytes",
+                "Statistic": "Average",
+                "Period": 300,
+                "EvaluationPeriods": 2,
+                "Threshold": {
+                    "Ref": "LowMemoryAlarmThreshold"
+                },
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "DBClusterIdentifier",
+                        "Value": {
+                            "Ref": "NeptuneDBCluster"
+                        }
+                    }
+                ],
+                "AlarmActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "NeptunePrimaryGremlinRequestsPerSecAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": {
+                    "Fn::Sub": "${Env}-${AppName} primary DB Gremlin Requests Per Second"
+                },
+                "Namespace": "AWS/Neptune",
+                "MetricName": "GremlinRequestsPerSec",
+                "Statistic": "Average",
+                "Period": 300,
+                "EvaluationPeriods": 2,
+                "Threshold": {
+                    "Ref": "GremlinRequestsPerSecThreshold"
+                },
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "DBClusterIdentifier",
+                        "Value": "gremlin-cluster"
+                    }
+                ],
+                "AlarmActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "NeptunePrimarySparqlRequestsPerSecAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": {
+                    "Fn::Sub": "${Env}-${AppName} primary DB Sparql Requests Per Second"
+                },
+                "Namespace": "AWS/Neptune",
+                "MetricName": "SparqlRequestsPerSec",
+                "Statistic": "Average",
+                "Period": 300,
+                "EvaluationPeriods": 2,
+                "Threshold": {
+                    "Ref": "SparqlRequestsPerSecThreshold"
+                },
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "DBClusterIdentifier",
+                        "Value": {
+                            "Ref": "NeptuneDBCluster"
+                        }
+                    }
+                ],
+                "AlarmActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ],
+                "InsufficientDataActions": [
+                    {
+                        "Fn::If": [
+                            "CreateSnsTopic",
+                            {
+                                "Ref": "NeptuneAlarmTopic"
+                            },
+                            {
+                                "Ref": "NeptuneSNSTopicArn"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "NeptuneEndpointAddress": {
+            "Description": "Neptune DB endpoint address",
+            "Value": {
+                "Fn::GetAtt": [
+                    "NeptuneDBCluster",
+                    "Endpoint"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-endpoint-address"
+                }
+            }
+        },
+        "NeptuneReadEndpointAddress": {
+            "Description": "Neptune DB read-only endpoint address",
+            "Value": {
+                "Fn::GetAtt": [
+                    "NeptuneDBCluster",
+                    "ReadEndpoint"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-read-endpoint-address"
+                }
+            }
+        },
+        "NeptuneSnsTopic": {
+            "Description": "Neptune SNS Topic for alarms",
+            "Value": {
+                "Fn::If": [
+                    "CreateSnsTopic",
+                    {
+                        "Ref": "NeptuneAlarmTopic"
+                    },
+                    {
+                        "Ref": "NeptuneSNSTopicArn"
+                    }
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-sns-topic"
+                }
+            }
+        },
+        "NeptuneEndpointPort": {
+            "Description": "Endpoint port",
+            "Value": {
+                "Fn::GetAtt": [
+                    "NeptuneDBCluster",
+                    "Port"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${Env}-${AppName}-neptune-endpoint-port"
+                }
+            }
+        }
+    }
+}

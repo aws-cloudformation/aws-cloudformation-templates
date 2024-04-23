@@ -1,0 +1,386 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template to create PrivateLink infrastructure",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Domain Configuration"
+                    },
+                    "Parameters": [
+                        "DomainName",
+                        "HostedZone"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "VpcId",
+                        "Subnets"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "SAP Configuration"
+                    },
+                    "Parameters": [
+                        "IP",
+                        "Protocol",
+                        "Port",
+                        "HealthCheckPath",
+                        "InVpc"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "DomainName": {
+            "Description": "The fully qualified or wildcard domain name of DNS",
+            "Type": "String"
+        },
+        "HostedZone": {
+            "Description": "The public hostedZone of above domain name",
+            "Type": "AWS::Route53::HostedZone::Id"
+        },
+        "VpcId": {
+            "Description": "VpcId of your existing Virtual Private Cloud (VPC) where SAP resides",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "Subnets": {
+            "Description": "The private subnets (must include one where SAP resides) of above VPC, recommend choose multiple covering different AZs",
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        },
+        "IP": {
+            "Description": "SAP Gateway's private IP address within VPC",
+            "Type": "String"
+        },
+        "Protocol": {
+            "Description": "SAP Gateway's connect protocol",
+            "Type": "String",
+            "AllowedValues": [
+                "HTTP",
+                "HTTPS"
+            ],
+            "Default": "HTTP"
+        },
+        "Port": {
+            "Description": "SAP Gateway's HTTP or HTTPS (match with protocol you choose above) port number",
+            "Type": "Number",
+            "Default": 50000
+        },
+        "HealthCheckPath": {
+            "Description": "SAP Gateway's ping path to do health check",
+            "Type": "String",
+            "Default": "/sap/public/ping"
+        },
+        "InVpc": {
+            "Description": "Choose Yes if SAP resides in above VPC; choose No otherwise (in cases of above VPC just peers with another SAP residing VPC)",
+            "Type": "String",
+            "AllowedValues": [
+                "Yes",
+                "No"
+            ],
+            "Default": "Yes"
+        }
+    },
+    "Rules": {
+        "SubnetsInVPC": {
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::EachMemberEquals": [
+                            [
+                                "Subnets",
+                                "VpcId"
+                            ],
+                            {
+                                "Ref": "VpcId"
+                            }
+                        ]
+                    },
+                    "AssertDescription": "All subnets must in the VPC"
+                }
+            ]
+        }
+    },
+    "Conditions": {
+        "IpInVpc": {
+            "Fn::Equals": [
+                {
+                    "Ref": "InVpc"
+                },
+                "Yes"
+            ]
+        },
+        "SapUseHttps": {
+            "Fn::Equals": [
+                {
+                    "Ref": "Protocol"
+                },
+                "HTTPS"
+            ]
+        }
+    },
+    "Transform": "AWS::LanguageExtensions",
+    "Resources": {
+        "ASCPrivateLinkCertificate": {
+            "Type": "AWS::CertificateManager::Certificate",
+            "Properties": {
+                "DomainName": {
+                    "Ref": "DomainName"
+                },
+                "ValidationMethod": "DNS",
+                "DomainValidationOptions": [
+                    {
+                        "DomainName": {
+                            "Ref": "DomainName"
+                        },
+                        "HostedZoneId": {
+                            "Ref": "HostedZone"
+                        }
+                    }
+                ]
+            }
+        },
+        "ASCPrivateLinkLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "ASCPrivateLinkLambdaPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents",
+                                        "ec2:DescribeVpcEndpointServiceConfigurations",
+                                        "ec2:ModifyVpcEndpointServiceConfiguration",
+                                        "route53:ChangeResourceRecordSets"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ASCPrivateLinkLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Lambda function to help with private link infrastructure setup",
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ASCPrivateLinkLambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 900,
+                "Runtime": "python3.10",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Sub": [
+                            "import boto3\nimport cfnresponse\nimport logging\ndef handler(event, context):\n  print('Receive event: {} and context: {}'.format(str(event), str(context)))\n  responseData = {}\n  eventType = event['RequestType'].strip()\n  props = event['ResourceProperties']\n  try:\n    if eventType in ('Create'):\n      match props['Action']:\n        case 'EnablePrivateDNS':\n          dnsClient = boto3.client('route53')\n          ec2Client = boto3.client('ec2')\n          serviceId = props['ServiceId']\n          domainName = props['DomainName']\n          hostedZoneId = props['HostedZoneId']\n          ec2Client.modify_vpc_endpoint_service_configuration(ServiceId=serviceId, PrivateDnsName=domainName)\n          validationRecord = ec2Client.describe_vpc_endpoint_service_configurations(ServiceIds=[serviceId])['ServiceConfigurations'][0]['PrivateDnsNameConfiguration']\n          dnsClient.change_resource_record_sets(\n            HostedZoneId=hostedZoneId,\n            ChangeBatch={\n              'Changes': [\n                {\n                  'Action': 'UPSERT',\n                  'ResourceRecordSet': {\n                    'Type': validationRecord['Type'],\n                    'Name': '{}.{}'.format(validationRecord['Name'], domainName[2:] if domainName.startswith('*') else domainName),\n                    'ResourceRecords': [{'Value': '\"{}\"'.format(validationRecord['Value'])}],\n                    'TTL': 300\n                  }\n                }\n              ]\n            }\n          )\n        case _:\n          raise Exception('Unsupported action')\n    else:\n      print('Skip on resource UPDATE and DELETE')\n    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)\n  except Exception as e:\n    logging.exception(e)\n    cfnresponse.send(event, context, cfnresponse.FAILED, responseData)\n",
+                            {
+                                "Region": {
+                                    "Ref": "AWS::Region"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "ASCPrivateLinkEnablePrivateDNS": {
+            "Type": "Custom::CustomResource",
+            "DependsOn": "ASCPrivateLinkVPCES",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ASCPrivateLinkLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "EnablePrivateDNS",
+                "ServiceId": {
+                    "Ref": "ASCPrivateLinkVPCES"
+                },
+                "DomainName": {
+                    "Ref": "DomainName"
+                },
+                "HostedZoneId": {
+                    "Ref": "HostedZone"
+                }
+            }
+        },
+        "ASCPrivateLinkNLB": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Type": "network",
+                "Scheme": "internal",
+                "Subnets": {
+                    "Ref": "Subnets"
+                },
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "load_balancing.cross_zone.enabled",
+                        "Value": true
+                    }
+                ]
+            }
+        },
+        "ASCPrivateLinkTargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VpcId"
+                },
+                "Protocol": {
+                    "Fn::If": [
+                        "SapUseHttps",
+                        "TLS",
+                        "TCP"
+                    ]
+                },
+                "Port": 443,
+                "TargetType": "ip",
+                "Targets": [
+                    {
+                        "AvailabilityZone": {
+                            "Fn::If": [
+                                "IpInVpc",
+                                {
+                                    "Ref": "AWS::NoValue"
+                                },
+                                "all"
+                            ]
+                        },
+                        "Id": {
+                            "Ref": "IP"
+                        },
+                        "Port": {
+                            "Ref": "Port"
+                        }
+                    }
+                ],
+                "HealthCheckPath": {
+                    "Ref": "HealthCheckPath"
+                },
+                "HealthCheckProtocol": {
+                    "Ref": "Protocol"
+                }
+            }
+        },
+        "ASCPrivateLinkListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "LoadBalancerArn": {
+                    "Ref": "ASCPrivateLinkNLB"
+                },
+                "Protocol": "TLS",
+                "Port": 443,
+                "SslPolicy": "ELBSecurityPolicy-TLS13-1-0-2021-06",
+                "Certificates": [
+                    {
+                        "CertificateArn": {
+                            "Ref": "ASCPrivateLinkCertificate"
+                        }
+                    }
+                ],
+                "DefaultActions": [
+                    {
+                        "Type": "forward",
+                        "TargetGroupArn": {
+                            "Ref": "ASCPrivateLinkTargetGroup"
+                        }
+                    }
+                ]
+            }
+        },
+        "ASCPrivateLinkVPCES": {
+            "Type": "AWS::EC2::VPCEndpointService",
+            "Properties": {
+                "AcceptanceRequired": false,
+                "NetworkLoadBalancerArns": [
+                    {
+                        "Ref": "ASCPrivateLinkNLB"
+                    }
+                ]
+            }
+        },
+        "ASCPrivateLinkVPCESPermission": {
+            "Type": "AWS::EC2::VPCEndpointServicePermissions",
+            "Properties": {
+                "AllowedPrincipals": [
+                    "appflow.amazonaws.com"
+                ],
+                "ServiceId": {
+                    "Ref": "ASCPrivateLinkVPCES"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "CertificateURL": {
+            "Description": "Go to this URL to check certificate issued or not (also find domain verification details)",
+            "Value": {
+                "Fn::Sub": [
+                    "https://${AWS::Region}.console.aws.amazon.com/acm/home?region=${AWS::Region}#/certificates/${CertificateId}",
+                    {
+                        "CertificateId": {
+                            "Fn::Select": [
+                                1,
+                                {
+                                    "Fn::Split": [
+                                        "/",
+                                        {
+                                            "Ref": "ASCPrivateLinkCertificate"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "VPCEndpointServiceURL": {
+            "Description": "Go to this URL to check VPC Endpoint Service attributes (also find privateDNS domain verification details)",
+            "Value": {
+                "Fn::Sub": "https://${AWS::Region}.console.aws.amazon.com/vpc/home?region=${AWS::Region}#VpcEndpointServiceDetails:EndpointServiceId=${ASCPrivateLinkVPCES}"
+            }
+        },
+        "TargetGroupURL": {
+            "Description": "Go to this URL to check target group health check status (to see if got connectivity to SAP)",
+            "Value": {
+                "Fn::Sub": "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#TargetGroup:targetGroupArn=${ASCPrivateLinkTargetGroup}"
+            }
+        }
+    }
+}

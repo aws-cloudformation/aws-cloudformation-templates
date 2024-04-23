@@ -1,0 +1,355 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Sample Template Config: This template demonstrates the usage of AWS Config resources. **WARNING** You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "License": "Apache-2.0"
+    },
+    "Parameters": {
+        "DeliveryChannelExists": {
+            "Description": "Do you have an exisiting AWS Config delivery channel?",
+            "Type": "String",
+            "AllowedValues": [
+                "false",
+                "true"
+            ],
+            "Default": "false"
+        },
+        "Ec2VolumeAutoEnableIO": {
+            "Type": "String",
+            "AllowedValues": [
+                "false",
+                "true"
+            ],
+            "Default": "false"
+        },
+        "Ec2VolumeTagKey": {
+            "Type": "String",
+            "Default": "CostCenter"
+        }
+    },
+    "Conditions": {
+        "CreateDeliveryChannel": {
+            "Fn::Equals": [
+                {
+                    "Ref": "DeliveryChannelExists"
+                },
+                "false"
+            ]
+        }
+    },
+    "Resources": {
+        "Ec2Volume": {
+            "Type": "AWS::EC2::Volume",
+            "Properties": {
+                "AutoEnableIO": {
+                    "Ref": "Ec2VolumeAutoEnableIO"
+                },
+                "Size": "5",
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": null
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": {
+                            "Ref": "Ec2VolumeTagKey"
+                        },
+                        "Value": "Ec2VolumeTagValue"
+                    }
+                ]
+            }
+        },
+        "ConfigRecorder": {
+            "Type": "AWS::Config::ConfigurationRecorder",
+            "Properties": {
+                "Name": "default",
+                "RecordingGroup": {
+                    "ResourceTypes": [
+                        "AWS::EC2::Volume"
+                    ]
+                },
+                "RoleARN": {
+                    "Fn::GetAtt": [
+                        "ConfigRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "DeliveryChannel": {
+            "Type": "AWS::Config::DeliveryChannel",
+            "Properties": {
+                "ConfigSnapshotDeliveryProperties": {
+                    "DeliveryFrequency": "Six_Hours"
+                },
+                "S3BucketName": {
+                    "Ref": "ConfigBucket"
+                },
+                "SnsTopicARN": {
+                    "Ref": "ConfigTopic"
+                }
+            },
+            "Condition": "CreateDeliveryChannel"
+        },
+        "ConfigBucket": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "ConfigTopic": {
+            "Type": "AWS::SNS::Topic"
+        },
+        "ConfigTopicPolicy": {
+            "Type": "AWS::SNS::TopicPolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Id": "ConfigTopicPolicy",
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "config.amazonaws.com"
+                            },
+                            "Action": "SNS:Publish",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Topics": [
+                    {
+                        "Ref": "ConfigTopic"
+                    }
+                ]
+            }
+        },
+        "ConfigRuleForVolumeTags": {
+            "Type": "AWS::Config::ConfigRule",
+            "DependsOn": "ConfigRecorder",
+            "Properties": {
+                "InputParameters": {
+                    "tag1Key": "CostCenter"
+                },
+                "Scope": {
+                    "ComplianceResourceTypes": [
+                        "AWS::EC2::Volume"
+                    ]
+                },
+                "Source": {
+                    "Owner": "AWS",
+                    "SourceIdentifier": "REQUIRED_TAGS"
+                }
+            }
+        },
+        "ConfigRuleForVolumeAutoEnableIO": {
+            "Type": "AWS::Config::ConfigRule",
+            "DependsOn": [
+                "ConfigPermissionToCallLambda",
+                "ConfigRecorder"
+            ],
+            "Properties": {
+                "ConfigRuleName": "ConfigRuleForVolumeAutoEnableIO",
+                "Scope": {
+                    "ComplianceResourceId": {
+                        "Ref": "Ec2Volume"
+                    },
+                    "ComplianceResourceTypes": [
+                        "AWS::EC2::Volume"
+                    ]
+                },
+                "Source": {
+                    "Owner": "CUSTOM_LAMBDA",
+                    "SourceDetails": [
+                        {
+                            "EventSource": "aws.config",
+                            "MessageType": "ConfigurationItemChangeNotification"
+                        }
+                    ],
+                    "SourceIdentifier": {
+                        "Fn::GetAtt": [
+                            "VolumeAutoEnableIOComplianceCheck",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "ConfigPermissionToCallLambda": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "VolumeAutoEnableIOComplianceCheck",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "config.amazonaws.com"
+            }
+        },
+        "VolumeAutoEnableIOComplianceCheck": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "ZipFile": "var aws  = require('aws-sdk');\nvar config = new aws.ConfigService();\nvar ec2 = new aws.EC2();\nexports.handler = function(event, context) {\n    var compliance = evaluateCompliance(event, function(compliance, event) {\n        var configurationItem = JSON.parse(event.invokingEvent).configurationItem;\n        var putEvaluationsRequest = {\n            Evaluations: [{\n                ComplianceResourceType: configurationItem.resourceType,\n                ComplianceResourceId: configurationItem.resourceId,\n                ComplianceType: compliance,\n                OrderingTimestamp: configurationItem.configurationItemCaptureTime\n            }],\n            ResultToken: event.resultToken\n        };\n        config.putEvaluations(putEvaluationsRequest, function(err, data) {\n            if (err) context.fail(err);\n            else context.succeed(data);\n        });\n    });\n};\nfunction evaluateCompliance(event, doReturn) {\n    var configurationItem = JSON.parse(event.invokingEvent).configurationItem;\n    var status = configurationItem.configurationItemStatus;\n    if (configurationItem.resourceType !== 'AWS::EC2::Volume' || event.eventLeftScope || (status !== 'OK' && status !== 'ResourceDiscovered'))\n        doReturn('NOT_APPLICABLE', event);\n    else ec2.describeVolumeAttribute({VolumeId: configurationItem.resourceId, Attribute: 'autoEnableIO'}, function(err, data) {\n        if (err) context.fail(err);\n        else if (data.AutoEnableIO.Value) doReturn('COMPLIANT', event);\n        else doReturn('NON_COMPLIANT', event);\n    });\n}\n"
+                },
+                "Handler": "index.handler",
+                "Runtime": "nodejs16.x",
+                "Timeout": "30",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "LambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*",
+                                        "config:PutEvaluations",
+                                        "ec2:DescribeVolumeAttribute"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ConfigRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "config.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:GetBucketAcl",
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "ConfigBucket"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:PutObject",
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "ConfigBucket"
+                                                },
+                                                "/AWSLogs/",
+                                                {
+                                                    "Ref": "AWS::AccountId"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    },
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "s3:x-amz-acl": "bucket-owner-full-control"
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "config:Put*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "ConfigRuleForVolumeTagsArn": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ConfigRuleForVolumeTags",
+                    "Arn"
+                ]
+            }
+        },
+        "ConfigRuleForVolumeTagsConfigRuleId": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ConfigRuleForVolumeTags",
+                    "ConfigRuleId"
+                ]
+            }
+        },
+        "ConfigRuleForVolumeAutoEnableIOComplianceType": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ConfigRuleForVolumeAutoEnableIO",
+                    "Compliance.Type"
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,101 @@
+Parameters:
+  DomainName:
+    Description: FQDN of the domain for this directory
+    Type: String
+    Default: corp.example.com
+
+  SimpleADShortName:
+    Description: Netbios name of the domain for this directory
+    Type: String
+    Default: corp
+
+  EnableSingleSignOn:
+    Description: Enable SSO
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  CreateAlias:
+    Description: Only required for applications which need a URL to connect to the directory
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  SimpleADPW:
+    Description: Domain admin Password
+    Type: String
+    Default: Pass@w0rd
+    NoEcho: true
+
+  PrivateSubnet1:
+    Description: Subnet to be used for the Directoty
+    Type: List<AWS::EC2::Subnet::Id>
+
+  PrivateSubnet2:
+    Description: Subnet to be used for the Directoty
+    Type: List<AWS::EC2::Subnet::Id>
+
+  VPCID:
+    Description: The VPC the directory will be created in
+    Type: List<AWS::EC2::VPC::Id>
+
+  Size:
+    Description: Size of the Simple AD
+    Type: String
+    AllowedValues:
+      - Small
+      - Large
+    Default: Small
+
+Conditions:
+  Alias: !Equals
+    - !Ref CreateAlias
+    - "true"
+
+Resources:
+  SimpleAD:
+    Type: AWS::DirectoryService::SimpleAD
+    Properties:
+      CreateAlias: false
+      EnableSso: false
+      Name: !Ref DomainName
+      Password: !Ref SimpleADPW
+      ShortName: !Ref SimpleADShortName
+      Size: !Ref Size
+      VpcSettings:
+        SubnetIds:
+          - !Select
+            - "0"
+            - !Ref PrivateSubnet1
+          - !Select
+            - "0"
+            - !Ref PrivateSubnet2
+        VpcId: !Select
+          - "0"
+          - !Ref VPCID
+
+Outputs:
+  DirectoryID:
+    Description: ID of the SimpleAD
+    Value: !Ref SimpleAD
+
+  PrimaryDNS:
+    Description: DNS IPs of the SimpleAD
+    Value: !Select
+      - "0"
+      - !GetAtt SimpleAD.DnsIpAddresses
+
+  SecondaryDNS:
+    Description: DNS IPs of the SimpleAD
+    Value: !Select
+      - "1"
+      - !GetAtt SimpleAD.DnsIpAddresses
+
+  DirectoryAlias:
+    Description: URL for the alias
+    Value: !GetAtt SimpleAD.Alias
+    Condition: Alias

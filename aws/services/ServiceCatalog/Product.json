@@ -1,0 +1,298 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Product creation. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates AWS Service Catalog Product, please make sure you review billing costs for AWS Service Catalog.",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Service Catalog Product Tags"
+                    },
+                    "Parameters": [
+                        "AppName",
+                        "Env",
+                        "Dept",
+                        "User",
+                        "Owner"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Portfolio Stack Name"
+                    },
+                    "Parameters": [
+                        "ServiceCatalogPortfolioStackName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Product Details"
+                    },
+                    "Parameters": [
+                        "SCProductName",
+                        "SCProductDescription",
+                        "SCProductOwner",
+                        "SCProductSupport",
+                        "SCProductDistributor",
+                        "SCSupportEmail",
+                        "SCSupportUrl"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Product Details"
+                    },
+                    "Parameters": [
+                        "ProvisioningArtifactTemplateUrl",
+                        "ProvisioningArtifactNameParameter",
+                        "ProvisioningArtifactDescriptionParameter"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "Env": {
+            "Description": "Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "AllowedValues": [
+                "test",
+                "dev",
+                "prod"
+            ],
+            "Default": "dev"
+        },
+        "AppName": {
+            "Description": "Please specify the Application Name. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "Default": "app"
+        },
+        "Dept": {
+            "Description": "Please specify the Department. Used for tagging",
+            "Type": "String",
+            "Default": "1234"
+        },
+        "User": {
+            "Description": "Please specify the User. Used for tagging",
+            "Type": "String",
+            "Default": "User"
+        },
+        "Owner": {
+            "Description": "Please specify the Owner. Used for tagging",
+            "Type": "String",
+            "Default": "Owner"
+        },
+        "ServiceCatalogPortfolioStackName": {
+            "Description": "Please specify the Service Catalog Portfolio Stack Name.",
+            "Type": "String",
+            "Default": ""
+        },
+        "SCProductName": {
+            "Description": "Please specify ServiceCatalog Product Name.",
+            "Type": "String",
+            "Default": "ProductName"
+        },
+        "SCProductDescription": {
+            "Description": "Please specify ServiceCatalog Product Name Description.",
+            "Type": "String",
+            "Default": "ProductDescription"
+        },
+        "SCProductOwner": {
+            "Description": "Please specify ServiceCatalog Product Owner.",
+            "Type": "String",
+            "Default": "ProductOwner"
+        },
+        "SCProductSupport": {
+            "Description": "Please specify ServiceCatalog Product Support.",
+            "Type": "String",
+            "Default": "IT Support can be reached @support"
+        },
+        "SCProductDistributor": {
+            "Description": "Please specify ServiceCatalog Product Distributor.",
+            "Type": "String",
+            "Default": "App Vendor"
+        },
+        "SCSupportEmail": {
+            "Description": "Please specify ServiceCatalog Product Support Email.",
+            "Type": "String",
+            "Default": "support@example.com"
+        },
+        "SCSupportUrl": {
+            "Description": "Please specify ServiceCatalog Product Support URL.",
+            "Type": "String",
+            "Default": "https://www.support.example.com"
+        },
+        "ProvisioningArtifactTemplateUrl": {
+            "Description": "Please specify the S3 URL of the template",
+            "Type": "String",
+            "Default": "https://awsdocs.s3.amazonaws.com/servicecatalog/development-environment.template"
+        },
+        "ProvisioningArtifactNameParameter": {
+            "Description": "Please specify ServiceCatalog Product Artifact Name.",
+            "Type": "String",
+            "Default": "ProductExample"
+        },
+        "ProvisioningArtifactDescriptionParameter": {
+            "Description": "Please specify ServiceCatalog Product Artifact Description.",
+            "Type": "String",
+            "Default": "ProductExample"
+        }
+    },
+    "Resources": {
+        "ServiceCatalogCloudFormationProduct": {
+            "Type": "AWS::ServiceCatalog::CloudFormationProduct",
+            "Properties": {
+                "Name": {
+                    "Ref": "SCProductName"
+                },
+                "Description": {
+                    "Ref": "SCProductDescription"
+                },
+                "Owner": {
+                    "Ref": "SCProductOwner"
+                },
+                "SupportDescription": {
+                    "Ref": "SCProductSupport"
+                },
+                "Distributor": {
+                    "Ref": "SCProductDistributor"
+                },
+                "SupportEmail": {
+                    "Ref": "SCSupportEmail"
+                },
+                "SupportUrl": {
+                    "Fn::Sub": "${SCSupportUrl}"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "App",
+                        "Value": {
+                            "Fn::Sub": "${AppName}"
+                        }
+                    },
+                    {
+                        "Key": "Dept",
+                        "Value": {
+                            "Fn::Sub": "${Dept}"
+                        }
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    }
+                ],
+                "ProvisioningArtifactParameters": [
+                    {
+                        "Name": {
+                            "Fn::Sub": "${ProvisioningArtifactNameParameter}"
+                        },
+                        "Description": {
+                            "Fn::Sub": "${ProvisioningArtifactDescriptionParameter}"
+                        },
+                        "Info": {
+                            "LoadTemplateFromURL": {
+                                "Fn::Sub": "${ProvisioningArtifactTemplateUrl}"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "ServiceCatalogPortfolioProductAssociation": {
+            "Type": "AWS::ServiceCatalog::PortfolioProductAssociation",
+            "DependsOn": "ServiceCatalogCloudFormationProduct",
+            "Properties": {
+                "PortfolioId": {
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${ServiceCatalogPortfolioStackName}-ServiceCatalogPortfolio"
+                    }
+                },
+                "ProductId": {
+                    "Ref": "ServiceCatalogCloudFormationProduct"
+                }
+            }
+        },
+        "ServiceCatalogCustomTagOptionsAssociation": {
+            "Type": "AWS::ServiceCatalog::TagOptionAssociation",
+            "Properties": {
+                "TagOptionId": {
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptions"
+                    }
+                },
+                "ResourceId": {
+                    "Ref": "ServiceCatalogCloudFormationProduct"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "ServiceCatalogCloudFormationProductName": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceCatalogCloudFormationProduct",
+                    "ProductName"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AppName}-ServiceCatalogCloudFormationProductName"
+                }
+            }
+        },
+        "ServiceCatalogProvisioningArtifactIds": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceCatalogCloudFormationProduct",
+                    "ProvisioningArtifactIds"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AppName}-ServiceCatalogCloudFormationProvisioningArtifactIds"
+                }
+            }
+        },
+        "ServiceCatalogProvisioningArtifactNames": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceCatalogCloudFormationProduct",
+                    "ProvisioningArtifactNames"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AppName}-ServiceCatalogCloudFormationProvisioningArtifactNames"
+                }
+            }
+        }
+    }
+}

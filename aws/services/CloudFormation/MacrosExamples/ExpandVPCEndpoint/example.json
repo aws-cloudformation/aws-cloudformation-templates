@@ -1,0 +1,75 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This CloudFormation template for testing macro\n",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "VPC Configuration"
+                    },
+                    "Parameters": [
+                        "pVPCId",
+                        "pSubnetIds",
+                        "pSecurityGroupIds"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "pVPCId": {
+                    "default": "VPC Id"
+                },
+                "pSubnetIds": {
+                    "default": "Subnet Ids"
+                },
+                "pSecurityGroupIds": {
+                    "default": "Security Group Ids"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "pVPCId": {
+            "Description": "VPC Id of an existing VPC.\n",
+            "Type": "String"
+        },
+        "pSubnetIds": {
+            "Description": "Comma delimited list of existing Subnet Ids.\n",
+            "Type": "CommaDelimitedList"
+        },
+        "pSecurityGroupIds": {
+            "Description": "Comma delimited list of existing Security Group Ids.\n",
+            "Type": "CommaDelimitedList"
+        }
+    },
+    "Transform": "ExpandVPCEndpoint",
+    "Resources": {
+        "VPCEndpoint": {
+            "Type": "AWS::EC2::VPCEndpoint",
+            "Metadata": {
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "E3002",
+                            "E3003"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "ExpandServiceCodes": "ssm,ssmmessages,ec2,ec2messages",
+                "VpcEndpointType": "Interface",
+                "VpcId": {
+                    "Ref": "pVPCId"
+                },
+                "PrivateDnsEnabled": true,
+                "SubnetIds": {
+                    "Ref": "pSubnetIds"
+                },
+                "SecurityGroupIds": {
+                    "Ref": "pSecurityGroupIds"
+                }
+            }
+        }
+    }
+}

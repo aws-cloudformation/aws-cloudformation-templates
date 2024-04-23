@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Best Practice SQS Standard Queue
+
+Parameters:
+  DelaySeconds:
+    Description: The time in seconds that the delivery of all messages in the queue is delayed. You can specify an integer value of 0 to 900 (15 minutes).
+    Type: Number
+    Default: "5"
+
+  MaximumMessageSize:
+    Description: The limit of how many bytes that a message can contain before Amazon SQS rejects it, 1024 bytes (1 KiB) to 262144 bytes (256 KiB)
+    Type: Number
+    Default: "262144"
+
+  MessageRetentionPeriod:
+    Description: 'The number of seconds that Amazon SQS retains a message. You can specify an integer value from 60 seconds (1 minute) to 1209600 seconds (14 days). '
+    Type: Number
+    Default: "345600"
+
+  ReceiveMessageWaitTimeSeconds:
+    Description: Specifies the duration, in seconds, that the ReceiveMessage action call waits until a message is in the queue in order to include it in the response, as opposed to returning an empty response if a message is not yet available. 1 to 20
+    Type: Number
+    Default: "0"
+
+  UsedeadletterQueue:
+    Description: A dead-letter queue is a queue that other (source) queues can target for messages that can't be processed (consumed) successfully. You can set aside and isolate these messages in the dead-letter queue to determine why their processing doesn't succeed.
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+
+  VisibilityTimeout:
+    Description: Time in seconds. This should be longer than the time it would take to process and delete a message, this should not exceed 12 hours.
+    Type: Number
+    Default: "5"
+
+  KmsMasterKeyIdForSqs:
+    Description: (Optional) For unencrypted leave blank. The ID or Alias of an AWS managed or a custom CMK.
+    Type: String
+    Default: alias/aws/sqs
+
+Mappings: {}
+
+Conditions:
+  CreateDeadLetterQueue: !Equals
+    - !Ref UsedeadletterQueue
+    - "true"
+
+  IsKmsExist: !Not
+    - !Equals
+      - ""
+      - !Ref KmsMasterKeyIdForSqs
+
+Resources:
+  SQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: !Ref DelaySeconds
+      MaximumMessageSize: !Ref MaximumMessageSize
+      MessageRetentionPeriod: !Ref MessageRetentionPeriod
+      ReceiveMessageWaitTimeSeconds: !Ref ReceiveMessageWaitTimeSeconds
+      KmsMasterKeyId: !If
+        - IsKmsExist
+        - !Ref KmsMasterKeyIdForSqs
+        - !Ref AWS::NoValue
+      RedrivePolicy: !If
+        - CreateDeadLetterQueue
+        - deadLetterTargetArn: !GetAtt MyDeadLetterQueue.Arn
+          maxReceiveCount: 5
+        - !Ref AWS::NoValue
+      VisibilityTimeout: !Ref VisibilityTimeout
+
+  MyDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Condition: CreateDeadLetterQueue
+
+Outputs:
+  QueueURL:
+    Description: URL of newly created SQS Queue
+    Value: !Ref SQSQueue
+
+  QueueARN:
+    Description: ARN of newly created SQS Queue
+    Value: !GetAtt SQSQueue.Arn
+
+  QueueName:
+    Description: Name newly created SQS Queue
+    Value: !GetAtt SQSQueue.QueueName
+
+  DeadLetterQueueURL:
+    Description: URL of the dead letter queue
+    Value: !Ref MyDeadLetterQueue
+    Condition: CreateDeadLetterQueue
+
+  DeadLetterQueueARN:
+    Description: ARN of the dead letter queue
+    Value: !GetAtt MyDeadLetterQueue.Arn
+    Condition: CreateDeadLetterQueue

@@ -1,0 +1,310 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Portfolio creation. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates AWS Service Catalog Portfolio, please make sure you review billing costs for AWS Service Catalog.",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        },
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Service Catalog Portfolio Details"
+                    },
+                    "Parameters": [
+                        "PortfolioDisplayName",
+                        "PortfolioProviderName",
+                        "PortfolioDescription"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Portfolio Tags"
+                    },
+                    "Parameters": [
+                        "Dept",
+                        "Env",
+                        "User",
+                        "Owner"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Product Tag Options Activation"
+                    },
+                    "Parameters": [
+                        "ActivateProductTagOptions"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Service Catalog Product Tag Options"
+                    },
+                    "Parameters": [
+                        "ProductDept",
+                        "ProductEnv",
+                        "ProductUser",
+                        "ProductOwner"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Portfolio Sharing"
+                    },
+                    "Parameters": [
+                        "ShareThisPortfolio",
+                        "AccountIdOfChildAWSAccount"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "Env": {
+            "Description": "Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "AllowedValues": [
+                "test",
+                "dev",
+                "prod"
+            ],
+            "Default": "dev"
+        },
+        "Dept": {
+            "Description": "Please specify the Department. Used for tagging",
+            "Type": "String",
+            "Default": "1234"
+        },
+        "User": {
+            "Description": "Please specify the User. Used for tagging",
+            "Type": "String",
+            "Default": "User"
+        },
+        "Owner": {
+            "Description": "Please specify the Owner. Used for tagging",
+            "Type": "String",
+            "Default": "Owner"
+        },
+        "ProductEnv": {
+            "Description": "Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "AllowedValues": [
+                "test",
+                "dev",
+                "prod"
+            ],
+            "Default": "dev"
+        },
+        "ProductDept": {
+            "Description": "Please specify the Department. Used for tagging",
+            "Type": "String",
+            "Default": "1234"
+        },
+        "ProductUser": {
+            "Description": "Please specify the User. Used for tagging",
+            "Type": "String",
+            "Default": "User"
+        },
+        "ProductOwner": {
+            "Description": "Please specify the Owner. Used for tagging",
+            "Type": "String",
+            "Default": "Owner"
+        },
+        "PortfolioProviderName": {
+            "Description": "Please specify the Portfolio Provider Name.",
+            "Type": "String",
+            "Default": "IT Provider"
+        },
+        "PortfolioDescription": {
+            "Description": "Please specify the Portfolio Description.",
+            "Type": "String",
+            "Default": "Service Catalog Portfolio for Business Unit (BU)"
+        },
+        "PortfolioDisplayName": {
+            "Description": "Please specify the Portfolio Description. Must satisfy regular expression pattern, (^[a-zA-Z0-9_\\-]*)",
+            "Type": "String",
+            "Default": "Test_Portfolio"
+        },
+        "ActivateProductTagOptions": {
+            "Description": "Activate Custom Tag Options? Used for portfolio tagging",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true"
+        },
+        "ShareThisPortfolio": {
+            "Description": "Please specify if this Portfolio will be Shared with additonal accounts?",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "false"
+        },
+        "AccountIdOfChildAWSAccount": {
+            "Description": "Please specify the Sub AWS Account ID.",
+            "Type": "String",
+            "Default": "1234567890"
+        }
+    },
+    "Conditions": {
+        "ConditionShareThisPortfolio": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ShareThisPortfolio"
+                },
+                "true"
+            ]
+        }
+    },
+    "Resources": {
+        "ServiceCatalogPortfolio": {
+            "Type": "AWS::ServiceCatalog::Portfolio",
+            "Properties": {
+                "ProviderName": {
+                    "Ref": "PortfolioProviderName"
+                },
+                "Description": {
+                    "Ref": "PortfolioDescription"
+                },
+                "DisplayName": {
+                    "Ref": "PortfolioDisplayName"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${PortfolioDisplayName}"
+                        }
+                    },
+                    {
+                        "Key": "Dept",
+                        "Value": {
+                            "Fn::Sub": "${Dept}"
+                        }
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Fn::Sub": "${Env}"
+                        }
+                    },
+                    {
+                        "Key": "User",
+                        "Value": {
+                            "Fn::Sub": "${User}"
+                        }
+                    },
+                    {
+                        "Key": "Owner",
+                        "Value": {
+                            "Fn::Sub": "${Owner}"
+                        }
+                    }
+                ]
+            }
+        },
+        "ServiceCatalogProductTagOptionsDept": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "Dept",
+                "Value": {
+                    "Fn::Sub": "${ProductDept}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsEnv": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "Env",
+                "Value": {
+                    "Fn::Sub": "${ProductEnv}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsUser": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "User",
+                "Value": {
+                    "Fn::Sub": "${ProductUser}"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsOwner": {
+            "Type": "AWS::ServiceCatalog::TagOption",
+            "Properties": {
+                "Active": {
+                    "Ref": "ActivateProductTagOptions"
+                },
+                "Key": "Owner",
+                "Value": {
+                    "Fn::Sub": "${ProductOwner}"
+                }
+            }
+        },
+        "ServiceCatalogPortfolioShare": {
+            "Type": "AWS::ServiceCatalog::PortfolioShare",
+            "Properties": {
+                "AccountId": {
+                    "Ref": "AccountIdOfChildAWSAccount"
+                },
+                "PortfolioId": {
+                    "Ref": "ServiceCatalogPortfolio"
+                }
+            },
+            "Condition": "ConditionShareThisPortfolio"
+        }
+    },
+    "Outputs": {
+        "ServiceCatalogPortfolio": {
+            "Value": {
+                "Ref": "ServiceCatalogPortfolio"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ServiceCatalogPortfolio"
+                }
+            }
+        },
+        "ServiceCatalogPortfolioName": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ServiceCatalogPortfolio",
+                    "PortfolioName"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ServiceCatalogPortfolioName"
+                }
+            }
+        },
+        "ServiceCatalogProductTagOptionsDept": {
+            "Value": {
+                "Ref": "ServiceCatalogProductTagOptionsDept"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ServiceCatalogProductTagOptionsDept"
+                }
+            }
+        }
+    }
+}

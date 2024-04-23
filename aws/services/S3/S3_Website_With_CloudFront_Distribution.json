@@ -1,0 +1,258 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Sample Template S3_Website_With_CloudFront_Distribution: Sample template showing how to create a website with a custom DNS name, hosted on Amazon S3 and served via Amazone CloudFront. It assumes you already have a Hosted Zone registered with Amazon Route 53. **WARNING** This template creates an Amazon Route 53 DNS record, an S3 bucket and a CloudFront distribution. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "License": "Apache-2.0",
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Optional parameters"
+                    },
+                    "Parameters": [
+                        "AcmCertificateArn",
+                        "HostedZone"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "AcmCertificateArn": {
+                    "default": "ACM Certificate ARN"
+                },
+                "HostedZone": {
+                    "default": "Hosted Zone Domain Name"
+                }
+            }
+        },
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "HostedZone": {
+            "Description": "The DNS name of an existing Amazon Route 53 hosted zone",
+            "Type": "String"
+        },
+        "AcmCertificateArn": {
+            "Description": "The ARN of an existing ACM certificate (certificate domain name must be in the format stacknameaccountid.region.hostedzone)",
+            "Type": "String"
+        }
+    },
+    "Conditions": {
+        "HasHostedZone": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "HostedZone"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "CloudFrontOriginAccessIdentity": {
+            "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+            "Properties": {
+                "CloudFrontOriginAccessIdentityConfig": {
+                    "Comment": "Required optional comment"
+                }
+            }
+        },
+        "S3BucketForWebsiteContent": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "BucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "S3BucketForWebsiteContent"
+                },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Id": "PolicyForCloudFrontPrivateContent",
+                    "Statement": [
+                        {
+                            "Sid": "403Permissions",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+                                }
+                            },
+                            "Action": "s3:ListBucket",
+                            "Resource": {
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}"
+                            }
+                        },
+                        {
+                            "Sid": "ObjectAccess",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Sub": "arn${AWS::Partition}iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+                                }
+                            },
+                            "Action": [
+                                "s3:GetObject"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}/*"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "WebsiteCDN": {
+            "Type": "AWS::CloudFront::Distribution",
+            "Properties": {
+                "DistributionConfig": {
+                    "Comment": "CDN for S3-backed website",
+                    "Aliases": {
+                        "Fn::If": [
+                            "HasHostedZone",
+                            [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ".",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ".",
+                                            {
+                                                "Ref": "HostedZone"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ],
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    },
+                    "Enabled": "true",
+                    "DefaultCacheBehavior": {
+                        "ForwardedValues": {
+                            "QueryString": "true"
+                        },
+                        "TargetOriginId": "only-origin",
+                        "ViewerProtocolPolicy": "allow-all"
+                    },
+                    "DefaultRootObject": "index.html",
+                    "Origins": [
+                        {
+                            "S3OriginConfig": {
+                                "OriginAccessIdentity": {
+                                    "Fn::Sub": "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+                                }
+                            },
+                            "DomainName": {
+                                "Fn::Sub": "${S3BucketForWebsiteContent.RegionalDomainName}"
+                            },
+                            "Id": "only-origin"
+                        }
+                    ],
+                    "ViewerCertificate": {
+                        "Fn::If": [
+                            "HasHostedZone",
+                            {
+                                "AcmCertificateArn": {
+                                    "Ref": "AcmCertificateArn"
+                                },
+                                "MinimumProtocolVersion": "TLSv1.2_2019",
+                                "SslSupportMethod": "sni-only"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "WebsiteDNSName": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "HostedZoneName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "HostedZone"
+                            },
+                            "."
+                        ]
+                    ]
+                },
+                "Comment": "CNAME redirect custom name to CloudFront distribution",
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ".",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ".",
+                            {
+                                "Ref": "HostedZone"
+                            }
+                        ]
+                    ]
+                },
+                "Type": "CNAME",
+                "TTL": "900",
+                "ResourceRecords": [
+                    {
+                        "Fn::Sub": "${WebsiteCDN.DomainName}"
+                    }
+                ]
+            },
+            "Condition": "HasHostedZone"
+        }
+    },
+    "Outputs": {
+        "WebsiteURL": {
+            "Description": "The URL of the newly created website",
+            "Value": {
+                "Fn::If": [
+                    "HasHostedZone",
+                    {
+                        "Fn::Sub": "https://${WebsiteDNSName}"
+                    },
+                    {
+                        "Fn::Sub": "https://${WebsiteCDN.DomainName}"
+                    }
+                ]
+            }
+        },
+        "BucketName": {
+            "Description": "Name of S3 bucket to hold website content",
+            "Value": {
+                "Ref": "S3BucketForWebsiteContent"
+            }
+        }
+    }
+}

@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Best Practice EMR Cluster for Spark or S3 backed Hbase
+
+Parameters:
+  EMRClusterName:
+    Description: Name of the cluster
+    Type: String
+    Default: emrcluster
+
+  KeyName:
+    Description: Must be an existing Keyname
+    Type: String
+
+  MasterInstanceType:
+    Description: Instance type to be used for the master instance.
+    Type: String
+    Default: m3.xlarge
+
+  CoreInstanceType:
+    Description: Instance type to be used for core instances.
+    Type: String
+    Default: m3.xlarge
+
+  NumberOfCoreInstances:
+    Description: Must be a valid number
+    Type: Number
+    Default: 2
+
+  SubnetID:
+    Description: Must be a valid public subnet ID
+    Type: String
+    Default: subnet-dba430ad
+
+  LogUri:
+    Description: Must be a valid S3 URL
+    Type: String
+    Default: s3://emrclusterlogbucket/
+
+  S3DataUri:
+    Description: Must be a valid S3 bucket URL
+    Type: String
+    Default: s3://emrclusterdatabucket/
+
+  ReleaseLabel:
+    Description: Must be a valid EMR release version
+    Type: String
+    Default: emr-5.7.0
+
+  Applications:
+    Description: Please select which application will be installed on the cluster. This would be either Ganglia and spark, or Ganglia and s3 backed Hbase
+    Type: String
+    AllowedValues:
+      - Spark
+      - Hbase
+
+Mappings: {}
+
+Conditions:
+  Spark: !Equals
+    - !Ref Applications
+    - Spark
+
+  Hbase: !Equals
+    - !Ref Applications
+    - Hbase
+
+Resources:
+  EMRCluster:
+    Type: AWS::EMR::Cluster
+    DependsOn:
+      - EMRClusterServiceRole
+      - EMRClusterinstanceProfileRole
+      - EMRClusterinstanceProfile
+    Properties:
+      Applications:
+        - Name: Ganglia
+        - !If
+          - Spark
+          - Name: Spark
+          - !Ref AWS::NoValue
+        - !If
+          - Hbase
+          - Name: Hbase
+          - !Ref AWS::NoValue
+      Configurations:
+        - Classification: hbase-site
+          ConfigurationProperties:
+            hbase.rootdir: !Ref S3DataUri
+        - Classification: hbase
+          ConfigurationProperties:
+            hbase.emr.storageMode: s3
+      Instances:
+        Ec2KeyName: !Ref KeyName
+        Ec2SubnetId: !Ref SubnetID
+        AdditionalMasterSecurityGroups:
+          - sg-9cb487fb
+          - sg-9cb4876b
+        AdditionalSlaveSecurityGroups:
+          - sg-9cb48144
+          - sg-9cb48788
+        MasterInstanceGroup:
+          InstanceCount: 1
+          InstanceType: !Ref MasterInstanceType
+          Market: ON_DEMAND
+          Name: Master
+        CoreInstanceGroup:
+          InstanceCount: !Ref NumberOfCoreInstances
+          InstanceType: !Ref CoreInstanceType
+          Market: ON_DEMAND
+          Name: Core
+        TerminationProtected: false
+      VisibleToAllUsers: true
+      JobFlowRole: !Ref EMRClusterinstanceProfile
+      ReleaseLabel: !Ref ReleaseLabel
+      LogUri: !Ref LogUri
+      Name: !Ref EMRClusterName
+      AutoScalingRole: EMR_AutoScaling_DefaultRole
+      ServiceRole: !Ref EMRClusterServiceRole
+
+  EMRClusterServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - elasticmapreduce.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole
+      Path: /
+
+  EMRClusterinstanceProfileRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role
+      Path: /
+
+  EMRClusterinstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EMRClusterinstanceProfileRole
+
+Outputs: {}

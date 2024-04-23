@@ -1,0 +1,198 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This CloudFormation template is to provision the CloudFormation macro that expands the AWS::EC2::VPCEndpoint resource 1. Lambda Execution role is created. 2. Lambda is created that implements the macro logic. 3. Macro is created that uses the Lambda\n",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Project Configuration"
+                    },
+                    "Parameters": [
+                        "pProject",
+                        "pEnv"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "pProject": {
+                    "default": "Project name"
+                },
+                "pEnv": {
+                    "default": "Environment"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "pProject": {
+            "Description": "The project name e.g. myp.",
+            "Type": "String",
+            "Default": "myp"
+        },
+        "pEnv": {
+            "Description": "The environment identifier e.g. dev",
+            "Type": "String",
+            "Default": "dev"
+        }
+    },
+    "Resources": {
+        "rMacroLambdaExecRole": {
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W28",
+                            "reason": "Role Name is used for identification, it is OK to replace"
+                        },
+                        {
+                            "id": "W11",
+                            "reason": "Only 'Describe*' is allowed"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "cfn-macro-expand-vpce-exec-role-${pProject}-${pEnv}"
+                },
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-cw-access",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Sid": "LambdaAccessForCWLogGroup",
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                },
+                                {
+                                    "Sid": "LambdaAccessForCWLogs",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:*"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Project",
+                        "Value": {
+                            "Ref": "pProject"
+                        }
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Ref": "pEnv"
+                        }
+                    },
+                    {
+                        "Key": "CreatedBy",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    }
+                ]
+            }
+        },
+        "rExpandVPCEndpointFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W89",
+                            "reason": "VPC Access not required"
+                        },
+                        {
+                            "id": "W58",
+                            "reason": "Permission to write CloudWatch logs is provided via execution role in security template"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "Expand a Resource of Type AWS::EC2::VPCEndpoint",
+                "FunctionName": {
+                    "Fn::Sub": "cfn-macro-expand-vpce-${pProject}-${pEnv}"
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "rMacroLambdaExecRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 300,
+                "Runtime": "python3.9",
+                "ReservedConcurrentExecutions": 2,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Sub": "import json\nimport copy\nimport re\n\ndef handle_section_transform(section, templateParameterValues):\n    new_section = {}\n    for resource_name, resource in section.items():\n        if 'Type' in resource:\n            resource_type = resource['Type']\n            if resource_type != 'AWS::EC2::VPCEndpoint' :\n                #Not interested, copy as it is an check next resource\n                new_section[resource_name] = resource\n                continue\n        else:\n            #Not interested, copy as it is an check next resource\n            new_section[resource_name] = resource\n            continue\n\n        new_resource_keys = []\n        resource_prop_items = {}\n        new_resource_param = \"\"\n        resource_props = resource['Properties']\n\n        for resource_prop, resource_prop_value in resource_props.items():\n            if resource_prop == 'ExpandServiceCodes' :\n                print(type(resource_prop_value))\n                if isinstance(resource_prop_value, dict):\n                    #Only Ref is supported\n                    templateParamKey = resource_prop_value['Ref']\n                    resource_keys = templateParameterValues[templateParamKey].split(',')\n                else:\n                    resource_keys = resource_prop_value.split(',')\n                new_resource_prop = 'ServiceName'\n            else:\n                resource_prop_items[resource_prop] = resource_prop_value\n        print(f\"{resource_keys}\")\n        try:\n            for key in resource_keys :\n                new_resource =  copy.deepcopy(resource)\n                new_resource_prop_items = copy.deepcopy(resource_prop_items)\n                new_resource_prop_items[new_resource_prop] = {\n                    \"Fn::Sub\": \"com.amazonaws.${AWS::Region}.\" + key\n                }\n                new_resource['Properties'] = new_resource_prop_items\n                resource_suffix = \"\".join([word.capitalize() for word in re.split(r'-|_|\\.|\\/', key)])\n                new_section[resource_name + resource_suffix] = new_resource\n        except Exception as e:\n            print( str(e) )\n    return new_section\n\ndef handle_transform(fragment, templateParameterValues):\n    fragment['Resources'] = handle_section_transform(fragment['Resources'], templateParameterValues)\n    if 'Outputs' in fragment:\n        fragment['Outputs'] = handle_section_transform(fragment['Outputs'])\n    return fragment\n\ndef handler(event, context):\n    print( json.dumps(event, indent=2))\n\n    fragment = event[\"fragment\"]\n    templateParameterValues = event[\"templateParameterValues\"]\n    status = \"success\"\n\n    try:\n        fragment = handle_transform(fragment, templateParameterValues)\n    except:\n        status = \"success\"\n\n    return {\n        \"requestId\": event[\"requestId\"],\n        \"status\": status,\n        \"fragment\": fragment,\n    }\n"
+                    }
+                },
+                "Tags": [
+                    {
+                        "Key": "Project",
+                        "Value": {
+                            "Ref": "pProject"
+                        }
+                    },
+                    {
+                        "Key": "Env",
+                        "Value": {
+                            "Ref": "pEnv"
+                        }
+                    },
+                    {
+                        "Key": "CreatedBy",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    }
+                ]
+            }
+        },
+        "mExpandVPCEndpoint": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": "ExpandVPCEndpoint",
+                "Description": "Expand a Resource of Type AWS::EC2::VPCEndpoint",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "rExpandVPCEndpointFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

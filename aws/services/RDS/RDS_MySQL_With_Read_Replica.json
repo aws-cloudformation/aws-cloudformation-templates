@@ -1,0 +1,316 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Sample Template RDS_MySQL_With_Read_Replica: Sample template showing how to create a highly-available, RDS DBInstance with a read replica. **WARNING** This template creates an Amazon Relational Database Service database instance and Amazon CloudWatch alarms. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "License": "Apache-2.0"
+    },
+    "Parameters": {
+        "DBName": {
+            "Description": "The database name",
+            "Type": "String",
+            "Default": "MyDatabase",
+            "MinLength": "1",
+            "MaxLength": "64",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBUser": {
+            "Description": "The database admin account username",
+            "Type": "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "MaxLength": "16",
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+        },
+        "DBPassword": {
+            "Description": "The database admin account password",
+            "Type": "String",
+            "NoEcho": "true",
+            "MinLength": "1",
+            "MaxLength": "41",
+            "AllowedPattern": "[a-zA-Z0-9]+",
+            "ConstraintDescription": "must contain only alphanumeric characters."
+        },
+        "DBAllocatedStorage": {
+            "Description": "The size of the database (Gb)",
+            "Type": "Number",
+            "Default": "5",
+            "MinValue": "5",
+            "MaxValue": "1024",
+            "ConstraintDescription": "must be between 5 and 1024Gb."
+        },
+        "DBInstanceClass": {
+            "Description": "The database instance type",
+            "Type": "String",
+            "AllowedValues": [
+                "db.m5.xlarge",
+                "db.m5.2xlarge",
+                "db.m5.4xlarge",
+                "db.r5.large",
+                "db.r5.xlarge",
+                "db.r5.2xlarge",
+                "db.r5.4xlarge",
+                "db.r5.8xlarge",
+                "db.m5.xlarge",
+                "db.m5.2xlarge",
+                "db.m5.4xlarge",
+                "db.t3.micro",
+                "db.t3.small",
+                "db.t3.medium",
+                "db.t3.large"
+            ],
+            "Default": "db.t3.small",
+            "ConstraintDescription": "must select a valid database instance type."
+        },
+        "EC2SecurityGroup": {
+            "Description": "The EC2 security group that contains instances that need access to the database",
+            "Type": "String",
+            "Default": "default",
+            "AllowedPattern": "[a-zA-Z0-9\\-]+",
+            "ConstraintDescription": "must be a valid security group name."
+        },
+        "MultiAZ": {
+            "Description": "Multi-AZ master database",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "false",
+            "ConstraintDescription": "must be true or false."
+        },
+        "EnableReadReplica": {
+            "Description": "Enable the ReadReplica",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true",
+            "ConstraintDescription": "must be true or false."
+        }
+    },
+    "Conditions": {
+        "Is-EC2-VPC": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "eu-central-1"
+                    ]
+                },
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "cn-north-1"
+                    ]
+                }
+            ]
+        },
+        "Is-EC2-Classic": {
+            "Fn::Not": [
+                {
+                    "Condition": "Is-EC2-VPC"
+                }
+            ]
+        },
+        "Enable-Read-Replica": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EnableReadReplica"
+                },
+                "true"
+            ]
+        }
+    },
+    "Resources": {
+        "DBEC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Open database for access",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3306",
+                        "ToPort": "3306",
+                        "SourceSecurityGroupName": {
+                            "Ref": "EC2SecurityGroup"
+                        }
+                    }
+                ]
+            },
+            "Condition": "Is-EC2-VPC"
+        },
+        "DBSecurityGroup": {
+            "Type": "AWS::RDS::DBSecurityGroup",
+            "Properties": {
+                "DBSecurityGroupIngress": [
+                    {
+                        "EC2SecurityGroupName": {
+                            "Ref": "EC2SecurityGroup"
+                        }
+                    }
+                ],
+                "GroupDescription": "database access"
+            },
+            "Condition": "Is-EC2-Classic"
+        },
+        "MasterDB": {
+            "DeletionPolicy": "Snapshot",
+            "UpdateReplacePolicy": "Snapshot",
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBName": {
+                    "Ref": "DBName"
+                },
+                "AllocatedStorage": {
+                    "Ref": "DBAllocatedStorage"
+                },
+                "BackupRetentionPeriod": 7,
+                "DBInstanceClass": {
+                    "Ref": "DBInstanceClass"
+                },
+                "Engine": "MySQL",
+                "MasterUsername": {
+                    "Ref": "DBUser"
+                },
+                "MasterUserPassword": {
+                    "Ref": "DBPassword"
+                },
+                "MultiAZ": {
+                    "Ref": "MultiAZ"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Master Database"
+                    }
+                ],
+                "VPCSecurityGroups": {
+                    "Fn::If": [
+                        "Is-EC2-VPC",
+                        [
+                            {
+                                "Fn::GetAtt": [
+                                    "DBEC2SecurityGroup",
+                                    "GroupId"
+                                ]
+                            }
+                        ],
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "DBSecurityGroups": {
+                    "Fn::If": [
+                        "Is-EC2-Classic",
+                        [
+                            {
+                                "Ref": "DBSecurityGroup"
+                            }
+                        ],
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                }
+            }
+        },
+        "ReplicaDB": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "BackupRetentionPeriod": 7,
+                "SourceDBInstanceIdentifier": {
+                    "Ref": "MasterDB"
+                },
+                "DBInstanceClass": {
+                    "Ref": "DBInstanceClass"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Read Replica Database"
+                    }
+                ]
+            },
+            "Condition": "Enable-Read-Replica"
+        }
+    },
+    "Outputs": {
+        "EC2Platform": {
+            "Description": "Platform in which this stack is deployed",
+            "Value": {
+                "Fn::If": [
+                    "Is-EC2-VPC",
+                    "EC2-VPC",
+                    "EC2-Classic"
+                ]
+            }
+        },
+        "MasterJDBCConnectionString": {
+            "Description": "JDBC connection string for the master database",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "jdbc:mysql://",
+                        {
+                            "Fn::GetAtt": [
+                                "MasterDB",
+                                "Endpoint.Address"
+                            ]
+                        },
+                        ":",
+                        {
+                            "Fn::GetAtt": [
+                                "MasterDB",
+                                "Endpoint.Port"
+                            ]
+                        },
+                        "/",
+                        {
+                            "Ref": "DBName"
+                        }
+                    ]
+                ]
+            }
+        },
+        "ReplicaJDBCConnectionString": {
+            "Description": "JDBC connection string for the replica database",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "jdbc:mysql://",
+                        {
+                            "Fn::GetAtt": [
+                                "ReplicaDB",
+                                "Endpoint.Address"
+                            ]
+                        },
+                        ":",
+                        {
+                            "Fn::GetAtt": [
+                                "ReplicaDB",
+                                "Endpoint.Port"
+                            ]
+                        },
+                        "/",
+                        {
+                            "Ref": "DBName"
+                        }
+                    ]
+                ]
+            },
+            "Condition": "Enable-Read-Replica"
+        }
+    }
+}
