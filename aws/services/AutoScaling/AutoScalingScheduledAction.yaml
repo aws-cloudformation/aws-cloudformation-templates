@@ -264,9 +264,7 @@ Resources:
               httpd: []
           files:
             /var/www/html/index.html:
-              content: !Join ['
-
-                  ', [<img src=", !FindInMap [Region2Examples, !Ref 'AWS::Region',
+              content: !Join ['', [<img src=", !FindInMap [Region2Examples, !Ref 'AWS::Region',
                     Examples], /cloudformation_graphic.png" alt="AWS CloudFormation
                     Logo"/>, '<h1>Congratulations, you have successfully launched
                     the AWS CloudFormation sample.</h1>']]
@@ -275,28 +273,20 @@ Resources:
               group: root
             /etc/cfn/cfn-hup.conf:
               content: !Join ['', ['[main]
-
                     ', stack=, !Ref 'AWS::StackId', '
-
                     ', region=, !Ref 'AWS::Region', '
-
                     ']]
               mode: '000400'
               owner: root
               group: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
               content: !Join ['', ['[cfn-auto-reloader-hook]
-
                     ', 'triggers=post.update
-
                     ', 'path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
-
                     ', 'action=/opt/aws/bin/cfn-init -v ', '         --stack ', !Ref 'AWS::StackName',
                   '         --resource LaunchConfig ', '         --region ', !Ref 'AWS::Region',
                   '
-
                     ', 'runas=root
-
                     ']]
           services:
             sysvinit:
@@ -317,17 +307,13 @@ Resources:
         Fn::Join:
         - ''
         - ['#!/bin/bash -xe
-
             ', 'yum update -y aws-cfn-bootstrap
-
             ', '/opt/aws/bin/cfn-init -v ', '         --stack ', !Ref 'AWS::StackName',
           '         --resource LaunchConfig ', '         --region ', !Ref 'AWS::Region',
           '
-
             ', '/opt/aws/bin/cfn-signal -e $? ', '         --stack ', !Ref 'AWS::StackName',
           '         --resource WebServerGroup ', '         --region ', !Ref 'AWS::Region',
           '
-
             ']
   ElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
