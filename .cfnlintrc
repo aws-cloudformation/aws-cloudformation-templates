@@ -1,8 +1,3 @@
-templates:
-  - aws/**/*.yaml
-  - aws/**/*.json
-  - community/**/*.yaml
-  - community/**/*.json
 ignore_templates:
   - aws/services/CloudFormation/MacrosExamples/**/*
 ignore_checks:
