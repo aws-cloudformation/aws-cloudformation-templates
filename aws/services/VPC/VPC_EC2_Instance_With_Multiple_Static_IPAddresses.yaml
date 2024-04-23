@@ -1,57 +1,106 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'AWS CloudFormation Sample Template VPC_EC2_Instance_With_Multiple_Static_IPAddresses: Sample template showing how to create an instance with a single network interface and multiple static IP addresses in an existing VPC. It assumes you have already created a VPC. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.'
+
+Metadata:
   License: Apache-2.0
-Description: 'AWS CloudFormation Sample Template VPC_EC2_Instance_With_Multiple_Static_IPAddresses:
-  Sample template showing how to create an instance with a single network interface
-  and multiple static IP addresses in an existing VPC. It assumes you have already
-  created a VPC. **WARNING** This template creates an Amazon EC2 instance. You will
-  be billed for the AWS resources used if you create a stack from this template.'
+
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
     Default: t2.small
-    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large, m1.small,
-      m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge, m3.medium,
-      m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
-      m4.10xlarge, c1.medium, c1.xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge,
-      c3.8xlarge, c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, g2.2xlarge,
-      g2.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge, r3.8xlarge, i2.xlarge,
-      i2.2xlarge, i2.4xlarge, i2.8xlarge, d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge,
-      hs1.8xlarge, cr1.8xlarge, cc2.8xlarge]
     ConstraintDescription: must be a valid EC2 instance type.
+
   VpcId:
-    Type: AWS::EC2::VPC::Id
     Description: VpcId of your existing Virtual Private Cloud (VPC)
+    Type: AWS::EC2::VPC::Id
     ConstraintDescription: must be the VPC Id of an existing Virtual Private Cloud.
+
   SubnetId:
+    Description: SubnetId of an existing subnet (for the primary network) in your Virtual Private Cloud (VPC)
     Type: AWS::EC2::Subnet::Id
-    Description: SubnetId of an existing subnet (for the primary network) in your
-      Virtual Private Cloud (VPC)
-    ConstraintDescription: must be an existing subnet in the selected Virtual Private
-      Cloud.
+    ConstraintDescription: must be an existing subnet in the selected Virtual Private Cloud.
+
   PrimaryIPAddress:
-    Type: String
     Description: Primary private IP. This must be a valid IP address for Subnet
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})
-    ConstraintDescription: must be a valid IP address of the form x.x.x.x.
-  SecondaryIPAddress:
     Type: String
-    Description: Secondary private IP. This ust be a valid IP address for Subnet
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})
     ConstraintDescription: must be a valid IP address of the form x.x.x.x.
+
+  SecondaryIPAddress:
+    Description: Secondary private IP. This ust be a valid IP address for Subnet
+    Type: String
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})
+    ConstraintDescription: must be a valid IP address of the form x.x.x.x.
+
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
-    MinLength: '9'
-    MaxLength: '18'
     Default: 0.0.0.0/0
+    MinLength: "9"
+    MaxLength: "18"
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
 Mappings:
   AWSInstanceType2Arch:
     t1.micro:
@@ -160,6 +209,7 @@ Mappings:
       Arch: HVM64
     cc2.8xlarge:
       Arch: HVM64
+
   AWSRegionArch2AMI:
     us-east-1:
       PV64: ami-2a69aa47
@@ -221,68 +271,98 @@ Mappings:
       PV64: ami-77559f1a
       HVM64: ami-8e6aa0e3
       HVMG2: NOT_SUPPORTED
+
 Resources:
   EIP1:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+
   EIPAssoc1:
     Type: AWS::EC2::EIPAssociation
     Properties:
-      NetworkInterfaceId: !Ref 'Eth0'
-      AllocationId: !GetAtt [EIP1, AllocationId]
+      NetworkInterfaceId: !Ref Eth0
+      AllocationId: !GetAtt EIP1.AllocationId
+
   SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      VpcId: !Ref 'VpcId'
+      VpcId: !Ref VpcId
       GroupDescription: Enable SSH access via port 22
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
-        CidrIp: !Ref 'SSHLocation'
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref SSHLocation
+
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
-          !Ref 'InstanceType', Arch]]
-      InstanceType: !Ref 'InstanceType'
-      KeyName: !Ref 'KeyName'
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref AWS::Region
+        - !FindInMap
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
       NetworkInterfaces:
-      - NetworkInterfaceId: !Ref 'Eth0'
-        DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref Eth0
+          DeviceIndex: "0"
       Tags:
-      - Key: Name
-        Value: myInstance
+        - Key: Name
+          Value: myInstance
+
   Eth0:
     Type: AWS::EC2::NetworkInterface
     Properties:
       Description: eth0
-      GroupSet: [!Ref 'SSHSecurityGroup']
+      GroupSet:
+        - !Ref SSHSecurityGroup
       PrivateIpAddresses:
-      - PrivateIpAddress: !Ref 'PrimaryIPAddress'
-        Primary: 'true'
-      - PrivateIpAddress: !Ref 'SecondaryIPAddress'
-        Primary: 'false'
-      SourceDestCheck: 'true'
-      SubnetId: !Ref 'SubnetId'
+        - PrivateIpAddress: !Ref PrimaryIPAddress
+          Primary: "true"
+        - PrivateIpAddress: !Ref SecondaryIPAddress
+          Primary: "false"
+      SourceDestCheck: "true"
+      SubnetId: !Ref SubnetId
       Tags:
-      - Key: Name
-        Value: Interface 0
-      - Key: Interface
-        Value: eth0
+        - Key: Name
+          Value: Interface 0
+        - Key: Interface
+          Value: eth0
+
 Outputs:
   InstanceId:
-    Value: !Ref 'EC2Instance'
     Description: Instance Id of newly created instance
+    Value: !Ref EC2Instance
+
   EIP1:
-    Value: !Join [' ', [IP address, !Ref 'EIP1', on subnet, !Ref 'SubnetId']]
     Description: Primary public IP of Eth0
+    Value: !Join
+      - ' '
+      - - IP address
+        - !Ref EIP1
+        - on subnet
+        - !Ref SubnetId
+
   PrimaryPrivateIPAddress:
-    Value: !Join [' ', [IP address, !GetAtt [Eth0, PrimaryPrivateIpAddress], on subnet,
-        !Ref 'SubnetId']]
     Description: Primary private IP address of Eth0
+    Value: !Join
+      - ' '
+      - - IP address
+        - !GetAtt Eth0.PrimaryPrivateIpAddress
+        - on subnet
+        - !Ref SubnetId
+
   SecondaryPrivateIPAddresses:
-    Value: !Join [' ', [IP address, !Select ['0', !GetAtt [Eth0, SecondaryPrivateIpAddresses]],
-        on subnet, !Ref 'SubnetId']]
     Description: Secondary private IP address of Eth0
+    Value: !Join
+      - ' '
+      - - IP address
+        - !Select
+          - "0"
+          - !GetAtt Eth0.SecondaryPrivateIpAddresses
+        - on subnet
+        - !Ref SubnetId
