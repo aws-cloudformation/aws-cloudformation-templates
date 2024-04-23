@@ -1,9 +1,9 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
 
 set -eou pipefail
 
 echo "Linting..."
-cfn-lint -i W3005 -- $1
+cfn-lint -- $1
 
 echo "Guarding..."
 cfn-guard validate --data $1 --rules scripts/rules.guard --show-summary fail
