@@ -21,6 +21,7 @@
       "S3BucketForWebsiteLog" : {
         "Type" : "AWS::S3::Bucket",
         "DeletionPolicy" : "Retain",
+        "UpdateReplacePolicy": "Retain",
         "Properties" : {
           "BucketName" : { "Fn::Join" : [ "", [ "", "logs.", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },
           "AccessControl" : "LogDeliveryWrite"
@@ -30,6 +31,7 @@
       "S3BucketForWebsiteContent" : {
         "Type" : "AWS::S3::Bucket",
         "DeletionPolicy" : "Retain",
+        "UpdateReplacePolicy": "Retain",
         "DependsOn": ["S3BucketForWebsiteLog"],
         "Properties" : {
           "BucketName" : { "Fn::Join" : [ "", [ "", { "Ref" : "HostName" }, ".", { "Ref" : "HostedZoneName" } ] ] },

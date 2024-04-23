@@ -19,8 +19,7 @@ Outputs:
         - LambdaRole
         - Arn
     Export:
-      Name:
-        Fn::Sub: LambdaRole
+      Name: LambdaRole
   LambdaFunctionName:
     Value:
       Ref: LambdaFunction
@@ -37,8 +36,7 @@ Resources:
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:
-        Fn::Sub: lambda-role
+      RoleName: lambda-role
       AssumeRolePolicyDocument:
         Statement:
           - Action:

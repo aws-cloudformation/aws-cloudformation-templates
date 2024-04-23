@@ -27,16 +27,9 @@
       "ConstraintDescription" : "must be a valid EC2 instance type."
     },
 
-    "InstanceCount" : {
-      "Description" : "Basic EC2 instance count",
-      "Type" : "String",
-      "Default" : "1",
-      "ConstraintDescription" : "must be a valid EC2 instance count."
-    },
-
     "ImageId" : {
       "Description" : "Basic instance ami",
-      "Type" : "String"
+      "Type" : "AWS::EC2::Image::Id"
     },
 
     "VpcId" : {

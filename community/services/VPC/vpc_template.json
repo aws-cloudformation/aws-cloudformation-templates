@@ -41,34 +41,6 @@
             "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
         }
     },
-    "Mappings": {
-        "RegionMap": {
-            "us-east-1": {
-                "AMI": "ami-7f418316"
-            },
-            "us-west-1": {
-                "AMI": "ami-951945d0"
-            },
-            "us-west-2": {
-                "AMI": "ami-16fd7026"
-            },
-            "eu-west-1": {
-                "AMI": "ami-24506250"
-            },
-            "sa-east-1": {
-                "AMI": "ami-3e3be423"
-            },
-            "ap-southeast-1": {
-                "AMI": "ami-74dda626"
-            },
-            "ap-southeast-2": {
-                "AMI": "ami-b3990e89"
-            },
-            "ap-northeast-1": {
-                "AMI": "ami-dcfa4edd"
-            }
-        }
-    },
     "Resources": {
         "VPC": {
             "Type": "AWS::EC2::VPC",
