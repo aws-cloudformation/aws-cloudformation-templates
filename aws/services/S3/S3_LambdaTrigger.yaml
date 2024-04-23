@@ -8,13 +8,11 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
-        ZipFile: !Join 
-          - |+
-
-          - - import json
-            - 'def lambda_handler(event,context):'
-            - '    print(event)'
-            - '    return ''Hello... This is a test S3 trigger Lambda Function'''
+        ZipFile: |
+          import json
+          def lambda_handler(event,context):
+              print(event)
+              return "Hello... This is a test S3 trigger Lambda Function"
       Handler: index.lambda_handler
       Role: !GetAtt 
         - LambdaIAMRole

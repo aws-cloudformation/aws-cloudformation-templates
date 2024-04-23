@@ -188,14 +188,15 @@ Resources:
     Type: "AWS::ServiceCatalog::TagOption"
     Properties:
       Active:     !Ref 'ActivateProductTagOptions'
-      Key:        Dept
-      Value:      !Sub '${ProductDept}'
-      Key:        Env
-      Value:      !Sub '${ProductEnv}'
-      Key:        User
-      Value:      !Sub '${ProductUser}'
-      Key:        Owner
-      Value:      !Sub '${ProductOwner}'
+      Tags:
+        - Key:        Dept
+          Value:      !Sub '${ProductDept}'
+        - Key:        Env
+          Value:      !Sub '${ProductEnv}'
+        - Key:        User
+          Value:      !Sub '${ProductUser}'
+        - Key:        Owner
+          Value:      !Sub '${ProductOwner}'
 
   ServiceCatalogPortfolioShare:
     Type: "AWS::ServiceCatalog::PortfolioShare"

@@ -1,0 +1,130 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS Cloud9 Environment with AWS CodeCommit Repository",
+    "Parameters": {
+        "EC2InstanceType": {
+            "Description": "EC2 instance type on which IDE runs",
+            "Type": "String",
+            "AllowedValues": [
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "t2.xlarge",
+                "t2.2xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge",
+                "m4.16xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge"
+            ],
+            "Default": "t2.micro"
+        },
+        "AutoHibernateTimeout": {
+            "Description": "How many minutes idle before shutting down the IDE. Options, 30min, 1hr, 4hr, 1day, 1week, Never (0)",
+            "Type": "Number",
+            "AllowedValues": [
+                30,
+                60,
+                240,
+                1440,
+                10080,
+                0
+            ],
+            "Default": 30
+        },
+        "Env": {
+            "Description": "Please specify the target Env. Used for tagging and resource names. Mandatory LOWER CASE.",
+            "Type": "String",
+            "AllowedValues": [
+                "poc",
+                "dev",
+                "prod"
+            ],
+            "Default": "poc"
+        },
+        "User": {
+            "Description": "Please specify the User.",
+            "Type": "String",
+            "Default": "test"
+        },
+        "VPCStackName": {
+            "Description": "Name of an VPC Stack.",
+            "Type": "String",
+            "Default": "vpc"
+        },
+        "RepositoryName": {
+            "Description": "CodeCommit Repository Name",
+            "Type": "String",
+            "Default": "CodeCommitRepoExample"
+        }
+    },
+    "Resources": {
+        "C9IDE": {
+            "Type": "AWS::Cloud9::EnvironmentEC2",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${User}-${Env}-Cloud9-IDE"
+                },
+                "Description": {
+                    "Fn::Sub": "${User} Cloud9 IDE"
+                },
+                "AutomaticStopTimeMinutes": {
+                    "Ref": "AutoHibernateTimeout"
+                },
+                "SubnetId": {
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${VPCStackName}-PublicSubnet1"
+                    }
+                },
+                "InstanceType": {
+                    "Ref": "EC2InstanceType"
+                },
+                "Repositories": [
+                    {
+                        "RepositoryUrl": {
+                            "Fn::Sub": "https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${RepositoryName}"
+                        },
+                        "PathComponent": {
+                            "Fn::Sub": "codecommit/${RepositoryName}"
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "Cloud9URL": {
+            "Description": "Cloud9 Environment",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Fn::Sub": "https://${AWS::Region}.console.aws.amazon.com/cloud9/ide/"
+                        },
+                        {
+                            "Ref": "C9IDE"
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}
