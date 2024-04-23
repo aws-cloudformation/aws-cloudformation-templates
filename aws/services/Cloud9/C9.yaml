@@ -18,6 +18,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS Cloud9 Environment with AWS CodeCommit Repository
 
+Metadata:
+  cfn-lint:
+    config:
+      regions:
+      - us-east-1
+
 Parameters:
 
   EC2InstanceType:
@@ -96,6 +102,7 @@ Resources:
     Properties:
       Name: !Sub '${User}-${Env}-Cloud9-IDE'
       Description: !Sub '${User} Cloud9 IDE'
+      ImageId: amazonlinux-2-x86_64
       AutomaticStopTimeMinutes: !Ref 'AutoHibernateTimeout'
       SubnetId:
         Fn::ImportValue: !Sub '${VPCStackName}-PublicSubnet1'

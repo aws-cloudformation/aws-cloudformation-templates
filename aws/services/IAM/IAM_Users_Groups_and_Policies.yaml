@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Metadata:
   License: Apache-2.0
+  cfn-lint:
+    config:
+      ignore_checks:
+      - I1003
 Description: 'AWS CloudFormation Sample Template IAM_Users_Groups_and_Policies: Sample
   template showing how to create IAM users, groups and policies. It creates a single
   user that is a member of a users group and an admin group. The groups each have

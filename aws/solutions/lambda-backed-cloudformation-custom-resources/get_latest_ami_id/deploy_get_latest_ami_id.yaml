@@ -29,7 +29,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - cloudformation:DescribeStacks
-                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:*"
+                Resource: !Sub "arn${AWS::Partition}cloudformation:${AWS::Region}:${AWS::AccountId}:*"
         - PolicyName: AllowLambdaToWriteLogs
           PolicyDocument:
             Version: '2012-10-17'
@@ -38,12 +38,12 @@ Resources:
                 Action:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*"
+                Resource: !Sub "arn${AWS::Partition}logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*"
               - Sid: AllowLambdaToCreateLogGroups
                 Effect: Allow
                 Action:
                   - 'logs:CreateLogGroup'
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                Resource: !Sub "arn${AWS::Partition}logs:${AWS::Region}:${AWS::AccountId}:*"
         - PolicyName: EC2ReadImages
           PolicyDocument:
             Version: '2012-10-17'
@@ -56,8 +56,7 @@ Resources:
                   - ec2:DescribeFpgaImages
                 Resource: '*'
       RoleName: !Sub "AMI-Search-${AWS::StackName}"
-      Path:
-        Fn::Sub: /
+      Path: "/"
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:

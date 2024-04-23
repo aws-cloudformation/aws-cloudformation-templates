@@ -19,9 +19,7 @@
                 "m3.2xlarge",
                 "c1.medium",
                 "c1.xlarge",
-                "cc1.4xlarge",
-                "cc2.8xlarge",
-                "cg1.4xlarge"
+                "cc2.8xlarge"
             ],
             "ConstraintDescription": "must be a valid EC2 instance type."
         },

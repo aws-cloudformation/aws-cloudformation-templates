@@ -108,7 +108,7 @@ Resources:
               Action:
                 - "s3:PutObject"
               Resource:
-                - !Sub "arn:aws:s3:::cloudformation-waitcondition-${AWS::Region}/*"
+                - !Sub "arn${AWS::Partition}s3:::cloudformation-waitcondition-${AWS::Region}/*"
         RouteTableIds:
           - !Ref PrivateRouteTable1
           - !Ref PrivateRouteTable2

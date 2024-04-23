@@ -17,6 +17,7 @@ Resources:
     Properties:
       BucketName: !Ref BucketName
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
   S3BUCKETPOL:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
@@ -28,13 +29,13 @@ Resources:
           - Sid: CrossAccPolicyDoc
             Action: "s3:ListBucket"
             Effect: Allow
-            Resource: !Sub 'arn:aws:s3:::${S3BUCKET}'
+            Resource: !Sub 'arn:${AWS::Partition}:s3:::${S3BUCKET}'
             Principal:
               AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
           - Sid: CrossAccPolicyDoc
             Action: "s3:GetObject"
             Effect: Allow
-            Resource: !Sub 'arn:aws:s3:::${S3BUCKET}/*'
+            Resource: !Sub 'arn:${AWS::Partition}:s3:::${S3BUCKET}/*'
             Principal:
               AWS: !Join ['', ["arn:aws:iam::", !Ref PublisherAccountID, ":root"]]
 Outputs:

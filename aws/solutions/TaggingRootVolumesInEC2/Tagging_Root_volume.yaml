@@ -25,11 +25,11 @@ Parameters:
    ConstraintDescription: "Must be the name of an availabity zone."
   WindowsAMIID:
     Description: The Latest Windows 2016 AMI taken from the public Systems Manager Parameter Store
-    Type: AWS::SSM::Parameter::Value<String>
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base
   LinuxAMIID:
     Description: The Latest Amazon Linux 2 AMI taken from the public Systems Manager Parameter Store
-    Type : AWS::SSM::Parameter::Value<String>
+    Type : AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
 Resources:

@@ -43,13 +43,12 @@ Parameters:
   DBInstanceClass:
     Description: The database instance type
     Type: String
-    Default: db.t2.small
-    AllowedValues: [db.t1.micro, db.m1.small, db.m1.medium, db.m1.large, db.m1.xlarge,
-      db.m2.xlarge, db.m2.2xlarge, db.m2.4xlarge, db.m3.medium, db.m3.large, db.m3.xlarge,
-      db.m3.2xlarge, db.m4.large, db.m4.xlarge, db.m4.2xlarge, db.m4.4xlarge, db.m4.10xlarge,
-      db.r3.large, db.r3.xlarge, db.r3.2xlarge, db.r3.4xlarge, db.r3.8xlarge, db.m2.xlarge,
-      db.m2.2xlarge, db.m2.4xlarge, db.cr1.8xlarge, db.t2.micro, db.t2.small, db.t2.medium,
-      db.t2.large]
+    Default: db.t3.small
+    AllowedValues: [
+      db.m5.xlarge, db.m5.2xlarge, db.m5.4xlarge, db.r5.large, db.r5.xlarge,
+      db.r5.2xlarge, db.r5.4xlarge, db.r5.8xlarge, db.m5.xlarge,
+      db.m5.2xlarge, db.m5.4xlarge,db.t3.micro, db.t3.small, db.t3.medium,
+      db.t3.large]
     ConstraintDescription: must select a valid database instance type.
   EC2SecurityGroup:
     Description: The EC2 security group that contains instances that need access to
@@ -91,13 +90,14 @@ Resources:
     Condition: Is-EC2-Classic
     Properties:
       DBSecurityGroupIngress:
-        EC2SecurityGroupName: !Ref 'EC2SecurityGroup'
+      - EC2SecurityGroupName: !Ref 'EC2SecurityGroup'
       GroupDescription: database access
   MasterDB:
     Type: AWS::RDS::DBInstance
     Properties:
       DBName: !Ref 'DBName'
       AllocatedStorage: !Ref 'DBAllocatedStorage'
+      BackupRetentionPeriod: 7
       DBInstanceClass: !Ref 'DBInstanceClass'
       Engine: MySQL
       MasterUsername: !Ref 'DBUser'
@@ -110,15 +110,19 @@ Resources:
         !Ref 'AWS::NoValue']
       DBSecurityGroups: !If [Is-EC2-Classic, [!Ref 'DBSecurityGroup'], !Ref 'AWS::NoValue']
     DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
   ReplicaDB:
     Type: AWS::RDS::DBInstance
     Condition: Enable-Read-Replica
     Properties:
+      BackupRetentionPeriod: 7
       SourceDBInstanceIdentifier: !Ref 'MasterDB'
       DBInstanceClass: !Ref 'DBInstanceClass'
       Tags:
       - Key: Name
         Value: Read Replica Database
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 Outputs:
   EC2Platform:
     Description: Platform in which this stack is deployed

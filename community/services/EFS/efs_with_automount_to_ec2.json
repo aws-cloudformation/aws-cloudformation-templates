@@ -135,11 +135,9 @@
                 "d2.2xlarge",
                 "d2.4xlarge",
                 "d2.8xlarge",
-                "hi1.4xlarge",
                 "hs1.8xlarge",
                 "cr1.8xlarge",
-                "cc2.8xlarge",
-                "cg1.4xlarge"
+                "cc2.8xlarge"
             ],
             "ConstraintDescription": "must be a valid EC2 instance type.",
             "Default": "t2.micro",
