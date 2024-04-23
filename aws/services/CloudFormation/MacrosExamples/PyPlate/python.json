@@ -1,0 +1,132 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Macro allowing you to run arbitrary python code in your CloudFormation templates",
+    "Parameters": {
+        "AdditionalExecutionPolicy": {
+            "Description": "An optional IAM Policy ARN to add to the Lambda's execution role so that the template's Python code can call AWS services.",
+            "Type": "String"
+        },
+        "LambdaTimeout": {
+            "Description": "Optional setting of the Lambda's execution timeout (in seconds). The default of 3 seconds won't be enough if you call AWS services; then at least 10 seconds is recommended, more depending on complexity.",
+            "Type": "Number",
+            "Default": 3,
+            "MinValue": 3
+        }
+    },
+    "Conditions": {
+        "AdditionalPolicyProvided": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AdditionalExecutionPolicy"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "TransformExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::If": [
+                            "AdditionalPolicyProvided",
+                            {
+                                "Ref": "AdditionalExecutionPolicy"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "TransformFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Support for the PyPlate CloudFormation macro",
+                "Code": {
+                    "ZipFile": "import traceback\nimport json\n\n\ndef obj_iterate(obj, params):\n    if isinstance(obj, dict):\n        for k in obj:\n            obj[k] = obj_iterate(obj[k], params)\n    elif isinstance(obj, list):\n        for i, v in enumerate(obj):\n            obj[i] = obj_iterate(v, params)\n    elif isinstance(obj, str):\n        if obj.startswith(\"#!PyPlate\"):\n            params['output'] = None\n            exec(obj, params)\n            obj = params['output']\n    return obj\n\n\ndef handler(event, context):\n\n    print(json.dumps(event))\n\n    macro_response = {\n        \"requestId\": event[\"requestId\"],\n        \"status\": \"success\"\n    }\n    try:\n        params = {\n            \"params\": event[\"templateParameterValues\"],\n            \"template\": event[\"fragment\"],\n            \"account_id\": event[\"accountId\"],\n            \"region\": event[\"region\"]\n        }\n        response = event[\"fragment\"]\n        macro_response[\"fragment\"] = obj_iterate(response, params)\n    except Exception as e:\n        traceback.print_exc()\n        macro_response[\"status\"] = \"failure\"\n        macro_response[\"errorMessage\"] = str(e)\n    return macro_response\n"
+                },
+                "Handler": "index.handler",
+                "Runtime": "python3.10",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "TransformExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": {
+                    "Ref": "LambdaTimeout"
+                }
+            }
+        },
+        "TransformFunctionPermissions": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "cloudformation.amazonaws.com"
+            }
+        },
+        "Transform": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "PyPlate"
+                },
+                "Description": "Processes inline python in templates",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

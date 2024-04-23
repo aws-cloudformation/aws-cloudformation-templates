@@ -289,15 +289,14 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref EC2InstanceProfile
       KeyName: !Ref KeyName
-      UserData: 
-        Fn::Base64:
-          Fn::Sub: |
-            #!/bin/bash -xe
-            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-            yum install -y aws-cfn-bootstrap
-            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} \
-                --resource ECSAutoScalingGroup \
-                --region ${AWS::Region}
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} \
+              --resource ECSAutoScalingGroup \
+              --region ${AWS::Region}
 
   service:
     Type: AWS::ECS::Service

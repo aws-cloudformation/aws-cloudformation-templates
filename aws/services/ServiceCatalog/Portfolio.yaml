@@ -1,241 +1,221 @@
-# /*
-# * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# *
-# * Permission is hereby granted, free of charge, to any person obtaining a copy of this
-# * software and associated documentation files (the "Software"), to deal in the Software
-# * without restriction, including without limitation the rights to use, copy, modify,
-# * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-# * permit persons to whom the Software is furnished to do so.
-# *
-# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-# * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# */
+AWSTemplateFormatVersion: "2010-09-09"
 
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Portfolio creation.
-             ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ###
-             **WARNING**
-             This template creates AWS Service Catalog Portfolio, please make sure you review billing costs for AWS Service Catalog.'
+Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS Service Catalog Portfolio creation. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates AWS Service Catalog Portfolio, please make sure you review billing costs for AWS Service Catalog.'
+
 Metadata:
   cfn-lint:
     config:
       regions:
-      - us-east-1
-      - us-west-2
+        - us-east-1
+        - us-west-2
+
   AWS::CloudFormation::Interface:
     ParameterGroups:
-      -
-        Label:
-          default: "Service Catalog Portfolio Details"
+      - Label:
+          default: Service Catalog Portfolio Details
         Parameters:
           - PortfolioDisplayName
           - PortfolioProviderName
           - PortfolioDescription
-      -
-        Label:
-          default: "Service Catalog Portfolio Tags"
+      - Label:
+          default: Service Catalog Portfolio Tags
         Parameters:
           - Dept
           - Env
           - User
           - Owner
-      -
-        Label:
-          default: "Service Catalog Product Tag Options Activation"
+      - Label:
+          default: Service Catalog Product Tag Options Activation
         Parameters:
           - ActivateProductTagOptions
-      -
-        Label:
-          default: "Service Catalog Product Tag Options"
+      - Label:
+          default: Service Catalog Product Tag Options
         Parameters:
           - ProductDept
           - ProductEnv
           - ProductUser
           - ProductOwner
-      -
-        Label:
-          default: "Portfolio Sharing"
+      - Label:
+          default: Portfolio Sharing
         Parameters:
           - ShareThisPortfolio
           - AccountIdOfChildAWSAccount
 
 Parameters:
 
-# Enviornment type
+  # Enviornment type
   Env:
-    Description:    Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
-    Type:           String
-    Default:        "dev"
+    Description: Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type: String
     AllowedValues:
       - test
       - dev
       - prod
 
-# Department
+      # Department
+    Default: dev
+
   Dept:
-    Description:    Please specify the Department. Used for tagging
-    Type:           String
-    Default:        "1234"
+    Description: Please specify the Department. Used for tagging
+    Type: String
+    Default: "1234"
 
-# User
+    # User
   User:
-    Description:    Please specify the User. Used for tagging
-    Type:           String
-    Default:        "User"
+    Description: Please specify the User. Used for tagging
+    Type: String
+    Default: User
 
-# Owner
+    # Owner
   Owner:
-    Description:    Please specify the Owner. Used for tagging
-    Type:           String
-    Default:        "Owner"
+    Description: Please specify the Owner. Used for tagging
+    Type: String
+    Default: Owner
 
-# Product Enviornment type
+    # Product Enviornment type
   ProductEnv:
-    Description:    Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
-    Type:           String
-    Default:        "dev"
+    Description: Please specify the target Environment. Used for tagging and resource names. Mandatory LOWER CASE.
+    Type: String
     AllowedValues:
       - test
       - dev
       - prod
 
-# Product Department
+      # Product Department
+    Default: dev
+
   ProductDept:
-    Description:    Please specify the Department. Used for tagging
-    Type:           String
-    Default:        "1234"
+    Description: Please specify the Department. Used for tagging
+    Type: String
+    Default: "1234"
 
-# Product User
+    # Product User
   ProductUser:
-    Description:    Please specify the User. Used for tagging
-    Type:           String
-    Default:        "User"
+    Description: Please specify the User. Used for tagging
+    Type: String
+    Default: User
 
-# Product Owner
+    # Product Owner
   ProductOwner:
-    Description:    Please specify the Owner. Used for tagging
-    Type:           String
-    Default:        "Owner"
+    Description: Please specify the Owner. Used for tagging
+    Type: String
+    Default: Owner
 
-# Portfolio Provider Name
+    # Portfolio Provider Name
   PortfolioProviderName:
-    Description:    Please specify the Portfolio Provider Name.
-    Type:           String
-    Default:        "IT Provider"
+    Description: Please specify the Portfolio Provider Name.
+    Type: String
+    Default: IT Provider
 
-# Portfolio Description
+    # Portfolio Description
   PortfolioDescription:
-    Description:    Please specify the Portfolio Description.
-    Type:           String
-    Default:        "Service Catalog Portfolio for Business Unit (BU)"
+    Description: Please specify the Portfolio Description.
+    Type: String
+    Default: Service Catalog Portfolio for Business Unit (BU)
 
-# Portfolio Display Name
+    # Portfolio Display Name
   PortfolioDisplayName:
-    Description:    Please specify the Portfolio Description. Must satisfy regular expression pattern, (^[a-zA-Z0-9_\-]*)
-    Type:           String
-    Default:        "Test_Portfolio"
+    Description: Please specify the Portfolio Description. Must satisfy regular expression pattern, (^[a-zA-Z0-9_\-]*)
+    Type: String
+    Default: Test_Portfolio
 
-# Tag Options Activation
+    # Tag Options Activation
   ActivateProductTagOptions:
-    Description:    Activate Custom Tag Options? Used for portfolio tagging
-    Type:           String
-    Default:        "true"
+    Description: Activate Custom Tag Options? Used for portfolio tagging
+    Type: String
     AllowedValues:
-      - 'true'
-      - 'false'
+      - "true"
+      - "false"
 
-# Share Portfolio
+      # Share Portfolio
+    Default: "true"
+
   ShareThisPortfolio:
-    Description:    Please specify if this Portfolio will be Shared with additonal accounts?
-    Type:           String
-    Default:        "false"
+    Description: Please specify if this Portfolio will be Shared with additonal accounts?
+    Type: String
     AllowedValues:
-      - 'true'
-      - 'false'
+      - "true"
+      - "false"
 
-# AccountId
+      # AccountId
+    Default: "false"
+
   AccountIdOfChildAWSAccount:
-    Description:    Please specify the Sub AWS Account ID.
-    Type:           String
-    Default:        "1234567890"
-
+    Description: Please specify the Sub AWS Account ID.
+    Type: String
+    Default: "1234567890"
 
 Conditions:
-
-  ConditionShareThisPortfolio: !Equals [ !Ref ShareThisPortfolio, 'true']
+  ConditionShareThisPortfolio: !Equals
+    - !Ref ShareThisPortfolio
+    - "true"
 
 Resources:
-
   ServiceCatalogPortfolio:
-    Type: "AWS::ServiceCatalog::Portfolio"
+    Type: AWS::ServiceCatalog::Portfolio
     Properties:
-      ProviderName: !Ref 'PortfolioProviderName'
-      Description: !Ref 'PortfolioDescription'
-      DisplayName: !Ref 'PortfolioDisplayName'
+      ProviderName: !Ref PortfolioProviderName
+      Description: !Ref PortfolioDescription
+      DisplayName: !Ref PortfolioDisplayName
       Tags:
-        - Key:    Name
-          Value:  !Sub '${PortfolioDisplayName}'
-        - Key:    Dept
-          Value:  !Sub '${Dept}'
-        - Key:    Env
-          Value:  !Sub '${Env}'
-        - Key:    User
-          Value:  !Sub '${User}'
-        - Key:    Owner
-          Value:  !Sub '${Owner}'
+        - Key: Name
+          Value: !Sub ${PortfolioDisplayName}
+        - Key: Dept
+          Value: !Sub ${Dept}
+        - Key: Env
+          Value: !Sub ${Env}
+        - Key: User
+          Value: !Sub ${User}
+        - Key: Owner
+          Value: !Sub ${Owner}
 
   ServiceCatalogProductTagOptionsDept:
-    Type: "AWS::ServiceCatalog::TagOption"
+    Type: AWS::ServiceCatalog::TagOption
     Properties:
-      Active:     !Ref 'ActivateProductTagOptions'
-      Key:        Dept
-      Value:      !Sub '${ProductDept}'
+      Active: !Ref ActivateProductTagOptions
+      Key: Dept
+      Value: !Sub ${ProductDept}
 
   ServiceCatalogProductTagOptionsEnv:
-    Type: "AWS::ServiceCatalog::TagOption"
+    Type: AWS::ServiceCatalog::TagOption
     Properties:
-      Active:     !Ref 'ActivateProductTagOptions'
-      Key:        Env
-      Value:      !Sub '${ProductEnv}'
-  
+      Active: !Ref ActivateProductTagOptions
+      Key: Env
+      Value: !Sub ${ProductEnv}
+
   ServiceCatalogProductTagOptionsUser:
-    Type: "AWS::ServiceCatalog::TagOption"
+    Type: AWS::ServiceCatalog::TagOption
     Properties:
-      Active:     !Ref 'ActivateProductTagOptions'
-      Key:        User
-      Value:      !Sub '${ProductUser}'
-  
+      Active: !Ref ActivateProductTagOptions
+      Key: User
+      Value: !Sub ${ProductUser}
+
   ServiceCatalogProductTagOptionsOwner:
-    Type: "AWS::ServiceCatalog::TagOption"
+    Type: AWS::ServiceCatalog::TagOption
     Properties:
-      Active:     !Ref 'ActivateProductTagOptions'
-      Key:        Owner
-      Value:      !Sub '${ProductOwner}'
+      Active: !Ref ActivateProductTagOptions
+      Key: Owner
+      Value: !Sub ${ProductOwner}
 
   ServiceCatalogPortfolioShare:
-    Type: "AWS::ServiceCatalog::PortfolioShare"
-    Condition: ConditionShareThisPortfolio
+    Type: AWS::ServiceCatalog::PortfolioShare
     Properties:
-      AccountId: !Ref 'AccountIdOfChildAWSAccount'
-      PortfolioId: !Ref 'ServiceCatalogPortfolio'
+      AccountId: !Ref AccountIdOfChildAWSAccount
+      PortfolioId: !Ref ServiceCatalogPortfolio
+    Condition: ConditionShareThisPortfolio
 
 Outputs:
-
   ServiceCatalogPortfolio:
-    Value:    !Ref 'ServiceCatalogPortfolio'
+    Value: !Ref ServiceCatalogPortfolio
     Export:
-      Name:   !Sub '${AWS::StackName}-ServiceCatalogPortfolio'
+      Name: !Sub ${AWS::StackName}-ServiceCatalogPortfolio
 
   ServiceCatalogPortfolioName:
-    Value:    !GetAtt 'ServiceCatalogPortfolio.PortfolioName'
+    Value: !GetAtt ServiceCatalogPortfolio.PortfolioName
     Export:
-      Name:   !Sub '${AWS::StackName}-ServiceCatalogPortfolioName'
+      Name: !Sub ${AWS::StackName}-ServiceCatalogPortfolioName
 
   ServiceCatalogProductTagOptionsDept:
-    Value:    !Ref 'ServiceCatalogProductTagOptionsDept'
+    Value: !Ref ServiceCatalogProductTagOptionsDept
     Export:
-      Name:   !Sub '${AWS::StackName}-ServiceCatalogProductTagOptionsDept'
+      Name: !Sub ${AWS::StackName}-ServiceCatalogProductTagOptionsDept

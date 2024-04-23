@@ -1,97 +1,125 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'AWS CloudFormation Sample Template Config: This template demonstrates the usage of AWS Config resources. **WARNING** You will be billed for the AWS resources used if you create a stack from this template.'
+
+Metadata:
   License: Apache-2.0
-Description: 'AWS CloudFormation Sample Template Config: This template demonstrates
-  the usage of AWS Config resources. **WARNING** You will be billed for the AWS resources
-  used if you create a stack from this template.'
+
 Parameters:
   DeliveryChannelExists:
+    Description: Do you have an exisiting AWS Config delivery channel?
     Type: String
-    Description: 'Do you have an exisiting AWS Config delivery channel?'
-    Default: 'false'
-    AllowedValues: ['false', 'true']
+    AllowedValues:
+      - "false"
+      - "true"
+    Default: "false"
+
   Ec2VolumeAutoEnableIO:
     Type: String
-    Default: 'false'
-    AllowedValues: ['false', 'true']
+    AllowedValues:
+      - "false"
+      - "true"
+    Default: "false"
+
   Ec2VolumeTagKey:
     Type: String
     Default: CostCenter
+
 Conditions:
-  CreateDeliveryChannel: !Equals [ !Ref DeliveryChannelExists, 'false' ]
+  CreateDeliveryChannel: !Equals
+    - !Ref DeliveryChannelExists
+    - "false"
+
 Resources:
   Ec2Volume:
     Type: AWS::EC2::Volume
     Properties:
-      AutoEnableIO: !Ref 'Ec2VolumeAutoEnableIO'
-      Size: '5'
-      AvailabilityZone: !Select [0, !GetAZs '']
+      AutoEnableIO: !Ref Ec2VolumeAutoEnableIO
+      Size: "5"
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
       Tags:
-      - Key: !Ref 'Ec2VolumeTagKey'
-        Value: Ec2VolumeTagValue
+        - Key: !Ref Ec2VolumeTagKey
+          Value: Ec2VolumeTagValue
+
   ConfigRecorder:
     Type: AWS::Config::ConfigurationRecorder
     Properties:
       Name: default
       RecordingGroup:
-        ResourceTypes: ['AWS::EC2::Volume']
-      RoleARN: !GetAtt [ConfigRole, Arn]
+        ResourceTypes:
+          - AWS::EC2::Volume
+      RoleARN: !GetAtt ConfigRole.Arn
+
   DeliveryChannel:
-    Condition: CreateDeliveryChannel
     Type: AWS::Config::DeliveryChannel
     Properties:
       ConfigSnapshotDeliveryProperties:
         DeliveryFrequency: Six_Hours
-      S3BucketName: !Ref 'ConfigBucket'
-      SnsTopicARN: !Ref 'ConfigTopic'
+      S3BucketName: !Ref ConfigBucket
+      SnsTopicARN: !Ref ConfigTopic
+    Condition: CreateDeliveryChannel
+
   ConfigBucket:
     Type: AWS::S3::Bucket
+
   ConfigTopic:
     Type: AWS::SNS::Topic
+
   ConfigTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       PolicyDocument:
         Id: ConfigTopicPolicy
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-        - Effect: Allow
-          Principal:
-            Service: config.amazonaws.com
-          Action: SNS:Publish
-          Resource: '*'
-      Topics: [!Ref 'ConfigTopic']
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: SNS:Publish
+            Resource: '*'
+      Topics:
+        - !Ref ConfigTopic
+
   ConfigRuleForVolumeTags:
     Type: AWS::Config::ConfigRule
+    DependsOn: ConfigRecorder
     Properties:
       InputParameters:
         tag1Key: CostCenter
       Scope:
-        ComplianceResourceTypes: ['AWS::EC2::Volume']
+        ComplianceResourceTypes:
+          - AWS::EC2::Volume
       Source:
         Owner: AWS
         SourceIdentifier: REQUIRED_TAGS
-    DependsOn: ConfigRecorder
+
   ConfigRuleForVolumeAutoEnableIO:
     Type: AWS::Config::ConfigRule
+    DependsOn:
+      - ConfigPermissionToCallLambda
+      - ConfigRecorder
     Properties:
       ConfigRuleName: ConfigRuleForVolumeAutoEnableIO
       Scope:
-        ComplianceResourceId: !Ref 'Ec2Volume'
-        ComplianceResourceTypes: ['AWS::EC2::Volume']
+        ComplianceResourceId: !Ref Ec2Volume
+        ComplianceResourceTypes:
+          - AWS::EC2::Volume
       Source:
         Owner: CUSTOM_LAMBDA
         SourceDetails:
-        - EventSource: aws.config
-          MessageType: ConfigurationItemChangeNotification
-        SourceIdentifier: !GetAtt [VolumeAutoEnableIOComplianceCheck, Arn]
-    DependsOn: [ConfigPermissionToCallLambda, ConfigRecorder]
+          - EventSource: aws.config
+            MessageType: ConfigurationItemChangeNotification
+        SourceIdentifier: !GetAtt VolumeAutoEnableIOComplianceCheck.Arn
+
   ConfigPermissionToCallLambda:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt [VolumeAutoEnableIOComplianceCheck, Arn]
+      FunctionName: !GetAtt VolumeAutoEnableIOComplianceCheck.Arn
       Action: lambda:InvokeFunction
       Principal: config.amazonaws.com
+
   VolumeAutoEnableIOComplianceCheck:
     Type: AWS::Lambda::Function
     Properties:
@@ -131,59 +159,80 @@ Resources:
           }
       Handler: index.handler
       Runtime: nodejs16.x
-      Timeout: '30'
-      Role: !GetAtt [LambdaExecutionRole, Arn]
+      Timeout: "30"
+      Role: !GetAtt LambdaExecutionRole.Arn
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-        - Effect: Allow
-          Principal:
-            Service: [lambda.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
           - Effect: Allow
-            Action: ['logs:*', 'config:PutEvaluations', 'ec2:DescribeVolumeAttribute']
-            Resource: '*'
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                  - config:PutEvaluations
+                  - ec2:DescribeVolumeAttribute
+                Resource: '*'
+
   ConfigRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-        - Effect: Allow
-          Principal:
-            Service: [config.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AWS_ConfigRole']
+          - Effect: Allow
+            Principal:
+              Service:
+                - config.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
       Policies:
-      - PolicyName: root
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action: s3:GetBucketAcl
-            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'ConfigBucket']]
-          - Effect: Allow
-            Action: s3:PutObject
-            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'ConfigBucket', /AWSLogs/,
-                !Ref 'AWS::AccountId', /*]]
-            Condition:
-              StringEquals:
-                s3:x-amz-acl: bucket-owner-full-control
-          - Effect: Allow
-            Action: config:Put*
-            Resource: '*'
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:GetBucketAcl
+                Resource: !Join
+                  - ""
+                  - - 'arn:aws:s3:::'
+                    - !Ref ConfigBucket
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Join
+                  - ""
+                  - - 'arn:aws:s3:::'
+                    - !Ref ConfigBucket
+                    - /AWSLogs/
+                    - !Ref AWS::AccountId
+                    - /*
+                Condition:
+                  StringEquals:
+                    s3:x-amz-acl: bucket-owner-full-control
+              - Effect: Allow
+                Action: config:Put*
+                Resource: '*'
+
 Outputs:
   ConfigRuleForVolumeTagsArn:
-    Value: !GetAtt [ConfigRuleForVolumeTags, Arn]
+    Value: !GetAtt ConfigRuleForVolumeTags.Arn
+
   ConfigRuleForVolumeTagsConfigRuleId:
-    Value: !GetAtt [ConfigRuleForVolumeTags, ConfigRuleId]
+    Value: !GetAtt ConfigRuleForVolumeTags.ConfigRuleId
+
   ConfigRuleForVolumeAutoEnableIOComplianceType:
-    Value: !GetAtt [ConfigRuleForVolumeAutoEnableIO, Compliance.Type]
+    Value: !GetAtt ConfigRuleForVolumeAutoEnableIO.Compliance.Type

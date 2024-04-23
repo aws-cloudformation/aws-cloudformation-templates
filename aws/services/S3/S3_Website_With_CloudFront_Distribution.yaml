@@ -1,20 +1,10 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'AWS CloudFormation Sample Template S3_Website_With_CloudFront_Distribution:
-  Sample template showing how to create a website with a custom DNS name, hosted on
-  Amazon S3 and served via Amazone CloudFront. It assumes you already have a Hosted
-  Zone registered with Amazon Route 53. **WARNING** This template creates an Amazon
-  Route 53 DNS record, an S3 bucket and a CloudFront distribution. You will be billed
-  for the AWS resources used if you create a stack from this template.'
-Parameters:
-  HostedZone:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone
-  AcmCertificateArn:
-    Type: String
-    Description: The ARN of an existing ACM certificate (certificate domain name must
-      be in the format stacknameaccountid.region.hostedzone)
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'AWS CloudFormation Sample Template S3_Website_With_CloudFront_Distribution: Sample template showing how to create a website with a custom DNS name, hosted on Amazon S3 and served via Amazone CloudFront. It assumes you already have a Hosted Zone registered with Amazon Route 53. **WARNING** This template creates an Amazon Route 53 DNS record, an S3 bucket and a CloudFront distribution. You will be billed for the AWS resources used if you create a stack from this template.'
+
 Metadata:
   License: Apache-2.0
+
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -27,46 +17,59 @@ Metadata:
         default: ACM Certificate ARN
       HostedZone:
         default: Hosted Zone Domain Name
+
   cfn-lint:
     config:
       regions:
-      - us-east-1
+        - us-east-1
+
+Parameters:
+  HostedZone:
+    Description: The DNS name of an existing Amazon Route 53 hosted zone
+    Type: String
+
+  AcmCertificateArn:
+    Description: The ARN of an existing ACM certificate (certificate domain name must be in the format stacknameaccountid.region.hostedzone)
+    Type: String
+
 Conditions:
   HasHostedZone: !Not
     - !Equals
-      - !Ref 'HostedZone'
-      - ''
+      - !Ref HostedZone
+      - ""
+
 Resources:
   CloudFrontOriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: Required optional comment
+
   S3BucketForWebsiteContent:
     Type: AWS::S3::Bucket
+
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref 'S3BucketForWebsiteContent'
+      Bucket: !Ref S3BucketForWebsiteContent
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Id: PolicyForCloudFrontPrivateContent
         Statement:
           - Sid: 403Permissions
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:${AWS::Partition}:iam::cloudfront:user/CloudFront Origin Access Identity
-                ${CloudFrontOriginAccessIdentity}'
-            Action: "s3:ListBucket"
-            Resource: !Sub 'arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}'
+              AWS: !Sub arn:${AWS::Partition}:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}
+            Action: s3:ListBucket
+            Resource: !Sub arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}
           - Sid: ObjectAccess
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn${AWS::Partition}iam::cloudfront:user/CloudFront Origin Access Identity
-                ${CloudFrontOriginAccessIdentity}'
+              AWS: !Sub arn${AWS::Partition}iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}
             Action:
               - s3:GetObject
-            Resource: !Sub 'arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}/*'
+            Resource: !Sub arn${AWS::Partition}s3:::${S3BucketForWebsiteContent}/*
+
   WebsiteCDN:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -75,60 +78,63 @@ Resources:
         Aliases: !If
           - HasHostedZone
           - - !Join
-              - ''
-              - - !Ref 'AWS::StackName'
-                - !Ref 'AWS::AccountId'
+              - ""
+              - - !Ref AWS::StackName
+                - !Ref AWS::AccountId
                 - .
-                - !Ref 'AWS::Region'
+                - !Ref AWS::Region
                 - .
-                - !Ref 'HostedZone'
-          - !Ref 'AWS::NoValue'
-        Enabled: 'true'
+                - !Ref HostedZone
+          - !Ref AWS::NoValue
+        Enabled: "true"
         DefaultCacheBehavior:
           ForwardedValues:
-            QueryString: 'true'
+            QueryString: "true"
           TargetOriginId: only-origin
           ViewerProtocolPolicy: allow-all
         DefaultRootObject: index.html
         Origins:
           - S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
-            DomainName: !Sub '${S3BucketForWebsiteContent.RegionalDomainName}'
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}
+            DomainName: !Sub ${S3BucketForWebsiteContent.RegionalDomainName}
             Id: only-origin
         ViewerCertificate: !If
           - HasHostedZone
-          - AcmCertificateArn: !Ref 'AcmCertificateArn'
+          - AcmCertificateArn: !Ref AcmCertificateArn
             MinimumProtocolVersion: TLSv1.2_2019
             SslSupportMethod: sni-only
-          - !Ref 'AWS::NoValue'
+          - !Ref AWS::NoValue
+
   WebsiteDNSName:
-    Condition: HasHostedZone
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneName: !Join
-        - ''
-        - - !Ref 'HostedZone'
+        - ""
+        - - !Ref HostedZone
           - .
       Comment: CNAME redirect custom name to CloudFront distribution
       Name: !Join
-        - ''
-        - - !Ref 'AWS::StackName'
-          - !Ref 'AWS::AccountId'
+        - ""
+        - - !Ref AWS::StackName
+          - !Ref AWS::AccountId
           - .
-          - !Ref 'AWS::Region'
+          - !Ref AWS::Region
           - .
-          - !Ref 'HostedZone'
+          - !Ref HostedZone
       Type: CNAME
-      TTL: '900'
+      TTL: "900"
       ResourceRecords:
-        - !Sub '${WebsiteCDN.DomainName}'
+        - !Sub ${WebsiteCDN.DomainName}
+    Condition: HasHostedZone
+
 Outputs:
   WebsiteURL:
+    Description: The URL of the newly created website
     Value: !If
       - HasHostedZone
-      - !Sub 'https://${WebsiteDNSName}'
-      - !Sub 'https://${WebsiteCDN.DomainName}'
-    Description: The URL of the newly created website
+      - !Sub https://${WebsiteDNSName}
+      - !Sub https://${WebsiteCDN.DomainName}
+
   BucketName:
-    Value: !Ref 'S3BucketForWebsiteContent'
     Description: Name of S3 bucket to hold website content
+    Value: !Ref S3BucketForWebsiteContent

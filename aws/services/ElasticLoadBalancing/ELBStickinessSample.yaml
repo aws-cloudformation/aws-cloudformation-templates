@@ -1,41 +1,84 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Metadata: 
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'AWS CloudFormation Sample Template ELBStickinessSample: Create a load balanced sample web site with ELB stickiness enabled. The AI is chosen based on the region in which the stack is run. This example creates 2 EC2 instances behind a load balancer with a simple health check. The ec2 instances are untargeted and may be deployed in one or more availaiblity zones. The web site is available on port 80, however, the instances can be configured to listen on any port (8888 by default). **WARNING** This template creates one or more Amazon EC2 instances and an Elastic Load Balancer. You will be billed for the AWS resources used if you create a stack from this template.'
+
+Metadata:
   License: Apache-2.0
-Description: 'AWS CloudFormation Sample Template ELBStickinessSample: Create a load
-  balanced sample web site with ELB stickiness enabled. The AI is chosen based on
-  the region in which the stack is run. This example creates 2 EC2 instances behind
-  a load balancer with a simple health check. The ec2 instances are untargeted and
-  may be deployed in one or more availaiblity zones. The web site is available on
-  port 80, however, the instances can be configured to listen on any port (8888 by
-  default). **WARNING** This template creates one or more Amazon EC2 instances and
-  an Elastic Load Balancer. You will be billed for the AWS resources used if you create
-  a stack from this template.'
+
 Parameters:
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
     Default: t2.small
-    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large, m1.small,
-      m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge, m3.medium,
-      m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
-      m4.10xlarge, c1.medium, c1.xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge,
-      c3.8xlarge, c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, g2.2xlarge,
-      g2.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge, r3.8xlarge, i2.xlarge,
-      i2.2xlarge, i2.4xlarge, i2.8xlarge, d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge,
-      hs1.8xlarge, cr1.8xlarge, cc2.8xlarge]
     ConstraintDescription: must be a valid EC2 instance type.
+
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
-    MinLength: '9'
-    MaxLength: '18'
     Default: 0.0.0.0/0
+    MinLength: "9"
+    MaxLength: "18"
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
 Mappings:
   Region2Examples:
     us-east-1:
@@ -64,6 +107,7 @@ Mappings:
       Examples: https://s3-sa-east-1.amazonaws.com/cloudformation-examples-sa-east-1
     cn-north-1:
       Examples: https://s3.cn-north-1.amazonaws.com.cn/cloudformation-examples-cn-north-1
+
   AWSInstanceType2Arch:
     t1.micro:
       Arch: PV64
@@ -171,6 +215,7 @@ Mappings:
       Arch: HVM64
     cc2.8xlarge:
       Arch: HVM64
+
   AWSRegionArch2AMI:
     us-east-1:
       PV64: ami-2a69aa47
@@ -224,28 +269,36 @@ Mappings:
       PV64: ami-77559f1a
       HVM64: ami-8e6aa0e3
       HVMG2: NOT_SUPPORTED
+
 Resources:
   ElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
-      AvailabilityZones: !GetAZs ''
-      CrossZone: 'true'
-      Instances: [!Ref 'EC2Instance1', !Ref 'EC2Instance2']
+      AvailabilityZones: !GetAZs
+      CrossZone: "true"
+      Instances:
+        - !Ref EC2Instance1
+        - !Ref EC2Instance2
       LBCookieStickinessPolicy:
-      - PolicyName: myLBPolicy
-        CookieExpirationPeriod: '180'
+        - PolicyName: myLBPolicy
+          CookieExpirationPeriod: "180"
       Listeners:
-      - LoadBalancerPort: '80'
-        InstancePort: '80'
-        Protocol: HTTP
-        PolicyNames: [myLBPolicy]
+        - LoadBalancerPort: "80"
+          InstancePort: "80"
+          Protocol: HTTP
+          PolicyNames:
+            - myLBPolicy
       HealthCheck:
         Target: HTTP:80/
-        HealthyThreshold: '3'
-        UnhealthyThreshold: '5'
-        Interval: '30'
-        Timeout: '5'
+        HealthyThreshold: "3"
+        UnhealthyThreshold: "5"
+        Interval: "30"
+        Timeout: "5"
+
   EC2Instance1:
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
     Type: AWS::EC2::Instance
     Metadata:
       Comment: Install a simple application
@@ -256,97 +309,143 @@ Resources:
               httpd: []
           files:
             /var/www/html/index.html:
-              content: !Join ['', [<img src=", !FindInMap [Region2Examples, !Ref 'AWS::Region',
-                    Examples], /cloudformation_graphic.png" alt="AWS CloudFormation
-                    Logo"/>, '<h1>Congratulations, you have successfully launched
-                    the AWS CloudFormation sample.</h1>']]
-              mode: '000644'
+              content: !Join
+                - ""
+                - - <img src="
+                  - !FindInMap
+                    - Region2Examples
+                    - !Ref AWS::Region
+                    - Examples
+                  - /cloudformation_graphic.png" alt="AWS CloudFormation Logo"/>
+                  - <h1>Congratulations, you have successfully launched the AWS CloudFormation sample.</h1>
+              mode: "000644"
               owner: root
               group: root
             /etc/cfn/cfn-hup.conf:
-              content: !Join ['', ['[main]
-                    ', stack=, !Ref 'AWS::StackId', '
-                    ', region=, !Ref 'AWS::Region', '
-                    ']]
-              mode: '000400'
+              content: !Join
+                - ""
+                - - '[main] '
+                  - stack=
+                  - !Ref AWS::StackId
+                  - ' '
+                  - region=
+                  - !Ref AWS::Region
+                  - ' '
+              mode: "000400"
               owner: root
               group: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
-              content: !Join ['', ['[cfn-auto-reloader-hook]
-                    ', 'triggers=post.update
-                    ', 'path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init
-                    ', 'action=/opt/aws/bin/cfn-init -v ', '         --stack ', !Ref 'AWS::StackName',
-                  '         --resource EC2Instance1 ', '         --region ', !Ref 'AWS::Region',
-                  '
-                    ', 'runas=root
-                    ']]
+              content: !Join
+                - ""
+                - - '[cfn-auto-reloader-hook] '
+                  - 'triggers=post.update '
+                  - 'path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init '
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - '         --stack '
+                  - !Ref AWS::StackName
+                  - '         --resource EC2Instance1 '
+                  - '         --region '
+                  - !Ref AWS::Region
+                  - ' '
+                  - 'runas=root '
           services:
             sysvinit:
               httpd:
-                enabled: 'true'
-                ensureRunning: 'true'
+                enabled: "true"
+                ensureRunning: "true"
               cfn-hup:
-                enabled: 'true'
-                ensureRunning: 'true'
-                files: [/etc/cfn/cfn-hup.conf, /etc/cfn/hooks.d/cfn-auto-reloader.conf]
+                enabled: "true"
+                ensureRunning: "true"
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
     Properties:
-      SecurityGroups: [!Ref 'InstanceSecurityGroup']
-      KeyName: !Ref 'KeyName'
-      InstanceType: !Ref 'InstanceType'
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
-          !Ref 'InstanceType', Arch]]
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref AWS::Region
+        - !FindInMap
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
       UserData: !Base64
         Fn::Join:
-        - ''
-        - ['#!/bin/bash -xe
-            ', 'yum update -y aws-cfn-bootstrap
-            ', '/opt/aws/bin/cfn-init -v ', '         --stack ', !Ref 'AWS::StackName',
-          '         --resource EC2Instance1 ', '         --region ', !Ref 'AWS::Region',
-          '
-            ', '/opt/aws/bin/cfn-signal -e $? ', '         --stack ', !Ref 'AWS::StackName',
-          '         --resource EC2Instance1 ', '         --region ', !Ref 'AWS::Region',
-          '
-            ']
+          - ""
+          - - '#!/bin/bash -xe '
+            - 'yum update -y aws-cfn-bootstrap '
+            - '/opt/aws/bin/cfn-init -v '
+            - '         --stack '
+            - !Ref AWS::StackName
+            - '         --resource EC2Instance1 '
+            - '         --region '
+            - !Ref AWS::Region
+            - ' '
+            - '/opt/aws/bin/cfn-signal -e $? '
+            - '         --stack '
+            - !Ref AWS::StackName
+            - '         --resource EC2Instance1 '
+            - '         --region '
+            - !Ref AWS::Region
+            - ' '
+
+  EC2Instance2:
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
-  EC2Instance2:
     Type: AWS::EC2::Instance
     Properties:
-      SecurityGroups: [!Ref 'InstanceSecurityGroup']
-      KeyName: !Ref 'KeyName'
-      InstanceType: !Ref 'InstanceType'
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
-          !Ref 'InstanceType', Arch]]
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref AWS::Region
+        - !FindInMap
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
       UserData: !Base64
         Fn::Join:
-        - ''
-        - ['#!/bin/bash -xe
-            ', 'yum update -y aws-cfn-bootstrap
-            ', '/opt/aws/bin/cfn-init -v ', '         --stack ', !Ref 'AWS::StackName',
-          '         --resource EC2Instance1 ', '         --region ', !Ref 'AWS::Region',
-          '
-            ', '/opt/aws/bin/cfn-signal -e $? ', '         --stack ', !Ref 'AWS::StackName',
-          '         --resource EC2Instance2 ', '         --region ', !Ref 'AWS::Region',
-          '
-            ']
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT15M
+          - ""
+          - - '#!/bin/bash -xe '
+            - 'yum update -y aws-cfn-bootstrap '
+            - '/opt/aws/bin/cfn-init -v '
+            - '         --stack '
+            - !Ref AWS::StackName
+            - '         --resource EC2Instance1 '
+            - '         --region '
+            - !Ref AWS::Region
+            - ' '
+            - '/opt/aws/bin/cfn-signal -e $? '
+            - '         --stack '
+            - !Ref AWS::StackName
+            - '         --resource EC2Instance2 '
+            - '         --region '
+            - !Ref AWS::Region
+            - ' '
+
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Enable SSH access and HTTP access on the inbound port
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
-        CidrIp: !Ref 'SSHLocation'
-      - IpProtocol: tcp
-        FromPort: '80'
-        ToPort: '80'
-        CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref SSHLocation
+        - IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: 0.0.0.0/0
+
 Outputs:
   URL:
     Description: URL of the sample website
-    Value: !Join ['', ['http://', !GetAtt [ElasticLoadBalancer, DNSName]]]
+    Value: !Join
+      - ""
+      - - http://
+        - !GetAtt ElasticLoadBalancer.DNSName
