@@ -57,13 +57,15 @@ Resources:
     Properties:
       FunctionName:
         Fn::Sub: lambda-function-${EnvName}
-      Description: LambdaFunctioni of nodejs12.x.
-      Runtime: nodejs12.x
+      Description: LambdaFunction using python3.12.
+      Runtime: python3.12
       Code:
         ZipFile: |
-          "exports.handler = function(event, context)
-            var sample = sample;
-            }"
+          import json
+
+          def lambda_handler(event, context):
+              print("Received event: " + json.dumps(event, indent=2))
+              return ""
       Handler: !Sub ${LambdaHandlerPath}
       MemorySize: 128
       Timeout: 10
@@ -73,6 +75,5 @@ Resources:
           - Arn
       Environment:
         Variables:
-          ENV:
-            Fn::Sub: ${EnvName}
+          ENV: !Ref EnvName
           TZ: UTC
