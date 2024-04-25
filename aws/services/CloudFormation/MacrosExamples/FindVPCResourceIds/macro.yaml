@@ -1,14 +1,11 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: >
-  This CloudFormation template is to provision the CloudFormation macro that find supported VPC ResourceId(s) by tags
-  1. Lambda Execution role is created.
-  2. Lambda is created that implements the macro logic.
-  3. Macro is created that uses the Lambda
+Description: |
+  This CloudFormation template is to provision the CloudFormation macro that find supported VPC ResourceId(s) by tags 1. Lambda Execution role is created. 2. Lambda is created that implements the macro logic. 3. Macro is created that uses the Lambda
 
 Metadata:
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -16,6 +13,7 @@ Metadata:
         Parameters:
           - pProject
           - pEnv
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pProject:
@@ -28,22 +26,22 @@ Parameters:
     Description: The project name e.g. myp.
     Type: String
     Default: myp
+
   pEnv:
     Description: The environment identifier e.g. dev
     Type: String
     Default: dev
 
-
 Resources:
   rMacroLambdaExecRole:
+    Type: AWS::IAM::Role
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W28
-            reason: "Role Name is used for identification, it is OK to replace"
+            reason: Role Name is used for identification, it is OK to replace
           - id: W11
-            reason: "Only 'Describe*' is allowed"
-    Type: AWS::IAM::Role
+            reason: Only 'Describe*' is allowed
     Properties:
       RoleName: !Sub cfn-macro-find-vpc-resource-exec-role-${pProject}-${pEnv}
       AssumeRolePolicyDocument:
@@ -54,7 +52,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - sts:AssumeRole
-      Path: "/"
+      Path: /
+
       #PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/Permission_Boundary_if_any
       Policies:
         - PolicyName: lambda-cw-access
@@ -77,7 +76,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - ec2:Describe*
-                Resource: "*"
+                Resource: '*'
       Tags:
         - Key: Project
           Value: !Ref pProject
@@ -87,19 +86,19 @@ Resources:
           Value: !Ref AWS::StackId
 
   rFindVPCResourceIdsFunction:
+    Type: AWS::Lambda::Function
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W89
-            reason: "VPC Access not required"
+            reason: VPC Access not required
           - id: W58
-            reason: "Permission to write CloudWatch logs is provided via execution role in security template"
-    Type: "AWS::Lambda::Function"
+            reason: Permission to write CloudWatch logs is provided via execution role in security template
     Properties:
-      Description: "Find supported VPCResource(s) Id(s) by tags"
+      Description: Find supported VPCResource(s) Id(s) by tags
       FunctionName: !Sub cfn-macro-find-vpc-resource-${pProject}-${pEnv}
       Handler: index.handler
-      Role: !GetAtt "rMacroLambdaExecRole.Arn"
+      Role: !GetAtt rMacroLambdaExecRole.Arn
       Timeout: 120
       Runtime: python3.9
       ReservedConcurrentExecutions: 2

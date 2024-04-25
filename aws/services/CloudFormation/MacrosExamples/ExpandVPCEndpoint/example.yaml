@@ -1,12 +1,11 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: ExpandVPCEndpoint
 
-Description: >
+Description: |
   This CloudFormation template for testing macro
 
 Metadata:
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -15,6 +14,7 @@ Metadata:
           - pVPCId
           - pSubnetIds
           - pSecurityGroupIds
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pVPCId:
@@ -26,29 +26,33 @@ Metadata:
 
 Parameters:
   pVPCId:
-    Description: >
+    Description: |
       VPC Id of an existing VPC.
     Type: String
+
   pSubnetIds:
-    Description: >
+    Description: |
       Comma delimited list of existing Subnet Ids.
     Type: CommaDelimitedList
+
   pSecurityGroupIds:
-    Description: >
+    Description: |
       Comma delimited list of existing Security Group Ids.
     Type: CommaDelimitedList
 
+Transform: ExpandVPCEndpoint
+
 Resources:
   VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
     Metadata:
       cfn-lint:
         config:
           ignore_checks:
             - E3002 #Using Transform to build ServiceName
             - E3003 #Using Transform to build ServiceName
-    Type: AWS::EC2::VPCEndpoint
     Properties:
-      ExpandServiceCodes: "ssm,ssmmessages,ec2,ec2messages"
+      ExpandServiceCodes: ssm,ssmmessages,ec2,ec2messages
       VpcEndpointType: Interface
       VpcId: !Ref pVPCId
       PrivateDnsEnabled: true

@@ -1,11 +1,11 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: >
+Description: |
   This CloudFormation template is meant to be used as nested stack to create a private ECR repository.
 
 Metadata:
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -18,6 +18,7 @@ Metadata:
         Parameters:
           - pProject
           - pEnv
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pNamespace:
@@ -36,16 +37,19 @@ Parameters:
     Default: myp
     MinLength: 3
     MaxLength: 16
+
   pRepoName:
     Description: The private repository name.
     Type: String
     Default: hello-world
     MinLength: 3
     MaxLength: 239 #${pNamespace)/${pRepoName} max allowed is 256
+
   pProject:
     Description: The project name e.g. myp.
     Type: String
     Default: myp
+
   pEnv:
     Description: The environment identifier e.g. DEV
     Type: String
@@ -53,6 +57,7 @@ Parameters:
 
 Resources:
   rPvtRepo:
+    Type: AWS::ECR::Repository
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -60,9 +65,8 @@ Resources:
             reason: Application requires explicit name for the repository.
           - id: W79
             reason: Scanning will be enabled at the registry level.
-    Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub "${pNamespace}/${pRepoName}"
+      RepositoryName: !Sub ${pNamespace}/${pRepoName}
       ImageTagMutability: IMMUTABLE
       EncryptionConfiguration:
         EncryptionType: AES256
@@ -71,7 +75,7 @@ Resources:
         Statement:
           - Sid: AllowSSLRequestsOnly
             Effect: Deny
-            Principal: "*"
+            Principal: '*'
             Action: ecr:*
             Condition:
               Bool:

@@ -1,14 +1,11 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: >
-  This CloudFormation template is to provision the CloudFormation macro that expands the AWS::EC2::VPCEndpoint resource
-  1. Lambda Execution role is created.
-  2. Lambda is created that implements the macro logic.
-  3. Macro is created that uses the Lambda
+Description: |
+  This CloudFormation template is to provision the CloudFormation macro that expands the AWS::EC2::VPCEndpoint resource 1. Lambda Execution role is created. 2. Lambda is created that implements the macro logic. 3. Macro is created that uses the Lambda
 
 Metadata:
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -16,6 +13,7 @@ Metadata:
         Parameters:
           - pProject
           - pEnv
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pProject:
@@ -28,6 +26,7 @@ Parameters:
     Description: The project name e.g. myp.
     Type: String
     Default: myp
+
   pEnv:
     Description: The environment identifier e.g. dev
     Type: String
@@ -35,14 +34,14 @@ Parameters:
 
 Resources:
   rMacroLambdaExecRole:
+    Type: AWS::IAM::Role
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W28
-            reason: "Role Name is used for identification, it is OK to replace"
+            reason: Role Name is used for identification, it is OK to replace
           - id: W11
-            reason: "Only 'Describe*' is allowed"
-    Type: AWS::IAM::Role
+            reason: Only 'Describe*' is allowed
     Properties:
       RoleName: !Sub cfn-macro-expand-vpce-exec-role-${pProject}-${pEnv}
       AssumeRolePolicyDocument:
@@ -53,7 +52,8 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - sts:AssumeRole
-      Path: "/"
+      Path: /
+
       #PermissionsBoundary: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/Permission_Boundary_if_any
       Policies:
         - PolicyName: lambda-cw-access
@@ -78,19 +78,19 @@ Resources:
           Value: !Ref AWS::StackId
 
   rExpandVPCEndpointFunction:
+    Type: AWS::Lambda::Function
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W89
-            reason: "VPC Access not required"
+            reason: VPC Access not required
           - id: W58
-            reason: "Permission to write CloudWatch logs is provided via execution role in security template"
-    Type: "AWS::Lambda::Function"
+            reason: Permission to write CloudWatch logs is provided via execution role in security template
     Properties:
-      Description: "Expand a Resource of Type AWS::EC2::VPCEndpoint"
+      Description: Expand a Resource of Type AWS::EC2::VPCEndpoint
       FunctionName: !Sub cfn-macro-expand-vpce-${pProject}-${pEnv}
       Handler: index.handler
-      Role: !GetAtt "rMacroLambdaExecRole.Arn"
+      Role: !GetAtt rMacroLambdaExecRole.Arn
       Timeout: 300
       Runtime: python3.9
       ReservedConcurrentExecutions: 2
@@ -176,6 +176,7 @@ Resources:
           Value: !Ref pEnv
         - Key: CreatedBy
           Value: !Ref AWS::StackId
+
   mExpandVPCEndpoint:
     Type: AWS::CloudFormation::Macro
     Properties:

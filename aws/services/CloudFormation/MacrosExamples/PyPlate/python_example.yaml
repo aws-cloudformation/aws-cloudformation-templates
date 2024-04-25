@@ -1,12 +1,18 @@
 AWSTemplateFormatVersion: "2010-09-09"
+
 Description: tests String macro functions
+
 Parameters:
   Tags:
-    Default: "Env=Prod,Application=MyApp,BU=ModernisationTeam"
-    Type: "CommaDelimitedList"
+    Type: CommaDelimitedList
+    Default: Env=Prod,Application=MyApp,BU=ModernisationTeam
+
+Transform:
+  - PyPlate
+
 Resources:
   S3Bucket:
-    Type: "AWS::S3::Bucket"
+    Type: AWS::S3::Bucket
     Properties:
       Tags: |
         #!PyPlate
@@ -14,4 +20,3 @@ Resources:
         for tag in params['Tags']:
            key, value = tag.split('=')
            output.append({"Key": key, "Value": value})
-Transform: [PyPlate]

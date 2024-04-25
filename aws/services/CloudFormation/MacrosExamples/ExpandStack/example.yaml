@@ -1,12 +1,11 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: ExpandStack
 
-Description: >
+Description: |
   This CloudFormation template for testing macro
 
 Metadata:
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -18,6 +17,7 @@ Metadata:
         Parameters:
           - pProject
           - pEnv
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pTemplateBucket:
@@ -29,41 +29,48 @@ Metadata:
 
 Parameters:
   pTemplateBucket:
-    Description: >
+    Description: |
       Name of an existing bucket.
     Type: String
+
   pProject:
     Description: The project name e.g. myp.
     Type: String
     Default: myp
+
   pEnv:
     Description: The environment identifier e.g. DEV
     Type: String
     Default: dev
 
+Transform: ExpandStack
+
 Resources:
   rPvtRepo:
-    Type: AWS::CloudFormation::Stack
     DeletionPolicy: Delete #Retain
     UpdateReplacePolicy: Delete #Retain
+    Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://s3.amazonaws.com/${pTemplateBucket}/templates/${pEnv}/ecr/ecr-repo.yaml"
-      TimeoutInMinutes: '60'
+      TemplateURL: !Sub https://s3.amazonaws.com/${pTemplateBucket}/templates/${pEnv}/ecr/ecr-repo.yaml
+      TimeoutInMinutes: "60"
       Parameters:
         pNamespace: !Ref pProject
+
         #Only Ref or CommaDelimitedValue is supported
-        ExpandStack::pRepoName: "hello-world,hello-usa,hello-ca"
+        ExpandStack::pRepoName: hello-world,hello-usa,hello-ca
         pProject: !Ref pProject
         pEnv: !Ref pEnv
+
   rPvtS3:
-    Type: AWS::CloudFormation::Stack
     DeletionPolicy: Delete #Retain
     UpdateReplacePolicy: Delete #Retain
+    Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://s3.amazonaws.com/${pTemplateBucket}/templates/${pEnv}/s3/s3-bucket.yaml"
-      TimeoutInMinutes: '60'
+      TemplateURL: !Sub https://s3.amazonaws.com/${pTemplateBucket}/templates/${pEnv}/s3/s3-bucket.yaml
+      TimeoutInMinutes: "60"
       Parameters:
+
         #Only Ref or CommaDelimitedValue is supported
-        ExpandStack::pBucketName: "bucket1,bucket2,bucket3"
+        ExpandStack::pBucketName: bucket1,bucket2,bucket3
         pProject: !Ref pProject
         pEnv: !Ref pEnv

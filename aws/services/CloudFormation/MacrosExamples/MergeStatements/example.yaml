@@ -1,7 +1,6 @@
----
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: >
+Description: |
   This CloudFormation template for testing macro
 
 Metadata:
@@ -11,7 +10,9 @@ Metadata:
         - E3002 #used via transform
         - E2507 #used via transform
         - W2001 #used via transform
+
   AWS::CloudFormation::Interface:
+
     #Define user friendly Parameter Groups
     ParameterGroups:
       - Label:
@@ -20,6 +21,7 @@ Metadata:
           - pKMSAdminRoles
           - pProject
           - pEnv
+
     #Define user friendly names for the parameters
     ParameterLabels:
       pKMSAdminRoles:
@@ -30,15 +32,18 @@ Metadata:
         default: Environment
 
 Parameters:
+
   #Referred in the Statement files
   pKMSAdminRoles:
-    Description: >
+    Description: |
       Provide comma separated IAM Role ARNs that has Admin access to the created AWS KMS key(s).
     Type: CommaDelimitedList
+
   pProject:
     Description: The project name e.g. myp.
     Type: String
     Default: myp
+
   pEnv:
     Description: The environment identifier e.g. DEV
     Type: String
@@ -46,12 +51,12 @@ Parameters:
 
 Resources:
   rS3KMSKey:
+    Type: AWS::KMS::Key
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: F76
-            reason: "Principal * is used with condition"
-    Type: AWS::KMS::Key
+            reason: Principal * is used with condition
     Properties:
       Description: AWS KMS key for encrypting Amazon S3
       Enabled: true
@@ -67,6 +72,7 @@ Resources:
           Fn::Transform:
             Name: MergeStatements
             Parameters:
+
               #Merge statements in these files
               Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-s3.json
       Tags:
@@ -76,6 +82,7 @@ Resources:
           Value: !Ref pEnv
         - Key: CreatedBy
           Value: !Ref AWS::StackId
+
   rS3KMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
@@ -83,12 +90,12 @@ Resources:
       TargetKeyId: !Ref rS3KMSKey
 
   rMWAAKMSKey:
+    Type: AWS::KMS::Key
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: F76
-            reason: "Principal * is used with condition"
-    Type: AWS::KMS::Key
+            reason: Principal * is used with condition
     Properties:
       Description: AWS KMS key for encrypting Amazon MWAA
       Enabled: true
@@ -104,6 +111,7 @@ Resources:
           Fn::Transform:
             Name: MergeStatements
             Parameters:
+
               #Merge statements in these files
               Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-s3.json,templates/${pEnv}/kms-logs.json,templates/${pEnv}/kms-mwaa.json
       Tags:
@@ -113,6 +121,7 @@ Resources:
           Value: !Ref pEnv
         - Key: CreatedBy
           Value: !Ref AWS::StackId
+
   rMWAAKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
@@ -120,12 +129,12 @@ Resources:
       TargetKeyId: !Ref rMWAAKMSKey
 
   rLogsKMSKey:
+    Type: AWS::KMS::Key
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: F76
-            reason: "Principal * is used with condition"
-    Type: AWS::KMS::Key
+            reason: Principal * is used with condition
     Properties:
       Description: AWS KMS key for encrypting Amazon CloudWatch logs
       Enabled: true
@@ -141,6 +150,7 @@ Resources:
           Fn::Transform:
             Name: MergeStatements
             Parameters:
+
               #Merge statements in these files
               Files: !Sub templates/${pEnv}/kms-admin.json,templates/${pEnv}/kms-logs.json
       Tags:
@@ -150,6 +160,7 @@ Resources:
           Value: !Ref pEnv
         - Key: CreatedBy
           Value: !Ref AWS::StackId
+
   rLogsKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
