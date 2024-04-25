@@ -83,6 +83,7 @@ Resources:
             service sshd restart
           - # This is where we keep the complex things we want inserted into the Fn::Sub literal block
 
+
             # You can even use Fn::If statements in this section
             LocalFindInMapVarUsername: !FindInMap
               - EnvMap

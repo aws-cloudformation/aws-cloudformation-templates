@@ -37,18 +37,18 @@ Resources:
             Resource: !Sub arn:${AWS::Partition}:s3:::${Bucket}
             Principal:
               AWS:
-                - !Sub "arn:${AWS::Partition}:iam::${PublisherAccountID}:root"
+                - !Sub arn:${AWS::Partition}:iam::${PublisherAccountID}:root
           - Sid: CrossAccPolicyDoc
             Action: s3:GetObject
             Effect: Allow
             Resource: !Sub arn:${AWS::Partition}:s3:::${Bucket}/*
             Principal:
               AWS:
-                - !Sub "arn:${AWS::Partition}:iam::${PublisherAccountID}:root"
+                - !Sub arn:${AWS::Partition}:iam::${PublisherAccountID}:root
           - Sid: HttpsOnly
             Action: '*'
             Effect: Deny
-            Resource: !Sub "arn:${AWS::Partition}:s3:::${BucketName}/*"
+            Resource: !Sub arn:${AWS::Partition}:s3:::${BucketName}/*
             Principal: '*'
             Condition:
               Bool:

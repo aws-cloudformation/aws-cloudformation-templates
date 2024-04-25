@@ -47,7 +47,7 @@ Resources:
         - ${AWS::Region}${AZ}
         - AZ: !Select
             - 0
-            - !GetAZs ""
+            - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Public0
@@ -65,7 +65,7 @@ Resources:
               - -public-
               - !Select
                 - 0
-                - !GetAZs ""
+                - !GetAZs
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -75,7 +75,7 @@ Resources:
         - ${AWS::Region}${AZ}
         - AZ: !Select
             - 1
-            - !GetAZs ""
+            - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Public1
@@ -93,7 +93,7 @@ Resources:
               - -public-
               - !Select
                 - 1
-                - !GetAZs ""
+                - !GetAZs
 
   PrivateSubnet0:
     Type: AWS::EC2::Subnet
@@ -103,7 +103,7 @@ Resources:
         - ${AWS::Region}${AZ}
         - AZ: !Select
             - 0
-            - !GetAZs ""
+            - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Private0
@@ -120,7 +120,7 @@ Resources:
               - -private-
               - !Select
                 - 0
-                - !GetAZs ""
+                - !GetAZs
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -130,7 +130,7 @@ Resources:
         - ${AWS::Region}${AZ}
         - AZ: !Select
             - 1
-            - !GetAZs ""
+            - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Private1
@@ -147,7 +147,7 @@ Resources:
               - -private-
               - !Select
                 - 1
-                - !GetAZs ""
+                - !GetAZs
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway

@@ -79,7 +79,7 @@ Resources:
         - - !Ref QueueName
           - Deadletter
           - .fifo
-      MessageRetentionPeriod: 1209600 
+      MessageRetentionPeriod: 1209600
     Condition: CreateDeadLetterQueue
 
 Outputs:

@@ -4,6 +4,7 @@ Description: 'AWS CloudFormation Sample Template ELB_Access_Logs_And_Connection_
 
 Metadata:
   License: Apache-2.0
+
   cfn-lint:
     config:
       regions:
@@ -141,7 +142,7 @@ Resources:
         Statement:
           - Sid: ELBAccessLogs20130930
             Effect: Allow
-            Resource: 
+            Resource:
               - !Sub aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*
             Principal:
               AWS: !FindInMap
@@ -168,7 +169,7 @@ Resources:
     UpdatePolicy:
       AutoScalingRollingUpdate:
         MinInstancesInService: 1
-        MaxBatchSize: 1 
+        MaxBatchSize: 1
         PauseTime: PT15M
         WaitOnResourceSignals: true
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -288,4 +289,3 @@ Outputs:
       - ""
       - - http://
         - !GetAtt ElasticLoadBalancer.DNSName
-

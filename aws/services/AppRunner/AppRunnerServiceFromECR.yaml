@@ -57,10 +57,10 @@ Resources:
           ImageConfiguration:
             Port: 8080
 
-      # Default Configurations
-      # InstanceConfiguration:
-      #   Cpu: 1024
-      #   Memory: 2GB
+            # Default Configurations
+            # InstanceConfiguration:
+            #   Cpu: 1024
+            #   Memory: 2GB
 Outputs:
   AppRunner:
     Description: URL of the deployed App Runner Service

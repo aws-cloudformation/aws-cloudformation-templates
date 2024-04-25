@@ -8,6 +8,7 @@ Description: |
 
 Metadata:
   License: Apache-2.0
+
   cfn-lint:
     config:
       regions:
@@ -44,7 +45,7 @@ Resources:
       DBInstanceClass: db.t3.small
       BackupRetentionPeriod: 7
       Engine: MySQL
-      EngineVersion: 8.0.36 
+      EngineVersion: 8.0.36
       MasterUsername: !Ref DBUser
       ManageMasterUserPassword: true
       DBParameterGroupName: !Ref MyRDSParamGroup

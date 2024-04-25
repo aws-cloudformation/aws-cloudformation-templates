@@ -229,4 +229,3 @@ Resources:
                 - s3.amazonaws.com
         Version: "2012-10-17"
       Path: /
-

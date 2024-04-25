@@ -19,7 +19,7 @@ Parameters:
   InstanceType:
     Description: WebServer EC2 instance type
     Type: String
-    Default: t3.micro 
+    Default: t3.micro
     ConstraintDescription: must be a valid EC2 instance type.
 
   VpcId:
@@ -86,11 +86,11 @@ Resources:
 
   # An instance that uses the latest ami id
   EC2Instance:
+    Type: AWS::EC2::Instance
     Metadata:
       guard:
         SuppressedRules:
           - EC2_INSTANCES_IN_VPC
-    Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAMI
       InstanceType: !Ref InstanceType

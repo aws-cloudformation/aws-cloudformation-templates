@@ -99,7 +99,7 @@ Resources:
       DBInstanceClass: !Ref DBInstanceClass
       Engine: MySQL
       MasterUsername: !Ref DBUser
-      MasterUserPassword: "{{resolve:secretsmanager:my-db-password}}"
+      MasterUserPassword: '{{resolve:secretsmanager:my-db-password}}'
       MultiAZ: !Ref MultiAZ
       PubliclyAccessible: false
       StorageEncrypted: true
@@ -112,14 +112,14 @@ Resources:
         - !Ref AWS::NoValue
 
   ReplicaDB:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Type: AWS::RDS::DBInstance
     Metadata:
       cfn-lint:
         config:
           ignore_checks:
             - I3013
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Type: AWS::RDS::DBInstance
     Properties:
       SourceDBInstanceIdentifier: !Ref MainDB
       PubliclyAccessible: false
