@@ -777,6 +777,7 @@ rule  LAMBDA_INSIDE_VPC when %aws_lambda_functions_inside_vpc !empty {
 # Select all RDS instance resources from incoming template (payload)
 #
 let aws_rds_instances_not_public = Resources.*[ Type == 'AWS::RDS::DBInstance'
+  Properties.SourceDBInstanceIdentifier !exists
   Metadata.guard.SuppressedRules not exists or
   Metadata.guard.SuppressedRules.* != "RDS_INSTANCE_PUBLIC_ACCESS_CHECK"
 ]
@@ -1008,6 +1009,7 @@ rule S3_BUCKET_PUBLIC_WRITE_PROHIBITED when %s3_buckets_public_write_prohibited 
 #
 
 let aws_rds_instances_db_instance_backup_enabled = Resources.*[ Type == 'AWS::RDS::DBInstance'
+  Properties.SourceDBInstanceIdentifier !exists
   Metadata.guard.SuppressedRules not exists or
   Metadata.guard.SuppressedRules.* != "DB_INSTANCE_BACKUP_ENABLED"
 ]
@@ -1455,6 +1457,7 @@ rule ENCRYPTED_VOLUMES when %ebs_volumes_encrypted !empty {
 # Select all RDS instance resources from incoming template (payload)
 #
 let aws_rds_instances_snapshot_encrypted = Resources.*[ Type == 'AWS::RDS::DBInstance'
+  Properties.SourceDBInstanceIdentifier !exists
   Metadata.guard.SuppressedRules not exists or
   Metadata.guard.SuppressedRules.* != "RDS_SNAPSHOT_ENCRYPTED"
 ]
@@ -1499,6 +1502,7 @@ rule RDS_SNAPSHOT_ENCRYPTED when %aws_rds_instances_snapshot_encrypted !empty {
 # Select all RDS instance resources from incoming template (payload)
 #
 let aws_rds_instances_storage_encrypted = Resources.*[ Type == 'AWS::RDS::DBInstance'
+  Properties.SourceDBInstanceIdentifier !exists
   Metadata.guard.SuppressedRules not exists or
   Metadata.guard.SuppressedRules.* != "RDS_STORAGE_ENCRYPTED"
 ]
@@ -1629,13 +1633,24 @@ let s3_buckets_policies_ssl_requests_only = Resources.*[ Type == 'AWS::S3::Bucke
   Metadata.guard.SuppressedRules.* != "S3_BUCKET_SSL_REQUESTS_ONLY"
 ]
 
+let ssl_secure_bucket_policies = %s3_buckets_policies_ssl_requests_only[
+  Properties.PolicyDocument {
+    some Statement[*] {
+      Effect == 'Deny'
+      Condition {
+        Bool.'aws:SecureTransport' == false
+      }
+    }
+  }
+]
+
 rule S3_BUCKET_SSL_REQUESTS_ONLY when %s3_buckets_policies_ssl_requests_only !empty {
-  some %s3_buckets_policies_ssl_requests_only.Properties.PolicyDocument.Statement.* == {"Action":"s3:*","Effect":"Deny","Principal":"*","Resource":"*","Condition":{"Bool":{"aws:SecureTransport":false}}}
+  %ssl_secure_bucket_policies !empty
   <<
     Guard Rule Set: cis-top-20
     Controls: CIS.13,CIS.14    
     Violation: Bucket policies must feature a statement to enforce TLS usage.
-    Fix: Set a bucket policy statement to '"Action":"s3:*","Effect":"Deny","Principal":"*","Resource":"*","Condition":{"Bool":{"aws:SecureTransport":false}}' .
+    Fix: Set a bucket policy statement to include "Condition":{"Bool":{"aws:SecureTransport":false}}.
   >>
 }
 

@@ -6,6 +6,7 @@ ignore_checks:
   - W3005
   - I1022  # Prefer sub over join on empty delimiter
   - I3011  # Set explicit values for UpdateReplacePolicy / DeletionPolicy on potentially stateful resource
+  - E3011  # Ignore until new release of cfn-lint fixes region bug in metadata
 include_checks:
   - I
 regions:
