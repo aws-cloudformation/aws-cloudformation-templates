@@ -16,10 +16,29 @@ Parameters:
     Default: aws/codebuild/ubuntu-base:14.04
     Description: Docker image to use for the deployment phase
 
+  S3EncryptionKey:
+    Type: String
+    Description: The kms encryption key to use to encrypt the bucket
+    Default: aws/s3
+
 Resources:
   PipelineS3Bucket:
     Type: AWS::S3::Bucket
-  
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      ObjectLockEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+           ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: !Ref S3EncryptionKey
+              
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:

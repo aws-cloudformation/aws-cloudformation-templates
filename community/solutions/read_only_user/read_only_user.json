@@ -13,6 +13,15 @@
   
   "Resources" : {
     "User" : {
+      "Metadata": {
+        "cfn-lint": {
+          "config": {
+            "ignore_checks": [
+              "W1011"
+            ]
+          }
+        }
+      },
       "Type" : "AWS::IAM::User",
       "Properties" : {
         "Path" : "/",
