@@ -482,7 +482,7 @@ Resources:
         - !Ref NeptuneAlarmTopic
         - !Ref NeptuneSNSTopicArn
 
-      ### IAM Role ###
+        ### IAM Role ###
     Condition: CreateSnsSubscription
 
   # Neptune IAM role - allows access to CloudWatch Logs and S3

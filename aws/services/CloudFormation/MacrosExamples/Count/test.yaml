@@ -1,47 +1,47 @@
-AWSTemplateFormatVersion: '2010-09-09'
-
-Transform: Count
+AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-
   TestCount:
     Type: Number
     Default: 3
 
   TestList:
     Type: CommaDelimitedList
-    Default: 'foo,bar'
+    Default: foo,bar
+
+Transform: Count
 
 Resources:
-
   BucketToCopyA:
     Type: AWS::S3::Bucket
-    Count: 3
     Properties:
       Tags:
         - Key: TestKey
-          Value: 'my bucket %d'
+          Value: my bucket %d
+    Count: 3
 
   BucketToCopyB:
     Type: AWS::S3::Bucket
-    Count: ['foo', 'bar']
     Properties:
       Tags:
         - Key: TestKey
-          Value: 'my %s bucket %d'
+          Value: my %s bucket %d
+    Count:
+      - foo
+      - bar
 
   BucketToCopyC:
     Type: AWS::S3::Bucket
-    Count: !Ref TestCount
     Properties:
       Tags:
         - Key: TestKey
-          Value: 'my bucket %d'
+          Value: my bucket %d
+    Count: !Ref TestCount
 
   BucketToCopyD:
     Type: AWS::S3::Bucket
-    Count: !Ref TestList
     Properties:
       Tags:
         - Key: TestKey
-          Value: 'my %s bucket %d'
+          Value: my %s bucket %d
+    Count: !Ref TestList

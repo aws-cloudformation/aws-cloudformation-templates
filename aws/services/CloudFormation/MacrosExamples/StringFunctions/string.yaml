@@ -1,24 +1,29 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
+
 Resources:
   TransformExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: [lambda.amazonaws.com]
-            Action: ['sts:AssumeRole']
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Path: /
       Policies:
         - PolicyName: root
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: ['logs:*']
-                Resource: 'arn:aws:logs:*:*:*'
+                Action:
+                  - logs:*
+                Resource: arn:aws:logs:*:*:*
+
   TransformFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -65,20 +70,20 @@ Resources:
                   response["status"] = "failure"
                   response["errorMessage"] = str(e)
               return response
-
       Handler: index.handler
       Runtime: python3.7
       Role: !GetAtt TransformExecutionRole.Arn
+
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
     Properties:
-      Action: 'lambda:InvokeFunction'
+      Action: lambda:InvokeFunction
       FunctionName: !GetAtt TransformFunction.Arn
-      Principal: 'cloudformation.amazonaws.com'
+      Principal: cloudformation.amazonaws.com
+
   Transform:
     Type: AWS::CloudFormation::Macro
     Properties:
-      Name: 'String'
+      Name: String
       Description: Provides various string processing functions
       FunctionName: !GetAtt TransformFunction.Arn
-

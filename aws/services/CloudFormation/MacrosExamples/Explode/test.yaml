@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: Explode
+
 Mappings:
   BucketMap:
     Monthly:
@@ -8,15 +8,17 @@ Mappings:
     Yearly:
       Retention: 365
 
+Transform: Explode
+
 Resources:
   Bucket:
-    ExplodeMap: BucketMap
     Type: AWS::S3::Bucket
     Properties:
       LifecycleConfiguration:
         Rules:
-          -
-            ExpirationInDays: "!Explode Retention"
+          - ExpirationInDays: '!Explode Retention'
             Status: Enabled
+    ExplodeMap: BucketMap
+
   NonExplodingBucket:
     Type: AWS::S3::Bucket

@@ -74,6 +74,8 @@ Resources:
 
   MyDeadLetterQueue:
     Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
     Condition: CreateDeadLetterQueue
 
 Outputs:

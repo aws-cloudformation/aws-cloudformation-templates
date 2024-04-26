@@ -1,9 +1,9 @@
----
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  Count macro An iterator for creating multiple resources
+
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  Count macro
-  An iterator for creating multiple resources
 
 Resources:
   Macro:
@@ -11,6 +11,7 @@ Resources:
     Properties:
       Name: Count
       FunctionName: !GetAtt CountMacroFunction.Arn
+
   CountMacroFunction:
     Type: AWS::Serverless::Function
     Properties:

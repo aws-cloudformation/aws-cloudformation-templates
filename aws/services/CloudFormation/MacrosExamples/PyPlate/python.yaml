@@ -1,55 +1,54 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
 
 Description: Macro allowing you to run arbitrary python code in your CloudFormation templates
 
 Parameters:
   AdditionalExecutionPolicy:
+    Description: An optional IAM Policy ARN to add to the Lambda's execution role so that the template's Python code can call AWS services.
     Type: String
-    Description: >-
-      An optional IAM Policy ARN to add to the Lambda's execution role
-      so that the template's Python code can call AWS services.
 
   LambdaTimeout:
+    Description: Optional setting of the Lambda's execution timeout (in seconds). The default of 3 seconds won't be enough if you call AWS services; then at least 10 seconds is recommended, more depending on complexity.
     Type: Number
-    Description: >-
-      Optional setting of the Lambda's execution timeout (in seconds).
-      The default of 3 seconds won't be enough if you call AWS services;
-      then at least 10 seconds is recommended, more depending on complexity.
-    MinValue: 3
     Default: 3
+    MinValue: 3
 
 Conditions:
-  AdditionalPolicyProvided:
-    Fn::Not:
-    - Fn::Equals: [Ref: AdditionalExecutionPolicy, '']
+  AdditionalPolicyProvided: !Not
+    - !Equals
+      - !Ref AdditionalExecutionPolicy
+      - ""
 
 Resources:
-
   TransformExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: [lambda.amazonaws.com]
-            Action: ['sts:AssumeRole']
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Path: /
       Policies:
         - PolicyName: root
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: ['logs:*']
-                Resource: 'arn:aws:logs:*:*:*'
+                Action:
+                  - logs:*
+                Resource: arn:aws:logs:*:*:*
       ManagedPolicyArns:
-      - !If
-        - AdditionalPolicyProvided
-        - !Ref AdditionalExecutionPolicy
-        # Else
-        - !Ref AWS::NoValue
+        - !If
+          - AdditionalPolicyProvided
+          - !Ref AdditionalExecutionPolicy
+
+          # Else
+          - !Ref AWS::NoValue
 
   TransformFunction:
     Type: AWS::Lambda::Function
@@ -98,7 +97,6 @@ Resources:
                   macro_response["status"] = "failure"
                   macro_response["errorMessage"] = str(e)
               return macro_response
-
       Handler: index.handler
       Runtime: python3.10
       Role: !GetAtt TransformExecutionRole.Arn
@@ -107,14 +105,13 @@ Resources:
   TransformFunctionPermissions:
     Type: AWS::Lambda::Permission
     Properties:
-      Action: 'lambda:InvokeFunction'
+      Action: lambda:InvokeFunction
       FunctionName: !GetAtt TransformFunction.Arn
-      Principal: 'cloudformation.amazonaws.com'
+      Principal: cloudformation.amazonaws.com
 
   Transform:
     Type: AWS::CloudFormation::Macro
     Properties:
-      Name: !Sub 'PyPlate'
+      Name: !Sub PyPlate
       Description: Processes inline python in templates
       FunctionName: !GetAtt TransformFunction.Arn
-

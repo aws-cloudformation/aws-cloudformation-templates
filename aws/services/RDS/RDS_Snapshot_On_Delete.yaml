@@ -5,11 +5,6 @@ Description: 'AWS CloudFormation Sample Template RDS_Snapshot_On_Delete: Sample 
 Metadata:
   License: Apache-2.0
 
-Parameters:
-  MyPassword:
-    Type: String
-    NoEcho: "true"
-
 Resources:
   MyDB:
     DeletionPolicy: Snapshot
@@ -22,7 +17,7 @@ Resources:
       BackupRetentionPeriod: 7
       Engine: MySQL
       MasterUsername: myName
-      MasterUserPassword: !Ref MyPassword
+      ManageMasterUserPassword: true
 
 Outputs:
   JDBCConnectionString:

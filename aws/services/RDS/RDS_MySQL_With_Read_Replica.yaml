@@ -24,15 +24,6 @@ Parameters:
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
     ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
 
-  DBPassword:
-    Description: The database admin account password
-    Type: String
-    NoEcho: "true"
-    MinLength: "1"
-    MaxLength: "41"
-    AllowedPattern: '[a-zA-Z0-9]+'
-    ConstraintDescription: must contain only alphanumeric characters.
-
   DBAllocatedStorage:
     Description: The size of the database (Gb)
     Type: Number
@@ -44,23 +35,7 @@ Parameters:
   DBInstanceClass:
     Description: The database instance type
     Type: String
-    AllowedValues:
-      - db.m5.xlarge
-      - db.m5.2xlarge
-      - db.m5.4xlarge
-      - db.r5.large
-      - db.r5.xlarge
-      - db.r5.2xlarge
-      - db.r5.4xlarge
-      - db.r5.8xlarge
-      - db.m5.xlarge
-      - db.m5.2xlarge
-      - db.m5.4xlarge
-      - db.t3.micro
-      - db.t3.small
-      - db.t3.medium
-      - db.t3.large
-    Default: db.t3.small
+    Default: db.t3.medium
     ConstraintDescription: must select a valid database instance type.
 
   EC2SecurityGroup:
@@ -89,7 +64,7 @@ Parameters:
     ConstraintDescription: must be true or false.
 
 Conditions:
-  Is-EC2-VPC: !Or
+  IsEC2VPC: !Or
     - !Equals
       - !Ref AWS::Region
       - eu-central-1
@@ -97,10 +72,7 @@ Conditions:
       - !Ref AWS::Region
       - cn-north-1
 
-  Is-EC2-Classic: !Not
-    - !Condition Is-EC2-VPC
-
-  Enable-Read-Replica: !Equals
+  EnableReadReplica: !Equals
     - !Ref EnableReadReplica
     - "true"
 
@@ -114,17 +86,9 @@ Resources:
           FromPort: "3306"
           ToPort: "3306"
           SourceSecurityGroupName: !Ref EC2SecurityGroup
-    Condition: Is-EC2-VPC
+    Condition: IsEC2VPC
 
-  DBSecurityGroup:
-    Type: AWS::RDS::DBSecurityGroup
-    Properties:
-      DBSecurityGroupIngress:
-        - EC2SecurityGroupName: !Ref EC2SecurityGroup
-      GroupDescription: database access
-    Condition: Is-EC2-Classic
-
-  MasterDB:
+  MainDB:
     DeletionPolicy: Snapshot
     UpdateReplacePolicy: Snapshot
     Type: AWS::RDS::DBInstance
@@ -135,49 +99,52 @@ Resources:
       DBInstanceClass: !Ref DBInstanceClass
       Engine: MySQL
       MasterUsername: !Ref DBUser
-      MasterUserPassword: !Ref DBPassword
+      MasterUserPassword: '{{resolve:secretsmanager:my-db-password}}'
       MultiAZ: !Ref MultiAZ
+      PubliclyAccessible: false
+      StorageEncrypted: true
       Tags:
         - Key: Name
           Value: Master Database
       VPCSecurityGroups: !If
-        - Is-EC2-VPC
+        - IsEC2VPC
         - - !GetAtt DBEC2SecurityGroup.GroupId
-        - !Ref AWS::NoValue
-      DBSecurityGroups: !If
-        - Is-EC2-Classic
-        - - !Ref DBSecurityGroup
         - !Ref AWS::NoValue
 
   ReplicaDB:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Type: AWS::RDS::DBInstance
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - I3013
     Properties:
-      BackupRetentionPeriod: 7
-      SourceDBInstanceIdentifier: !Ref MasterDB
+      SourceDBInstanceIdentifier: !Ref MainDB
+      PubliclyAccessible: false
       DBInstanceClass: !Ref DBInstanceClass
       Tags:
         - Key: Name
           Value: Read Replica Database
-    Condition: Enable-Read-Replica
+    Condition: EnableReadReplica
 
 Outputs:
   EC2Platform:
     Description: Platform in which this stack is deployed
     Value: !If
-      - Is-EC2-VPC
-      - EC2-VPC
-      - EC2-Classic
+      - IsEC2VPC
+      - "true"
+      - EC2VPC
 
-  MasterJDBCConnectionString:
+  JDBCConnectionString:
     Description: JDBC connection string for the master database
     Value: !Join
       - ""
       - - jdbc:mysql://
-        - !GetAtt MasterDB.Endpoint.Address
+        - !GetAtt MainDB.Endpoint.Address
         - ':'
-        - !GetAtt MasterDB.Endpoint.Port
+        - !GetAtt MainDB.Endpoint.Port
         - /
         - !Ref DBName
 
@@ -191,4 +158,4 @@ Outputs:
         - !GetAtt ReplicaDB.Endpoint.Port
         - /
         - !Ref DBName
-    Condition: Enable-Read-Replica
+    Condition: EnableReadReplica
