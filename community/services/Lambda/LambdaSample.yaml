@@ -1,37 +1,20 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: Template for Lambda Sample.
+
 Parameters:
   EnvName:
-    Type: String
     Description: Name of an environment. 'dev', 'staging', 'prod' and any name.
-    AllowedPattern: ^.*[^0-9]$
-    ConstraintDescription: Must end with non-numeric character.
-  LambdaHandlerPath:  
     Type: String
-    Description: Path of a Lambda Handler. 
     AllowedPattern: ^.*[^0-9]$
     ConstraintDescription: Must end with non-numeric character.
-Outputs:
-  LambdaRoleARN:
-    Description: Role for Lambda execution.
-    Value:
-      Fn::GetAtt:
-        - LambdaRole
-        - Arn
-    Export:
-      Name: LambdaRole
-  LambdaFunctionName:
-    Value:
-      Ref: LambdaFunction
-  LambdaFunctionARN:
-    Description: Lambda function ARN.
-    Value:
-      Fn::GetAtt:
-        - LambdaFunction
-        - Arn
-    Export:
-      Name:
-        Fn::Sub: LambdaARN-${EnvName}
+
+  LambdaHandlerPath:
+    Description: Path of a Lambda Handler.
+    Type: String
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non-numeric character.
+
 Resources:
   LambdaRole:
     Type: AWS::IAM::Role
@@ -40,23 +23,23 @@ Resources:
       AssumeRolePolicyDocument:
         Statement:
           - Action:
-            - sts:AssumeRole
+              - sts:AssumeRole
             Effect: Allow
             Principal:
               Service:
-              - lambda.amazonaws.com
-        Version: 2012-10-17
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSLambdaExecute
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
         - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
       Path: /
+
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName:
-        Fn::Sub: lambda-function-${EnvName}
+      FunctionName: !Sub lambda-function-${EnvName}
       Description: LambdaFunction using python3.12.
       Runtime: python3.12
       Code:
@@ -69,11 +52,24 @@ Resources:
       Handler: !Sub ${LambdaHandlerPath}
       MemorySize: 128
       Timeout: 10
-      Role:
-        Fn::GetAtt:
-          - LambdaRole
-          - Arn
+      Role: !GetAtt LambdaRole.Arn
       Environment:
         Variables:
           ENV: !Ref EnvName
           TZ: UTC
+
+Outputs:
+  LambdaRoleARN:
+    Description: Role for Lambda execution.
+    Value: !GetAtt LambdaRole.Arn
+    Export:
+      Name: LambdaRole
+
+  LambdaFunctionName:
+    Value: !Ref LambdaFunction
+
+  LambdaFunctionARN:
+    Description: Lambda function ARN.
+    Value: !GetAtt LambdaFunction.Arn
+    Export:
+      Name: !Sub LambdaARN-${EnvName}
