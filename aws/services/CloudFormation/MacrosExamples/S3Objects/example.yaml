@@ -13,7 +13,7 @@ Resources:
         ContentType: text/markdown
       Body: |
         # My text file
-        
+
         This is my text file;
         there are many like it,
         but this one is mine.

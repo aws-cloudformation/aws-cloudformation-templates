@@ -1,9 +1,9 @@
-Transform: CLI
-
 Parameters:
   BucketName:
     Type: String
     Default: !Sub ${AWS::AccountId}-cli-bucket
+
+Transform: CLI
 
 Resources:
   CLIBucket:

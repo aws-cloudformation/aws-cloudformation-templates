@@ -75,4 +75,3 @@ Outputs:
     Value: !GetAtt ResourceFunction.Arn
     Export:
       Name: StackMetricsMacroFunction
-
