@@ -1,10 +1,20 @@
 # Date functions
 
-Provides date tranformation utility functions. Can be used in things like policies that need ISO formatted date values.
+Provides date tranformation utility functions. 
+Can be used in things like policies that need ISO formatted date values.
+
+## Installation
+
+Use [CloudFormation Rain](https://github.com/aws-cloudformation/rain) to deploy the package. Rain is used in this sample to embed the contents of `handler.py` into the template.
+
+```sh
+rain deploy date.yaml date-macro
+```
 
 ## Basic Usage
 
-Place the transform where you would like the output to be placed and provide the [parameters](#parameters) for the [operation](#available-operations) you have
+Place the transform where you would like the output to be placed and provide 
+the [parameters](#parameters) for the [operation](#available-operations) you have
 chosen.
 
 ```yaml
@@ -26,15 +36,17 @@ Resources:
                  Date: !Ref Date
                  Operation: Current
 ```
-The original use case for this was to create an SSM parameter with an expiration date, which is exemplified in the 
-following snippet:
+
+The original use case for this was to create an SSM parameter with an 
+expiration date, which is exemplified in the following snippet:
+
 ```yaml
   # Secret key SSM paramber
   S3UserSecretAccessKey:
     Type: "AWS::SSM::Parameter"
     Properties:
       Name: !Sub "/S3Bucket/API/Secret/${S3Bucket}"
-      Type: "String" # This really should be a SecureString, but CloudFormation doesn't yet support it for some reason
+      Type: "String" 
       Value: !GetAtt S3AccessKey.SecretAccessKey
       Description: "SSM Parameter for S3Bucket Secret"
       Tier: Advanced
@@ -51,8 +63,10 @@ following snippet:
                     Operation: "Add"
 
 ```
-The `Fn::Transform` will place a value in the expiration policy for the above parameter that will expire based on the 
-`DaysToExpiration` parameter (From the `Parameters` section of the CloudFormation template). 
+
+The `Fn::Transform` will place a value in the expiration policy for the above parameter 
+that will expire based on the `DaysToExpiration` parameter 
+(From the `Parameters` section of the CloudFormation template). 
 
 ## Parameters
 
@@ -64,15 +78,19 @@ The `Fn::Transform` will place a value in the expiration policy for the above pa
 
 ## Date
 
-This parameter is used in the [`Current`](#current), [`Add`](#add), and [`Subtract`](#subtract) operations.
+This parameter is used in the [`Current`](#current), [`Add`](#add), 
+and [`Subtract`](#subtract) operations.
 
-It should be an ISO formatted date, and will default to the current date if it is empty or not passed.
+It should be an ISO formatted date, and will default to the current date if it is 
+empty or not passed.
 
 ## Date2
 
-This parameter is also used in the [`Current`](#current), [`Add`](#add), and [`Subtract`](#subtract) operations.
+This parameter is also used in the [`Current`](#current), [`Add`](#add), 
+and [`Subtract`](#subtract) operations.
 
-It should be an ISO formatted date, and will default to the current date if it is empty or not passed.
+It should be an ISO formatted date, and will default to the current date if it is 
+empty or not passed.
 
 ## Days
 
