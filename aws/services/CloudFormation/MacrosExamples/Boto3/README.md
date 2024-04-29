@@ -37,8 +37,8 @@ configuration of resources.
 
     ```shell
     aws cloudformation deploy \
-        --stack-name ExecutionRoleBuilderCFnMacro \
-        --template-file ExecutionRoleBuilderCFnMacro.packaged.yaml  \
+        --stack-name boto3-macro-example \
+        --template-file example.packaged.yaml  \
         --capabilities CAPABILITY_IAM
     ```
 

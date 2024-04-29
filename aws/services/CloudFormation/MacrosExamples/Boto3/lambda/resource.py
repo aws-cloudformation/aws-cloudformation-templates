@@ -9,7 +9,7 @@ def execute(action, properties):
     "Executes the requested action"
     actions = action.split(".")
 
-    if len(action) != 2:
+    if len(actions) != 2:
         return "FAILED", f"Invalid boto3 call: {action}"
 
     client, function = actions[0], actions[1]
