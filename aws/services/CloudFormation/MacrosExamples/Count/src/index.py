@@ -1,7 +1,11 @@
+"Lambda implementation for the Count macro"
 import copy
 import json
 
 def process_template(template,parameters):
+    "Process the template to multiply resources"
+
+    # Make a copy of the template to modify
     new_template = copy.deepcopy(template)
     status = 'success'
 
@@ -25,10 +29,11 @@ def process_template(template,parameters):
             else:
                 count = [count_str]
 
-            print("Found 'Count' property with value {} in '{}' resource....multiplying!".format(count,name))
+            print(f"Found 'Count' property with value {count} in '{name}' resource....multiplying!")
             # Remove the original resource from the template but take a local copy of it
             resourceToMultiply = new_template['Resources'].pop(name)
-            # Create a new block of the resource multiplied with names ending in the iterator and the placeholders substituted
+            # Create a new block of the resource multiplied with names ending in the
+            # iterator and the placeholders substituted
             resourcesAfterMultiplication = multiply(name, resourceToMultiply, count)
             if not set(resourcesAfterMultiplication.keys()) & set(new_template['Resources'].keys()):
                 new_template['Resources'].update(resourcesAfterMultiplication)
@@ -36,51 +41,60 @@ def process_template(template,parameters):
                 status = 'failed'
                 return status, template
         else:
-            print("Did not find 'Count' property in '{}' resource....Nothing to do!".format(name))
+            print(f"Did not find 'Count' property in '{name}' resource....Nothing to do!")
     return status, new_template
 
 def update_placeholder(resource_structure, iteration, value=None):
+    "Update the placeholders in the resource structure"
+
     # Convert the json into a string
-    resourceString = json.dumps(resource_structure)
+    resource_string = json.dumps(resource_structure)
     # Count the number of times the placeholder is found in the string
-    decimalPlaceHolderCount = resourceString.count('%d')
-    stringPlaceHolderCount = 0 if value is None else resourceString.count('%s')
+    decimal_placeholder_count = resource_string.count('%d')
+    string_placeholder_count = 0 if value is None else resource_string.count('%s')
 
     # If the decimal placeholder is found then replace it
-    if decimalPlaceHolderCount > 0:
-        print("Found {} occurrences of decimal placeholder in JSON, replacing with iterator {}".format(decimalPlaceHolderCount, iteration))
+    if decimal_placeholder_count > 0:
+        print(f"Found {decimal_placeholder_count} occurrences of decimal placeholder in JSON, " +
+              f"replacing with iterator {iteration}")
         # Replace the decimal placeholders
-        resourceString = resourceString.replace('%d', str(iteration))
+        resource_string = resource_string.replace('%d', str(iteration))
 
     # If the string placeholder is found then replace it
-    if stringPlaceHolderCount > 0:
-        print("Found {} occurrences of string placeholder in JSON, replacing with value {}".format(stringPlaceHolderCount, value))
+    if string_placeholder_count > 0:
+        print(f"Found {string_placeholder_count} occurrences of string placeholder in JSON, " +
+              f"replacing with value {value}")
         # Replace the string placeholders
-        resourceString = resourceString.replace('%s', str(value))
+        resource_string = resource_string.replace('%s', str(value))
 
-    if decimalPlaceHolderCount > 0 or stringPlaceHolderCount > 0:
+    if decimal_placeholder_count > 0 or string_placeholder_count > 0:
         # Convert the string back to json and return it
-        return json.loads(resourceString)
-    else:
-        print("No occurences of decimal placeholder found in JSON, therefore nothing will be replaced")
-        return resource_structure
+        return json.loads(resource_string)
+    
+    print("No occurences of decimal placeholder found in JSON, " + 
+            "therefore nothing will be replaced")
+    return resource_structure
 
 def multiply(resource_name, resource_structure, count):
+    "Multiply the resource structure by the count"
+
     resources = {}
     # Loop according to the number of times we want to multiply, creating a new resource each time
     if isinstance(count, int):
         for iteration in range(1, (count + 1)):
-            print("Multiplying '{}', iteration count {}".format(resource_name,iteration))
-            multipliedResourceStructure = update_placeholder(resource_structure,iteration)
-            resources[resource_name+str(iteration)] = multipliedResourceStructure
+            print(f"Multiplying '{resource_name}', iteration count {iteration}")
+            multiplied_resource_structure = update_placeholder(resource_structure,iteration)
+            resources[resource_name+str(iteration)] = multiplied_resource_structure
     else:
         for iteration, value in enumerate(count):
-            print("Multiplying '{}', iteration count {}".format(resource_name,iteration))
-            multipliedResourceStructure = update_placeholder(resource_structure,iteration,value)
-            resources[resource_name+str(iteration)] = multipliedResourceStructure
+            print(f"Multiplying '{resource_name}', iteration count {iteration}")
+            multiplied_resource_structure = update_placeholder(resource_structure,iteration,value)
+            resources[resource_name+str(iteration)] = multiplied_resource_structure
     return resources
 
-def handler(event, context):
+def handler(event, _):
+    "Lambda handler"
+
     result = process_template(event['fragment'],event['templateParameterValues'])
     return {
         'requestId': event['requestId'],
