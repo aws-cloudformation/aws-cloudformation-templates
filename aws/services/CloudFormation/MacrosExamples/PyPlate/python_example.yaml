@@ -14,7 +14,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      Tags: |
+      Tags: |-
         #!PyPlate
         output = []
         for tag in params['Tags']:

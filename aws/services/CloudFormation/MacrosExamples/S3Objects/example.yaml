@@ -41,10 +41,10 @@ Resources:
         Key: README-copy.md
 
   Object4:
-    DependsOn: Bucket
     Type: AWS::S3::Object
+    DependsOn: Bucket
     Properties:
       Target:
         Bucket: !Ref Bucket
-        Key: readme.md 
-      URL: https://raw.githubusercontent.com/aws-cloudformation/aws-cloudformation-templates/main/README.md 
+        Key: readme.md
+      URL: https://raw.githubusercontent.com/aws-cloudformation/aws-cloudformation-templates/main/README.md
