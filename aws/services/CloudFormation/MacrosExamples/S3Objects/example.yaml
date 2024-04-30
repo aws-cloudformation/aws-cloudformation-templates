@@ -6,6 +6,7 @@ Resources:
 
   Object1:
     Type: AWS::S3::Object
+    DependsOn: Bucket
     Properties:
       Target:
         Bucket: !Ref Bucket
@@ -20,16 +21,17 @@ Resources:
 
   Object2:
     Type: AWS::S3::Object
+    DependsOn: Bucket
     Properties:
       Target:
         Bucket: !Ref Bucket
         Key: 1-pixel.gif
-        ACL: public-read
         ContentType: image/png
       Base64Body: R0lGODdhAQABAIABAP///0qIbCwAAAAAAQABAAACAkQBADs=
 
   Object3:
     Type: AWS::S3::Object
+    DependsOn: Bucket
     Properties:
       Source:
         Bucket: !GetAtt Object1.Bucket
@@ -37,12 +39,12 @@ Resources:
       Target:
         Bucket: !Ref Bucket
         Key: README-copy.md
-        ACL: public-read
 
   Object4:
+    DependsOn: Bucket
     Type: AWS::S3::Object
     Properties:
       Target:
         Bucket: !Ref Bucket
-        Key: nics-firearm-background-checks.csv
-      URL: https://raw.githubusercontent.com/BuzzFeedNews/nics-firearm-background-checks/master/data/nics-firearm-background-checks.csv
+        Key: readme.md 
+      URL: https://raw.githubusercontent.com/aws-cloudformation/aws-cloudformation-templates/main/README.md 

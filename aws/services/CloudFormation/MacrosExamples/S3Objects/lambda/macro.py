@@ -1,18 +1,8 @@
-# Copyright 2018-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-#     http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
+"S3Objects macro handler. Replaces AWS::S3::Object with a custom resource."
+
+import os
 
 import boto3
-import os
 
 LAMBDA_ARN = os.environ["LAMBDA_ARN"]
 
@@ -20,6 +10,10 @@ s3_client = boto3.client("s3")
 
 
 def handle_template(request_id, template):
+    "Process the template and modify instances of AWS::S3::Object"
+
+    print(request_id)
+
     new_resources = {}
 
     for name, resource in list(template.get("Resources", {}).items()):
@@ -42,9 +36,6 @@ def handle_template(request_id, template):
 
             target = props["Target"]
 
-            if "ACL" not in target:
-                target["ACL"] = "private"
-
             resource_props = {
                 "ServiceToken": LAMBDA_ARN,
                 "Target": target,
@@ -62,6 +53,8 @@ def handle_template(request_id, template):
             elif "Source" in props:
                 resource_props["Source"] = props["Source"]
 
+            resource_props["ServiceTimeout"] = 120
+
             new_resources[name] = {
                 "Type": "Custom::S3Object",
                 "Version": "1.0",
@@ -74,10 +67,11 @@ def handle_template(request_id, template):
     return template
 
 
-def handler(event, context):
+def handler(event, _):
+    "Macro handler"
     try:
         template = handle_template(event["requestId"], event["fragment"])
-    except Exception as e:
+    except Exception:
         return {
             "requestId": event["requestId"],
             "status": "failure",

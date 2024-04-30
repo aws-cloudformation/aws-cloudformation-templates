@@ -1,14 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Macro allowing you to run arbitrary python code in your CloudFormation templates
+Description: Macro allowing you to run arbitrary Python code in your CloudFormation templates
 
 Parameters:
   AdditionalExecutionPolicy:
-    Description: An optional IAM Policy ARN to add to the Lambda's execution role so that the template's Python code can call AWS services.
+    Description: |
+      An optional IAM Policy ARN to add to the Lambda's execution role so that 
+      the template's Python code can call AWS services.
     Type: String
 
   LambdaTimeout:
-    Description: Optional setting of the Lambda's execution timeout (in seconds). The default of 3 seconds won't be enough if you call AWS services; then at least 10 seconds is recommended, more depending on complexity.
+    Description: |
+      Optional setting of the Lambda's execution timeout (in seconds). 
+      The default of 3 seconds won't be enough if you call AWS services; 
+      then at least 10 seconds is recommended, more depending on complexity.
     Type: Number
     Default: 3
     MinValue: 3
@@ -46,8 +51,6 @@ Resources:
         - !If
           - AdditionalPolicyProvided
           - !Ref AdditionalExecutionPolicy
-
-          # Else
           - !Ref AWS::NoValue
 
   TransformFunction:
@@ -55,50 +58,9 @@ Resources:
     Properties:
       Description: Support for the PyPlate CloudFormation macro
       Code:
-        ZipFile: |
-          import traceback
-          import json
-
-
-          def obj_iterate(obj, params):
-              if isinstance(obj, dict):
-                  for k in obj:
-                      obj[k] = obj_iterate(obj[k], params)
-              elif isinstance(obj, list):
-                  for i, v in enumerate(obj):
-                      obj[i] = obj_iterate(v, params)
-              elif isinstance(obj, str):
-                  if obj.startswith("#!PyPlate"):
-                      params['output'] = None
-                      exec(obj, params)
-                      obj = params['output']
-              return obj
-
-
-          def handler(event, context):
-
-              print(json.dumps(event))
-
-              macro_response = {
-                  "requestId": event["requestId"],
-                  "status": "success"
-              }
-              try:
-                  params = {
-                      "params": event["templateParameterValues"],
-                      "template": event["fragment"],
-                      "account_id": event["accountId"],
-                      "region": event["region"]
-                  }
-                  response = event["fragment"]
-                  macro_response["fragment"] = obj_iterate(response, params)
-              except Exception as e:
-                  traceback.print_exc()
-                  macro_response["status"] = "failure"
-                  macro_response["errorMessage"] = str(e)
-              return macro_response
+        ZipFile: !Rain::Embed handler.py
       Handler: index.handler
-      Runtime: python3.10
+      Runtime: python3.11
       Role: !GetAtt TransformExecutionRole.Arn
       Timeout: !Ref LambdaTimeout
 

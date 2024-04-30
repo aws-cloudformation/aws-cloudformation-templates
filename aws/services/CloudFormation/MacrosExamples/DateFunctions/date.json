@@ -45,10 +45,12 @@
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Code": {
-                    "ZipFile": "import traceback\nimport datetime\nimport time\n\n\n\ndef handler(event, context):\n    response = {\n        \"requestId\": event[\"requestId\"],\n        \"status\": \"success\"\n    }\n    try:\n\n        utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone\n        utc_offset = datetime.timedelta(seconds=-utc_offset_sec)\n\n        # Operation we are being asked to do\n        operation = event[\"params\"][\"Operation\"]\n\n        # Value to work with\n        if \"Date\" in event[\"params\"] and event[\"params\"][\"Date\"]:\n          inputDate = datetime.datetime.fromisoformat(event[\"params\"][\"Date\"]);\n        else:\n          inputDate = datetime.datetime.now()\n\n        # Value to work with for deltas\n        if \"Date2\" in event[\"params\"] and event[\"params\"][\"Date2\"]:\n          inputDate2 = datetime.datetime.fromisoformat(event[\"params\"][\"Date2\"]);\n        else:\n          inputDate2 = datetime.datetime.now()\n\n        # Value for days for subtraction or addition.\n        if \"Days\" in event[\"params\"] and event[\"params\"][\"Days\"]:\n          inputDays = event[\"params\"][\"Days\"]\n        else:\n          inputDays = \"0\"\n\n        # Operations we support\n        no_param_date_funcs = [\"Current\", \"Add\", \"Subtract\", \"Days\"]\n\n        # If it's one of the supported ones, do the logic ...\n        if operation in no_param_date_funcs:\n            # Make sure the inputDays is an integer\n            inputDays = int(inputDays)\n\n            # Add days logic\n            if operation == \"Add\":\n              inputDate = inputDate + datetime.timedelta(days=inputDays)\n\n            # Subtract days logic\n            if operation == \"Subtract\":\n              inputDate = inputDate - datetime.timedelta(days=inputDays)\n\n            # Days between logic\n            if operation == \"Days\":\n              outputDays = (inputDate.date() - inputDate2.date()).days\n              response[\"fragment\"] = str(outputDays)\n            else:\n              # Get the ISO date for the input value\n              response[\"fragment\"] = inputDate.replace(tzinfo=datetime.timezone(offset=utc_offset)).replace(microsecond=0).isoformat()\n        else:\n            response[\"status\"] = \"failure\"\n    except Exception as e:\n        traceback.print_exc()\n        response[\"status\"] = \"failure\"\n        response[\"errorMessage\"] = str(e)\n    return response\n"
+                    "ZipFile": {
+                        "Rain::Embed": "handler.py"
+                    }
                 },
                 "Handler": "index.handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.11",
                 "Role": {
                     "Fn::GetAtt": [
                         "TransformExecutionRole",

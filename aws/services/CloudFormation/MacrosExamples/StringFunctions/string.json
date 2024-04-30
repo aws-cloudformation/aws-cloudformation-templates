@@ -44,10 +44,12 @@
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Code": {
-                    "ZipFile": "import traceback\n\n\ndef handler(event, context):\n    response = {\n        \"requestId\": event[\"requestId\"],\n        \"status\": \"success\"\n    }\n    try:\n        operation = event[\"params\"][\"Operation\"]\n        input = event[\"params\"][\"InputString\"]\n        no_param_string_funcs = [\"Upper\", \"Lower\", \"Capitalize\", \"Title\", \"SwapCase\"]\n        if operation in no_param_string_funcs:\n            response[\"fragment\"] = getattr(input, operation.lower())()\n        elif operation == \"Strip\":\n            chars = None\n            if \"Chars\" in event[\"params\"]:\n                chars = event[\"params\"][\"Chars\"]\n            response[\"fragment\"] = input.strip(chars)\n        elif operation == \"Replace\":\n            old = event[\"params\"][\"Old\"]\n            new = event[\"params\"][\"New\"]\n            response[\"fragment\"] = input.replace(old, new)\n        elif operation == \"MaxLength\":\n            length = int(event[\"params\"][\"Length\"])\n            if len(input) <= length:\n                response[\"fragment\"] = input\n            elif \"StripFrom\" in event[\"params\"]:\n                if event[\"params\"][\"StripFrom\"] == \"Left\":\n                    response[\"fragment\"] = input[len(input)-length:]\n                elif event[\"params\"][\"StripFrom\"] != \"Right\":\n                    response[\"status\"] = \"failure\"\n            else:\n                response[\"fragment\"] = input[:length]\n        else:\n            response[\"status\"] = \"failure\"\n    except Exception as e:\n        traceback.print_exc()\n        response[\"status\"] = \"failure\"\n        response[\"errorMessage\"] = str(e)\n    return response\n"
+                    "ZipFile": {
+                        "Rain::Embed": "handler.py"
+                    }
                 },
                 "Handler": "index.handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.12",
                 "Role": {
                     "Fn::GetAtt": [
                         "TransformExecutionRole",

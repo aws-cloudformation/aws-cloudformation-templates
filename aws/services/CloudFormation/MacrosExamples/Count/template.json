@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Count macro An iterator for creating multiple resources\n",
+    "Description": "The Count macro is an iterator for creating multiple resources\n",
     "Transform": "AWS::Serverless-2016-10-31",
     "Resources": {
         "Macro": {
@@ -20,7 +20,7 @@
             "Properties": {
                 "CodeUri": "src",
                 "Handler": "index.handler",
-                "Runtime": "python3.9",
+                "Runtime": "python3.11",
                 "Timeout": 5
             }
         }
