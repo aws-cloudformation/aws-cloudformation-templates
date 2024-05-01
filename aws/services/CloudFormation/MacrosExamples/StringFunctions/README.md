@@ -4,8 +4,9 @@ Provides string transformation utility functions.
 
 ## Basic Usage
 
-Place the transform where you would like the output to be placed and provide the input string as the value for the
-InputString Parameter. The example below shows converting an input parameter to upper case and setting it as the value
+Place the transform where you would like the output to be placed and provide
+the input string as the value for the InputString Parameter. The example below
+shows converting an input parameter to upper case and setting it as the value
 for a tag on an s3 bucket.
 
 ```yaml
@@ -43,8 +44,8 @@ Return a copy of the string with its first character capitalized and the rest lo
 
 ### Title
 
-Return a titlecased version of the string where words start with an uppercase character and the remaining characters
-are lowercase.
+Return a titlecased version of the string where words start with an uppercase
+character and the remaining characters are lowercase.
 
 ### SwapCase
 
@@ -52,9 +53,10 @@ Return a copy of the string with uppercase characters converted to lowercase and
 
 ### Strip
 
-Return a copy of the string with the leading and trailing characters removed. The `Chars` parameter is a string
-specifying the set of characters to be removed. If omitted default is to remove whitespace. The Chars argument is not a
-prefix or suffix; rather, all combinations of its values are stripped.
+Return a copy of the string with the leading and trailing characters removed.
+The `Chars` parameter is a string specifying the set of characters to be
+removed. If omitted default is to remove whitespace. The Chars argument is not
+a prefix or suffix; rather, all combinations of its values are stripped.
 
 #### Additional Parameters
 
@@ -72,8 +74,8 @@ Return a copy of the string with all occurrences of substring `Old` replaced by 
 
 ### MaxLength
 
-Return a copy of the string with a maximum length as specified by the `Length` parameter. Default is to strip
-characters from the end of the string.
+Return a copy of the string with a maximum length as specified by the `Length`
+parameter. Default is to strip characters from the end of the string.
 
 #### Additional Parameters
 
@@ -81,6 +83,15 @@ characters from the end of the string.
 
 *StripFrom*: [optional] specifying `Left` will strip characters from the beginning of the string, `Right` from the end
 (default)
+
+## Installation
+
+This macro uses Rain to embed the Python Lambda handler code. If you don't use Rain, 
+you can copy the contents of `handler.py` to replace the `Rain::Embed` directive in `string.yaml`.
+
+```sh
+rain deploy string.yaml string-macro
+```
 
 ## Author
 

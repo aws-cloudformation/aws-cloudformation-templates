@@ -13,4 +13,15 @@ cfn-guard validate --data . \
     --rules ${SCRIPT_DIR}/rules.guard \
     --show-summary fail
 
+echo "Running pylint on Python lambda functions..."
+pylint aws/services/CloudFormation/MacrosExamples/Boto3/lambda/*.py
+pylint aws/services/CloudFormation/MacrosExamples/Count/src/*.py
+pylint aws/services/CloudFormation/MacrosExamples/DateFunctions.*py
+pylint aws/services/CloudFormation/MacrosExamples/ExecutionRoleBuilder/lambda/*.py
+pylint aws/services/CloudFormation/MacrosExamples/Explode/lambda/*.py
+pylint aws/services/CloudFormation/MacrosExamples/PyPlate/*.py
+pylint aws/services/CloudFormation/MacrosExamples/S3Objects/lambda/*.py
+pylint aws/services/CloudFormation/MacrosExamples/StackMetrics/lambda/*.py
+pylint aws/services/CloudFormation/MacrosExamples/StringFunctions/*.py
+
 echo "Success"

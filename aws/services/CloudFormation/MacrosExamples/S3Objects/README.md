@@ -1,12 +1,16 @@
 # How to install and use the S3Objects macro in your AWS account
 
-The `S3Objects` macro adds a new resource type: `AWS::S3::Object` which you can use to populate an S3 bucket.
+The `S3Objects` macro adds a new resource type: `AWS::S3::Object` which you can
+use to populate an S3 bucket.
 
-You can either create new S3 objects or copy S3 buckets from other buckets that you have permissions to access.
+You can either create new S3 objects or copy S3 buckets from other buckets that
+you have permissions to access.
 
-As with any other CloudFormation resource, if you delete a stack containing S3 objects defined with this macro, those objects will be deleted.
+As with any other CloudFormation resource, if you delete a stack containing S3
+objects defined with this macro, those objects will be deleted.
 
-A typical use case for this macro might be, for example, to populate an S3 website with static assets.
+A typical use case for this macro might be, for example, to populate an S3
+website with static assets.
 
 ## Deploying
 
@@ -42,7 +46,8 @@ A typical use case for this macro might be, for example, to populate an S3 websi
 
 ## Usage
 
-To make use of the macro, add `Transform: S3Objects` to the top level of your CloudFormation template.
+To make use of the macro, add `Transform: S3Objects` to the top level of your
+CloudFormation template.
 
 Here is a trivial example template:
 
@@ -66,7 +71,8 @@ Resources:
 
 ### Creating a new S3 object
 
-To create a new S3 object, add an `AWS::S3::Object` resource to your template and specify the `Target` and `Body` properties. For example:
+To create a new S3 object, add an `AWS::S3::Object` resource to your template
+and specify the `Target` and `Body` properties. For example:
 
 ```yaml
 NewObject:
@@ -89,8 +95,6 @@ The `Target` property has the following sub-properties:
 
 * `Key` (REQUIRED): The location within the bucket
 
-* `ACL` (OPTIONAL - Default `private`): Sets a [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) for the new object
-
 The following sub-properties also apply if you are creating a new object (but not if you are copying an object from another S3 bucket):
 
 * `ContentType` (OPTIONAL): Sets a custom content type for the new object
@@ -99,7 +103,8 @@ The `Body` property simply takes a string which will be used to populate the new
 
 ### Creating a new S3 object from binary data
 
-You can create a binary file by using the `Base64Body` property and supplying your content base64-encoded. For example:
+You can create a binary file by using the `Base64Body` property and supplying
+your content base64-encoded. For example:
 
 ```yaml
 SinglePixel:
@@ -113,7 +118,8 @@ SinglePixel:
 
 ### Copying an S3 object from another bucket
 
-To copy an S3 object, you need to specify the `Source` property as well as the `Target`. For example:
+To copy an S3 object, you need to specify the `Source` property as well as the
+`Target`. For example:
 
 ```yaml
 CopiedObject:
@@ -125,7 +131,6 @@ CopiedObject:
     Target:
       Bucket: !Ref TargetBucket
       Key: index.html
-      ACL: public-read
 ```
 
 The `Source` property has the following sub-properties:

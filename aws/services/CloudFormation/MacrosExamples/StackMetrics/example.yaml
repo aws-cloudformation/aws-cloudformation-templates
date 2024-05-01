@@ -1,0 +1,5 @@
+Transform: StackMetrics
+
+Resources:
+  Bucket1:
+    Type: AWS::S3::Bucket

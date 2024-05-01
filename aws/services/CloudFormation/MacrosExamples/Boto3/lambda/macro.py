@@ -1,24 +1,14 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-#     http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
-
+"Implements the Boto3 CloudFormation Macro"
 import os
 
 PREFIX = "Boto3::"
 
 LAMBDA_ARN = os.environ["LAMBDA_ARN"]
 
-def handle_template(request_id, template):
-    for name, resource in template.get("Resources", {}).items():
+def handle_template(template):
+    "Handle a template, replacing any Boto3::* resources with Custom::Boto3"
+
+    for _, resource in template.get("Resources", {}).items():
         if resource["Type"].startswith(PREFIX):
             resource.update({
                 "Type": "Custom::Boto3",
@@ -36,13 +26,16 @@ def handle_template(request_id, template):
 
     return template
 
-def handler(event, context):
+
+def handler(event, _):
+    "Handle a CloudFormation event"
+
     fragment = event["fragment"]
     status = "success"
 
     try:
-        fragment = handle_template(event["requestId"], event["fragment"])
-    except Exception as e:
+        fragment = handle_template(event["fragment"])
+    except Exception:
         status = "failure"
 
     return {

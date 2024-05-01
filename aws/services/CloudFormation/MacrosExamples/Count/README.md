@@ -1,6 +1,9 @@
 # Count CloudFormation Macro
 
-The `Count` macro provides a template-wide `Count` property for CloudFormation resources. It allows you to specify multiple resources of the same type without having to cut and paste.
+The `Count` macro provides a template-wide `Count` property for CloudFormation resources. 
+It allows you to specify multiple resources of the same type without having to cut and paste.
+
+(Note that the `Fn::ForEach` intrinsic function is a likely better way to do this.)
 
 ## How to install and use the Count macro in your AWS account
 

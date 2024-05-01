@@ -2,13 +2,15 @@
 CloudFormation template transform macro: Explode
 """
 
+#pylint: disable=broad-exception-raised
+
 import re
-import sys
 import logging
 import json
 
-EXPLODE_RE = re.compile(r'(?i)!Explode (?P<explode_key>\w+)')
+EXPLODE_RE = re.compile(r"(?i)!Explode (?P<explode_key>\w+)")
 logger = logging.getLogger(__name__)
+
 
 def walk_resource(resource, map_data):
     """Recursively process a resource."""
@@ -41,14 +43,15 @@ def replace_explode_in_string(value, map_data):
     """Recursively process and replace Explode instances in a string."""
     match = EXPLODE_RE.search(value)
     while match:
-        explode_key = match.group('explode_key')
+        explode_key = match.group("explode_key")
         try:
             replace_value = map_data[explode_key]
-        except KeyError:
-            raise Exception ("Missing item {} in mapping while processing: {}\nMap Data:\n{}".format(
-                explode_key,
-                value,
-                json.dumps(map_data, indent=4)))
+        except KeyError as exc:
+            d = json.dumps(map_data, indent=4) 
+            raise Exception(
+                f"Missing item {explode_key} in mapping while processing: " + 
+                f"{value}\nMap Data:\n{d}"
+            ) from exc
         if isinstance(replace_value, int):
             value = replace_value
             # No further explosion is possible on an int
@@ -64,8 +67,8 @@ def handle_section_transform(section, mappings):
     new_section = {}
     for resource_name, resource in section.items():
         try:
-            explode_map = resource['ExplodeMap']
-            del resource['ExplodeMap']
+            explode_map = resource["ExplodeMap"]
+            del resource["ExplodeMap"]
         except KeyError:
             # This resource does not have an ExplodeMap, so copy it verbatim
             # and move on
@@ -73,15 +76,17 @@ def handle_section_transform(section, mappings):
             continue
         try:
             explode_map_data = mappings[explode_map]
-        except KeyError:
+        except KeyError as exc:
             # This resource refers to a mapping entry which doesn't exist, so
             # fail
-            raise Exception('Unable to find mapping for exploding object {}'.format(resource_name))
+            raise Exception(
+                f"Unable to find mapping for exploding object {resource_name}"
+            ) from exc
         resource_instances = explode_map_data.keys()
         for resource_instance in resource_instances:
             new_resource = walk_resource(resource, explode_map_data[resource_instance])
-            if 'ResourceName' in explode_map_data[resource_instance]:
-                new_resource_name = explode_map_data[resource_instance]['ResourceName']
+            if "ResourceName" in explode_map_data[resource_instance]:
+                new_resource_name = explode_map_data[resource_instance]["ResourceName"]
             else:
                 new_resource_name = resource_name + resource_instance
             new_section[new_resource_name] = new_resource
@@ -90,14 +95,15 @@ def handle_section_transform(section, mappings):
 
 def handle_transform(fragment):
     """Go through template and explode objects in the fragment."""
-    mappings = fragment['Mappings']
-    if 'Conditions' in fragment:
-        fragment['Conditions'] = handle_section_transform(fragment['Conditions'], mappings)
-    fragment['Resources'] = handle_section_transform(fragment['Resources'], mappings)
-    if 'Outputs' in fragment:
-        fragment['Outputs'] = handle_section_transform(fragment['Outputs'], mappings)
+    mappings = fragment["Mappings"]
+    if "Conditions" in fragment:
+        fragment["Conditions"] = handle_section_transform(
+            fragment["Conditions"], mappings
+        )
+    fragment["Resources"] = handle_section_transform(fragment["Resources"], mappings)
+    if "Outputs" in fragment:
+        fragment["Outputs"] = handle_section_transform(fragment["Outputs"], mappings)
     return fragment
-
 
 
 def handler(event, _context):
@@ -108,7 +114,7 @@ def handler(event, _context):
     try:
         fragment = handle_transform(fragment)
     except Exception as e:
-        logger.error(e.__str__())
+        logger.error(str(e))
         status = "failure"
 
     return {
@@ -117,29 +123,3 @@ def handler(event, _context):
         "fragment": fragment,
     }
 
-
-if __name__ == "__main__":
-    """
-    If run from the command line, parse the file specified and output it
-    This is quite naive; CF YAML tags like !GetAtt will break it (as will
-    !Explode, but you can hide that in a string). Probably best to use JSON.
-    Relatedly, always outputs JSON.
-    """
-    if len(sys.argv) == 2:
-        filename = sys.argv[1]
-        if filename.endswith(".yml") or filename.endswith(".yaml"):
-            try:
-                import yaml
-            except ImportError:
-                print("Please install PyYAML to test yaml templates")
-                sys.exit(1)
-            with open(filename, 'r') as file_handle:
-                loaded_fragment = yaml.safe_load(file_handle)
-        elif filename.endswith(".json"):
-            with open(sys.argv[1], 'r') as file_handle:
-                loaded_fragment = json.load(file_handle)
-        else:
-            print("Test file needs to end .yaml, .yml or .json")
-            sys.exit(1)
-        new_fragment = handle_transform(loaded_fragment)
-        print(json.dumps(new_fragment,indent=4))

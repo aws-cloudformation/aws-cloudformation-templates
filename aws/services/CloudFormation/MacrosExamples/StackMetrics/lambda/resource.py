@@ -1,25 +1,16 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-#     http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
+"StackMetrics lambda handler"
 
 from datetime import datetime
-import boto3
-import cfnresponse
 import json
+import boto3
+
+from custom_response import SUCCESS, FAILED, send
 
 client = boto3.client("cloudwatch")
 
 def log(stack, metric, value):
-    # Do it for the stack
+    "Put metrics into CloudWatch"
+
     client.put_metric_data(
         Namespace="CloudFormation",
         MetricData=[
@@ -51,6 +42,8 @@ def log(stack, metric, value):
     )
 
 def handler(event, context):
+    "Lambda handler"
+
     print("Received request:", json.dumps(event, indent=4))
 
     action = event["RequestType"]
@@ -64,8 +57,9 @@ def handler(event, context):
         if action == "Create":
             log(stack, "ResourceCount", resources)
 
-        cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, "{} metrics".format(stack))
+        send(event, context, SUCCESS, {}, f"{stack} metrics")
     except Exception as e:
-        cfnresponse.send(event, context, cfnresponse.FAILED, {
+        send(event, context, FAILED, {
             "Data": str(e),
-        }, "{} metrics".format(stack))
+        }, f"{stack} metrics")
+

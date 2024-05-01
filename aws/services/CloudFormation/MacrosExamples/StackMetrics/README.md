@@ -1,6 +1,8 @@
 # StackMetrics macro
 
-When the `StackMetrics` macro is used in a CloudFormation template, any CloudFormation stack deployed from that template will output custom CloudWatch metrics for the stack.
+When the `StackMetrics` macro is used in a CloudFormation template, any
+CloudFormation stack deployed from that template will output custom CloudWatch
+metrics for the stack.
 
 * CloudFormation stack operations
     * Creates
@@ -8,15 +10,20 @@ When the `StackMetrics` macro is used in a CloudFormation template, any CloudFor
     * Deletes
 * CloudFormation resources created
 
-Metrics are provided both per stack and overall across all stacks that are using the macro.
+Metrics are provided both per stack and overall across all stacks that are
+using the macro.
 
-The `macro.template` template also creates a simple dashboard for viewing the aggregated data from these metrics.
+The `macro.yaml` template also creates a simple dashboard for viewing the
+aggregated data from these metrics.
 
-See `example.template` for example usage.
+See `example.yaml` for example usage.
 
 ## How to install and use the CloudFormation macro in your AWS account
 
 ### Deploying
+
+(Note that if you use CloudFormation Rain, steps 1-3 can be replaced with 
+`rain deploy macro.yaml stack-metrics-macro`)
 
 1. You will need an S3 bucket to store the CloudFormation artifacts:
     * If you don't have one already, create one with `aws s3 mb s3://<bucket name>`
