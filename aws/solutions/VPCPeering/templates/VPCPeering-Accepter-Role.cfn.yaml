@@ -1,5 +1,7 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: This template creates an assumable role to be used by the requester account to accept the VPC peering connection. (Accepter Account)
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -10,27 +12,31 @@ Metadata:
     ParameterLabels:
       PeerOwnerIds:
         default: Peer Owner IDs
+
 Parameters:
   PeerOwnerIds:
-    AllowedPattern: '^(\d{12})$|^((\d{12}(,|, ))*\d{12})$'
-    ConstraintDescription: Must be 12 digits. Additional accounts can be provided, separated by a "comma"
     Description: AWS account IDs (comma-separated) of the owners of the requester VPCs. (i.e., 123456789012,4567890123)
     Type: String
+    AllowedPattern: ^(\d{12})$|^((\d{12}(,|, ))*\d{12})$
+    ConstraintDescription: Must be 12 digits. Additional accounts can be provided, separated by a "comma"
+
 Resources:
   PeerRole:
+    Type: AWS::IAM::Role
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W11
             reason: Allow * in resource, as only allowed AWS accounts can assume this role
-    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
             Action: sts:AssumeRole
             Principal:
-              AWS: !Split [',', !Ref PeerOwnerIds]
+              AWS: !Split
+                - ','
+                - !Ref PeerOwnerIds
       Path: /
       Tags:
         - Key: StackName
@@ -38,12 +44,13 @@ Resources:
       Policies:
         - PolicyName: AcceptVPCPeering
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: ec2:AcceptVpcPeeringConnection
                 Resource: '*'
+
 Outputs:
   PeerRoleARN:
     Description: VPC Peer Role ARN
-    Value: !GetAtt [PeerRole, Arn]
+    Value: !GetAtt PeerRole.Arn

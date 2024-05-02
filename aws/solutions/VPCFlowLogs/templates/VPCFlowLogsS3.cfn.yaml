@@ -1,5 +1,7 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: This template enables VPC Flow Logs to S3. An option is provided to create an Amazon S3 bucket with encryption to host the flow logs.
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -34,68 +36,76 @@ Metadata:
         default: VPC Flow Logs - Traffic Type
       VPCID:
         default: VPC ID
+
 Parameters:
   S3AccessLogsBucketName:
-    AllowedPattern: '^$|^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
-    ConstraintDescription:
-      S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
-    Description:
-      (Optional) S3 Server Access Logs bucket name for where Amazon S3 should store server access log files. S3 bucket name can include numbers,
-      lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created as a
-      destination for S3 server access logs, it will follow the format, aws-s3-access-logs-<account>-<region>
+    Description: (Optional) S3 Server Access Logs bucket name for where Amazon S3 should store server access log files. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created as a destination for S3 server access logs, it will follow the format, aws-s3-access-logs-<account>-<region>
     Type: String
+    AllowedPattern: ^$|^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+    ConstraintDescription: S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+
   VPCFlowLogsBucketKeyEnabled:
-    AllowedValues: [true, false]
+    Description: Set to true to have Amazon S3 use an S3 Bucket Key with server-side encryption using KMS (SSE-KMS). If false, S3 Bucket Key is not enabled. Note, will only be set if KMS Key parameter, 'VPCFlowLogsBucketKMSKey', was provided.
+    Type: String
+    AllowedValues:
+      - true
+      - false
     Default: false
-    Description:
-      Set to true to have Amazon S3 use an S3 Bucket Key with server-side encryption using KMS (SSE-KMS). If false, S3 Bucket Key is not enabled.
-      Note, will only be set if KMS Key parameter, 'VPCFlowLogsBucketKMSKey', was provided.
-    Type: String
+
   VPCFlowLogsBucketKMSKey:
-    AllowedPattern: '^$|^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
-    ConstraintDescription:
-      'Key ID example: 1234abcd-12ab-34cd-56ef-1234567890ab  Key ARN
-      example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Description:
-      (Optional) KMS Key ID or ARN to use for the default encryption. If empty, server-side encryption with Amazon S3-managed encryption keys (SSE-S3)
-      will be used. Note, will only be set if S3 Bucket parameter, 'VPCFlowLogsBucketName', was not provided, thus a new S3 bucket is being created.
+    Description: (Optional) KMS Key ID or ARN to use for the default encryption. If empty, server-side encryption with Amazon S3-managed encryption keys (SSE-S3) will be used. Note, will only be set if S3 Bucket parameter, 'VPCFlowLogsBucketName', was not provided, thus a new S3 bucket is being created.
     Type: String
+    AllowedPattern: ^$|^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$
+    ConstraintDescription: 'Key ID example: 1234abcd-12ab-34cd-56ef-1234567890ab  Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+
   VPCFlowLogsBucketName:
-    AllowedPattern: '^$|^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)'
-    ConstraintDescription:
-      S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
-    Description:
-      (Optional) S3 bucket name where VPC Flow Log data can be published. S3 bucket name can include numbers, lowercase letters, uppercase letters,
-      and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created for VPC Flow Log data to be published.
+    Description: (Optional) S3 bucket name where VPC Flow Log data can be published. S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-). If empty, a new S3 bucket will be created for VPC Flow Log data to be published.
     Type: String
+    AllowedPattern: ^$|^(?=^.{3,63}$)(?!.*[.-]{2})(?!.*[--]{2})(?!^(?:(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(?!$)|$)){4}$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)
+    ConstraintDescription: S3 bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).
+
   VPCFlowLogsLogFormat:
-    AllowedPattern: '^(\$\{[a-z-]+\})$|^((\$\{[a-z-]+\} )*\$\{[a-z-]+\})$'
-    Default:
-      '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action}
-      ${log-status}'
-    Description:
-      The fields to include in the flow log record, in the order in which they should appear. Specify the fields using the ${field-id} format,
-      separated by spaces. Using the Default Format as the default value.
+    Description: The fields to include in the flow log record, in the order in which they should appear. Specify the fields using the ${field-id} format, separated by spaces. Using the Default Format as the default value.
     Type: String
+    Default: ${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}
+    AllowedPattern: ^(\$\{[a-z-]+\})$|^((\$\{[a-z-]+\} )*\$\{[a-z-]+\})$
+
   VPCFlowLogsMaxAggregationInterval:
-    AllowedValues: [60, 600]
-    Default: 600
-    Description:
-      The maximum interval of time during which a flow of packets is captured and aggregated into a flow log record. You can specify 60 seconds (1
-      minute) or 600 seconds (10 minutes).
+    Description: The maximum interval of time during which a flow of packets is captured and aggregated into a flow log record. You can specify 60 seconds (1 minute) or 600 seconds (10 minutes).
     Type: String
+    AllowedValues:
+      - 60
+      - 600
+    Default: 600
+
   VPCFlowLogsTrafficType:
-    AllowedValues: [ACCEPT, ALL, REJECT]
-    Default: REJECT
     Description: The type of traffic to log. You can log traffic that the resource accepts or rejects, or all traffic.
     Type: String
+    AllowedValues:
+      - ACCEPT
+      - ALL
+      - REJECT
+    Default: REJECT
+
   VPCID:
     Description: ID of the VPC (e.g., vpc-0343606e)
     Type: AWS::EC2::VPC::Id
+
 Conditions:
-  S3AccessLogsCondition: !Not [!Equals [!Ref S3AccessLogsBucketName, '']]
-  VPCFlowLogsNewBucketCondition: !Equals [!Ref VPCFlowLogsBucketName, '']
-  VPCFlowLogsBucketKMSKeyCondition: !Not [!Equals [!Ref VPCFlowLogsBucketKMSKey, '']]
+  S3AccessLogsCondition: !Not
+    - !Equals
+      - !Ref S3AccessLogsBucketName
+      - ""
+
+  VPCFlowLogsNewBucketCondition: !Equals
+    - !Ref VPCFlowLogsBucketName
+    - ""
+
+  VPCFlowLogsBucketKMSKeyCondition: !Not
+    - !Equals
+      - !Ref VPCFlowLogsBucketKMSKey
+      - ""
+
 Resources:
   VPCFlowLogstoS3:
     Type: AWS::EC2::FlowLog
@@ -113,8 +123,8 @@ Resources:
       Tags:
         - Key: Name
           Value: VPC Flow Logs S3
+
   VPCFlowLogsBucket:
-    Condition: VPCFlowLogsNewBucketCondition
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub aws-vpcflowlogs-${AWS::AccountId}-${AWS::Region}
@@ -145,8 +155,9 @@ Resources:
         - !Ref AWS::NoValue
       VersioningConfiguration:
         Status: Enabled
-  VPCFlowLogsBucketPolicy:
     Condition: VPCFlowLogsNewBucketCondition
+
+  VPCFlowLogsBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref VPCFlowLogsBucket
@@ -177,7 +188,12 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
+    Condition: VPCFlowLogsNewBucketCondition
+
 Outputs:
   VPCFlowLogsBucket:
     Description: S3 bucket name where VPC Flow Log data will be published
-    Value: !If [VPCFlowLogsNewBucketCondition, !Ref VPCFlowLogsBucket, !Ref VPCFlowLogsBucketName]
+    Value: !If
+      - VPCFlowLogsNewBucketCondition
+      - !Ref VPCFlowLogsBucket
+      - !Ref VPCFlowLogsBucketName
