@@ -277,16 +277,16 @@ Resources:
         Timeout: PT15M
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MinInstancesInService: "1"
-        MaxBatchSize: "1"
+        MinInstancesInService: 1
+        MaxBatchSize: 1
         PauseTime: PT15M
-        WaitOnResourceSignals: "true"
+        WaitOnResourceSignals: true
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       AvailabilityZones: !GetAZs
       LaunchConfigurationName: !Ref LaunchConfig
-      MinSize: "2"
-      MaxSize: "5"
+      MinSize: 2
+      MaxSize: 5
       LoadBalancerNames:
         - !Ref ElasticLoadBalancer
 
