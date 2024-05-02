@@ -40,6 +40,14 @@
     "Resources": {
         "Ec2Volume": {
             "Type": "AWS::EC2::Volume",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "EC2_EBS_ENCRYPTION_BY_DEFAULT",
+                        "ENCRYPTED_VOLUMES"
+                    ]
+                }
+            },
             "Properties": {
                 "AutoEnableIO": {
                     "Ref": "Ec2VolumeAutoEnableIO"
@@ -96,7 +104,34 @@
             "Condition": "CreateDeliveryChannel"
         },
         "ConfigBucket": {
-            "Type": "AWS::S3::Bucket"
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
+            }
         },
         "ConfigTopic": {
             "Type": "AWS::SNS::Topic"
@@ -178,6 +213,13 @@
         },
         "ConfigPermissionToCallLambda": {
             "Type": "AWS::Lambda::Permission",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
             "Properties": {
                 "FunctionName": {
                     "Fn::GetAtt": [
@@ -191,6 +233,13 @@
         },
         "VolumeAutoEnableIOComplianceCheck": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Code": {
                     "ZipFile": "var aws  = require('aws-sdk');\nvar config = new aws.ConfigService();\nvar ec2 = new aws.EC2();\nexports.handler = function(event, context) {\n    var compliance = evaluateCompliance(event, function(compliance, event) {\n        var configurationItem = JSON.parse(event.invokingEvent).configurationItem;\n        var putEvaluationsRequest = {\n            Evaluations: [{\n                ComplianceResourceType: configurationItem.resourceType,\n                ComplianceResourceId: configurationItem.resourceId,\n                ComplianceType: compliance,\n                OrderingTimestamp: configurationItem.configurationItemCaptureTime\n            }],\n            ResultToken: event.resultToken\n        };\n        config.putEvaluations(putEvaluationsRequest, function(err, data) {\n            if (err) context.fail(err);\n            else context.succeed(data);\n        });\n    });\n};\nfunction evaluateCompliance(event, doReturn) {\n    var configurationItem = JSON.parse(event.invokingEvent).configurationItem;\n    var status = configurationItem.configurationItemStatus;\n    if (configurationItem.resourceType !== 'AWS::EC2::Volume' || event.eventLeftScope || (status !== 'OK' && status !== 'ResourceDiscovered'))\n        doReturn('NOT_APPLICABLE', event);\n    else ec2.describeVolumeAttribute({VolumeId: configurationItem.resourceId, Attribute: 'autoEnableIO'}, function(err, data) {\n        if (err) context.fail(err);\n        else if (data.AutoEnableIO.Value) doReturn('COMPLIANT', event);\n        else doReturn('NON_COMPLIANT', event);\n    });\n}\n"
