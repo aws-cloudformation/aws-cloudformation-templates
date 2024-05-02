@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Demonstrate using the Fn::ForEach function to create multiple buckets and outputs for each one
+
+Transform: AWS::LanguageExtensions
+
+Resources:
+  Fn::ForEach::Buckets:
+    - Identifier
+    - - A
+      - B
+      - C
+    - S3Bucket${Identifier}:
+        Type: AWS::S3::Bucket
+        Properties:
+          BucketEncryption:
+            ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: AES256
+          PublicAccessBlockConfiguration:
+            BlockPublicAcls: true
+            BlockPublicPolicy: true
+            IgnorePublicAcls: true
+            RestrictPublicBuckets: true
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
+
+Outputs:
+  Fn::ForEach::BucketOutputs:
+    - Identifier
+    - - A
+      - B
+      - C
+    - Fn::ForEach::GetAttLoop:
+        - Property
+        - - Arn
+        - S3Bucket${Identifier}${Property}:
+            Value: !GetAtt
+              - !Sub S3Bucket${Identifier}
+              - !Ref Property
