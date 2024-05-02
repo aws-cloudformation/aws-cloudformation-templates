@@ -5,18 +5,22 @@ set -eou pipefail
 SCRIPT_DIR=$(dirname "$0")
 CONFIG_FILE="${SCRIPT_DIR}/../.cfnlintrc"
 
+echo "Formatting YAML files..."
+${SCRIPT_DIR}/format-yaml-all.sh
+
 echo "Generating JSON files based on YAML..."
 ${SCRIPT_DIR}/create-json-all.sh
 
 echo "Linting with config file ${CONFIG_FILE}"
 cfn-lint --config-file ${CONFIG_FILE} **/*.yaml
 
-echo "Guard..."
+echo "Guarding..."
 cfn-guard validate --data . \
     --rules ${SCRIPT_DIR}/rules.guard \
     --show-summary fail \
     --type CFNTemplate
 
+# Don't run this from sub directories
 p=$(pwd)
 b=$(basename $p)
 if [ "$b" == "aws-cloudformation-templates" ]
