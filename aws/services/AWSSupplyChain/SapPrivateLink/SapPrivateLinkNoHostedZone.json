@@ -49,6 +49,9 @@
             "Description": "The private subnets (must include one where SAP resides) of above VPC, recommend choose multiple covering different AZs",
             "Type": "List<AWS::EC2::Subnet::Id>"
         },
+        "SecurityGroups": {
+            "Type": "List<AWS::EC2::SecurityGroup::Id>"
+        },
         "IP": {
             "Description": "SAP Gateway's private IP address within VPC",
             "Type": "String"
@@ -186,7 +189,15 @@
                     ]
                 },
                 "Timeout": 900,
-                "Runtime": "python3.10",
+                "Runtime": "python3.12",
+                "VpcConfig": {
+                    "SubnetIds": {
+                        "Ref": "Subnets"
+                    },
+                    "SecurityGroupIds": {
+                        "Ref": "SecurityGroups"
+                    }
+                },
                 "Code": {
                     "ZipFile": "import boto3\nimport cfnresponse\nimport logging\ndef handler(event, context):\n  print('Receive event: {} and context: {}'.format(str(event), str(context)))\n  responseData = {}\n  eventType = event['RequestType'].strip()\n  props = event['ResourceProperties']\n  try:\n    if eventType in ('Create'):\n      match props['Action']:\n        case 'EnablePrivateDNS':\n          dnsClient = boto3.client('route53')\n          ec2Client = boto3.client('ec2')\n          serviceId = props['ServiceId']\n          domainName = props['DomainName']\n          ec2Client.modify_vpc_endpoint_service_configuration(ServiceId=serviceId, PrivateDnsName=domainName)\n          validationRecord = ec2Client.describe_vpc_endpoint_service_configurations(ServiceIds=[serviceId])['ServiceConfigurations'][0]['PrivateDnsNameConfiguration']\n          responseData['validationRecord'] = validationRecord\n        case _:\n          raise Exception('Unsupported action')\n    else:\n      print('Skip on resource UPDATE and DELETE')\n    cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)\n  except Exception as e:\n    logging.exception(e)\n    cfnresponse.send(event, context, cfnresponse.FAILED, responseData)\n"
                 }

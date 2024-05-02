@@ -13,15 +13,6 @@
             "MaxLength": "16",
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
-        },
-        "DBPassword": {
-            "Description": "The database admin account password",
-            "Type": "String",
-            "NoEcho": "true",
-            "MinLength": "8",
-            "MaxLength": "41",
-            "AllowedPattern": "[a-zA-Z0-9]*",
-            "ConstraintDescription": "must contain only alphanumeric characters."
         }
     },
     "Resources": {
@@ -36,9 +27,9 @@
                 "MasterUsername": {
                     "Ref": "DBUser"
                 },
-                "MasterUserPassword": {
-                    "Ref": "DBPassword"
-                }
+                "MasterUserPassword": "{{resolve:secretsmanager:my-db-password}}",
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true
             }
         }
     }

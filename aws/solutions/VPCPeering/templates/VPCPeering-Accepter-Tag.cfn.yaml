@@ -189,7 +189,7 @@ Resources:
               return
 
   TagVpcPeeringConnectionsResource:
-    Version: 1.0
+    Version: "1.0"
     Type: Custom::TagVpcPeeringConnection
     Properties:
       ServiceToken: !GetAtt TagVpcPeeringConnectionsLambdaFunction.Arn

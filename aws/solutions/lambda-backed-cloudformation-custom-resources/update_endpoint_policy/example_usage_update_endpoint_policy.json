@@ -1,0 +1,17 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Test our custom resource",
+    "Resources": {
+        "UpdateS3VPCEndpoint": {
+            "Type": "Custom::EndpointUpdater",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::ImportValue": "S3EndpointUpdatedARN"
+                },
+                "vpc-endpoint-id": "vpce-d6a55bbf",
+                "bucket-arn": "arn:aws:s3:::my_secure_bucket_abc123",
+                "region": "us-west-2"
+            }
+        }
+    }
+}

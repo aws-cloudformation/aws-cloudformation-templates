@@ -54,6 +54,9 @@
             "Description": "The private subnets (must include one where SAP resides) of above VPC, recommend choose multiple covering different AZs",
             "Type": "List<AWS::EC2::Subnet::Id>"
         },
+        "SecurityGroups": {
+            "Type": "List<AWS::EC2::SecurityGroup::Id>"
+        },
         "IP": {
             "Description": "SAP Gateway's private IP address within VPC",
             "Type": "String"
@@ -202,7 +205,15 @@
                     ]
                 },
                 "Timeout": 900,
-                "Runtime": "python3.10",
+                "Runtime": "python3.12",
+                "VpcConfig": {
+                    "SubnetIds": {
+                        "Ref": "Subnets"
+                    },
+                    "SecurityGroupIds": {
+                        "Ref": "SecurityGroups"
+                    }
+                },
                 "Code": {
                     "ZipFile": {
                         "Fn::Sub": [

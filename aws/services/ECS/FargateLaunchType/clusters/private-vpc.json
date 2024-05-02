@@ -1,0 +1,937 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This stack deploys a Fargate cluster that is in a VPC with both public and private subnets. Containers can be deployed into either the public subnets or the private subnets, and there are two load balancers. One is inside the public subnet, which can be used to send traffic to the containers in the private subnet, and one in the private subnet, which can be used for private internal traffic between internal services.",
+    "Mappings": {
+        "SubnetConfig": {
+            "VPC": {
+                "CIDR": "10.0.0.0/16"
+            },
+            "PublicOne": {
+                "CIDR": "10.0.0.0/24"
+            },
+            "PublicTwo": {
+                "CIDR": "10.0.1.0/24"
+            },
+            "PrivateOne": {
+                "CIDR": "10.0.2.0/24"
+            },
+            "PrivateTwo": {
+                "CIDR": "10.0.3.0/24"
+            }
+        }
+    },
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "EnableDnsSupport": true,
+                "EnableDnsHostnames": true,
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "VPC",
+                        "CIDR"
+                    ]
+                }
+            }
+        },
+        "PublicSubnetOne": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "PublicOne",
+                        "CIDR"
+                    ]
+                },
+                "MapPublicIpOnLaunch": true
+            }
+        },
+        "PublicSubnetTwo": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "PublicTwo",
+                        "CIDR"
+                    ]
+                },
+                "MapPublicIpOnLaunch": true
+            }
+        },
+        "PrivateSubnetOne": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "PrivateOne",
+                        "CIDR"
+                    ]
+                }
+            }
+        },
+        "PrivateSubnetTwo": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Fn::FindInMap": [
+                        "SubnetConfig",
+                        "PrivateTwo",
+                        "CIDR"
+                    ]
+                }
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "GatewayAttachement": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "GatewayAttachement",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnetOneRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnetOne"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            }
+        },
+        "PublicSubnetTwoRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PublicSubnetTwo"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            }
+        },
+        "NatGatewayOneAttachment": {
+            "Type": "AWS::EC2::EIP",
+            "DependsOn": "GatewayAttachement",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+        "NatGatewayTwoAttachment": {
+            "Type": "AWS::EC2::EIP",
+            "DependsOn": "GatewayAttachement",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+        "NatGatewayOne": {
+            "Type": "AWS::EC2::NatGateway",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "NatGatewayOneAttachment",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "PublicSubnetOne"
+                }
+            }
+        },
+        "NatGatewayTwo": {
+            "Type": "AWS::EC2::NatGateway",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "NatGatewayTwoAttachment",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "PublicSubnetTwo"
+                }
+            }
+        },
+        "PrivateRouteTableOne": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateRouteOne": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableOne"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NatGatewayOne"
+                }
+            }
+        },
+        "PrivateRouteTableOneAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableOne"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetOne"
+                }
+            }
+        },
+        "PrivateRouteTableTwo": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateRouteTwo": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableTwo"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NatGatewayTwo"
+                }
+            }
+        },
+        "PrivateRouteTableTwoAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableTwo"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetTwo"
+                }
+            }
+        },
+        "DynamoDBEndpoint": {
+            "Type": "AWS::EC2::VPCEndpoint",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "*",
+                            "Principal": "*",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "RouteTableIds": [
+                    {
+                        "Ref": "PrivateRouteTableOne"
+                    },
+                    {
+                        "Ref": "PrivateRouteTableTwo"
+                    }
+                ],
+                "ServiceName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "com.amazonaws.",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ".dynamodb"
+                        ]
+                    ]
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "ECSCluster": {
+            "Type": "AWS::ECS::Cluster"
+        },
+        "FargateContainerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Access to the Fargate containers",
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "EcsSecurityGroupIngressFromPublicALB": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "Description": "Ingress from the public ALB",
+                "GroupId": {
+                    "Ref": "FargateContainerSecurityGroup"
+                },
+                "IpProtocol": "-1",
+                "SourceSecurityGroupId": {
+                    "Ref": "PublicLoadBalancerSG"
+                }
+            }
+        },
+        "EcsSecurityGroupIngressFromPrivateALB": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "Description": "Ingress from the private ALB",
+                "GroupId": {
+                    "Ref": "FargateContainerSecurityGroup"
+                },
+                "IpProtocol": "-1",
+                "SourceSecurityGroupId": {
+                    "Ref": "PrivateLoadBalancerSG"
+                }
+            }
+        },
+        "EcsSecurityGroupIngressFromSelf": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "Description": "Ingress from other containers in the same security group",
+                "GroupId": {
+                    "Ref": "FargateContainerSecurityGroup"
+                },
+                "IpProtocol": "-1",
+                "SourceSecurityGroupId": {
+                    "Ref": "FargateContainerSecurityGroup"
+                }
+            }
+        },
+        "PublicLoadBalancerSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Access to the public facing load balancer",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "IpProtocol": "-1"
+                    }
+                ]
+            }
+        },
+        "PublicLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "DependsOn": "GatewayAttachement",
+            "Properties": {
+                "Scheme": "internet-facing",
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "idle_timeout.timeout_seconds",
+                        "Value": "30"
+                    }
+                ],
+                "Subnets": [
+                    {
+                        "Ref": "PublicSubnetOne"
+                    },
+                    {
+                        "Ref": "PublicSubnetTwo"
+                    }
+                ],
+                "SecurityGroups": [
+                    {
+                        "Ref": "PublicLoadBalancerSG"
+                    }
+                ]
+            }
+        },
+        "DummyTargetGroupPublic": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 6,
+                "HealthCheckPath": "/",
+                "HealthCheckProtocol": "HTTP",
+                "HealthCheckTimeoutSeconds": 5,
+                "HealthyThresholdCount": 2,
+                "Name": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "drop-1"
+                        ]
+                    ]
+                },
+                "Port": 80,
+                "Protocol": "HTTP",
+                "UnhealthyThresholdCount": 2,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PublicLoadBalancerListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "TargetGroupArn": {
+                            "Ref": "DummyTargetGroupPublic"
+                        },
+                        "Type": "forward"
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "PublicLoadBalancer"
+                },
+                "Port": 80,
+                "Protocol": "HTTP"
+            }
+        },
+        "PrivateLoadBalancerSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Access to the internal load balancer",
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateLoadBalancerIngressFromECS": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties": {
+                "Description": "Only accept traffic from a container in the fargate container security group",
+                "GroupId": {
+                    "Ref": "PrivateLoadBalancerSG"
+                },
+                "IpProtocol": "-1",
+                "SourceSecurityGroupId": {
+                    "Ref": "FargateContainerSecurityGroup"
+                }
+            }
+        },
+        "PrivateLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Scheme": "internal",
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "idle_timeout.timeout_seconds",
+                        "Value": "30"
+                    }
+                ],
+                "Subnets": [
+                    {
+                        "Ref": "PrivateSubnetOne"
+                    },
+                    {
+                        "Ref": "PrivateSubnetTwo"
+                    }
+                ],
+                "SecurityGroups": [
+                    {
+                        "Ref": "PrivateLoadBalancerSG"
+                    }
+                ]
+            }
+        },
+        "DummyTargetGroupPrivate": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 6,
+                "HealthCheckPath": "/",
+                "HealthCheckProtocol": "HTTP",
+                "HealthCheckTimeoutSeconds": 5,
+                "HealthyThresholdCount": 2,
+                "Name": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "drop-2"
+                        ]
+                    ]
+                },
+                "Port": 80,
+                "Protocol": "HTTP",
+                "UnhealthyThresholdCount": 2,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateLoadBalancerListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "TargetGroupArn": {
+                            "Ref": "DummyTargetGroupPrivate"
+                        },
+                        "Type": "forward"
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "PrivateLoadBalancer"
+                },
+                "Port": 80,
+                "Protocol": "HTTP"
+            }
+        },
+        "ECSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ecs.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "ecs-service",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:AttachNetworkInterface",
+                                        "ec2:CreateNetworkInterface",
+                                        "ec2:CreateNetworkInterfacePermission",
+                                        "ec2:DeleteNetworkInterface",
+                                        "ec2:DeleteNetworkInterfacePermission",
+                                        "ec2:Describe*",
+                                        "ec2:DetachNetworkInterface",
+                                        "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+                                        "elasticloadbalancing:DeregisterTargets",
+                                        "elasticloadbalancing:Describe*",
+                                        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+                                        "elasticloadbalancing:RegisterTargets"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ECSTaskExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ecs-tasks.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "AmazonECSTaskExecutionRolePolicy",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:BatchGetImage",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "ClusterName": {
+            "Description": "The name of the ECS cluster",
+            "Value": {
+                "Ref": "ECSCluster"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ClusterName"
+                        ]
+                    ]
+                }
+            }
+        },
+        "InternalUrl": {
+            "Description": "The url of the internal load balancer",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "PrivateLoadBalancer",
+                                "DNSName"
+                            ]
+                        }
+                    ]
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "InternalUrl"
+                        ]
+                    ]
+                }
+            }
+        },
+        "ExternalUrl": {
+            "Description": "The url of the external load balancer",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "PublicLoadBalancer",
+                                "DNSName"
+                            ]
+                        }
+                    ]
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ExternalUrl"
+                        ]
+                    ]
+                }
+            }
+        },
+        "ECSRole": {
+            "Description": "The ARN of the ECS role",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECSRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ECSRole"
+                        ]
+                    ]
+                }
+            }
+        },
+        "ECSTaskExecutionRole": {
+            "Description": "The ARN of the ECS role",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECSTaskExecutionRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "ECSTaskExecutionRole"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PublicListener": {
+            "Description": "The ARN of the public load balancer's Listener",
+            "Value": {
+                "Ref": "PublicLoadBalancerListener"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PublicListener"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PrivateListener": {
+            "Description": "The ARN of the private load balancer's Listener",
+            "Value": {
+                "Ref": "PrivateLoadBalancerListener"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PrivateListener"
+                        ]
+                    ]
+                }
+            }
+        },
+        "VPCId": {
+            "Description": "The ID of the VPC that this stack is deployed in",
+            "Value": {
+                "Ref": "VPC"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "VPCId"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PublicSubnetOne": {
+            "Description": "Public subnet one",
+            "Value": {
+                "Ref": "PublicSubnetOne"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PublicSubnetOne"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PublicSubnetTwo": {
+            "Description": "Public subnet two",
+            "Value": {
+                "Ref": "PublicSubnetTwo"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PublicSubnetTwo"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PrivateSubnetOne": {
+            "Description": "Private subnet one",
+            "Value": {
+                "Ref": "PrivateSubnetOne"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PrivateSubnetOne"
+                        ]
+                    ]
+                }
+            }
+        },
+        "PrivateSubnetTwo": {
+            "Description": "Private subnet two",
+            "Value": {
+                "Ref": "PrivateSubnetTwo"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "PrivateSubnetTwo"
+                        ]
+                    ]
+                }
+            }
+        },
+        "FargateContainerSecurityGroup": {
+            "Description": "A security group used to allow Fargate containers to receive traffic",
+            "Value": {
+                "Ref": "FargateContainerSecurityGroup"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "FargateContainerSecurityGroup"
+                        ]
+                    ]
+                }
+            }
+        }
+    }
+}

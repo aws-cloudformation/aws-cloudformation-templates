@@ -1,0 +1,158 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This templates creates a VPC Peering connection. (Requester Account)",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "VPCID"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "VPC Peering Configuration"
+                    },
+                    "Parameters": [
+                        "PeerName",
+                        "PeerOwnerId",
+                        "PeerRoleARN",
+                        "PeerVPCID"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "PeerName": {
+                    "default": "Peer Name"
+                },
+                "PeerOwnerId": {
+                    "default": "Peer Owner ID"
+                },
+                "PeerRoleARN": {
+                    "default": "Peer Role ARN"
+                },
+                "PeerVPCID": {
+                    "default": "Peer VPC ID"
+                },
+                "VPCID": {
+                    "default": "VPC ID"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "PeerName": {
+            "Description": "Name of the VPC Peer",
+            "Type": "String",
+            "MaxLength": 255
+        },
+        "PeerOwnerId": {
+            "Description": "AWS account ID of the owner of the accepter VPC",
+            "Type": "String",
+            "AllowedPattern": "^\\d{12}$",
+            "ConstraintDescription": "Must be 12 digits."
+        },
+        "PeerRoleARN": {
+            "Description": "ARN of the VPC peer role for the peering connection in another AWS account. Required when you are peering a VPC in a different AWS account.",
+            "Type": "String",
+            "AllowedPattern": "^arn:(aws[a-zA-Z-]*)?:iam::\\d{12}:role\\/([\\w+=,.@-]*\\/)*[\\w+=,.@-]+"
+        },
+        "PeerVPCID": {
+            "Description": "ID of the VPC with which you are creating the VPC peering connection",
+            "Type": "String",
+            "AllowedPattern": "^vpc-[0-9a-f]{17}$",
+            "ConstraintDescription": "Must have a prefix of \"vpc-\". Followed by 17 characters (numbers, letters \"a-f\")"
+        },
+        "VPCID": {
+            "Description": "ID of the VPC",
+            "Type": "AWS::EC2::VPC::Id"
+        }
+    },
+    "Rules": {
+        "PeerRoleValidation": {
+            "RuleCondition": {
+                "Fn::Equals": [
+                    {
+                        "Ref": "PeerRoleARN"
+                    },
+                    ""
+                ]
+            },
+            "Assertions": [
+                {
+                    "AssetDescription": "ARN of the VPC peer role is required when you are peering a VPC in a different AWS account.",
+                    "Assert": {
+                        "Fn::Equals": [
+                            {
+                                "Ref": "PeerOwnerId"
+                            },
+                            {
+                                "Ref": "AWS::AccountId"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    "Conditions": {
+        "PeerRoleCondition": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "PeerRoleARN"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "VPCPeeringConnection": {
+            "Type": "AWS::EC2::VPCPeeringConnection",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPCID"
+                },
+                "PeerVpcId": {
+                    "Ref": "PeerVPCID"
+                },
+                "PeerOwnerId": {
+                    "Ref": "PeerOwnerId"
+                },
+                "PeerRoleArn": {
+                    "Fn::If": [
+                        "PeerRoleCondition",
+                        {
+                            "Ref": "PeerRoleARN"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "PeerName"
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "VPCPeeringConnectionId": {
+            "Description": "VPC Peering Connection ID",
+            "Value": {
+                "Ref": "VPCPeeringConnection"
+            }
+        }
+    }
+}

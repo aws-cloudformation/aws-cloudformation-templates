@@ -1,0 +1,17 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Test our custom resource",
+    "Resources": {
+        "KMSPolicyUpdates": {
+            "Type": "Custom::KMSKeyPolicyUpdater",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::ImportValue": "KMSKeyPolicyUpdater"
+                },
+                "kms-key-id-arn": "arn:aws:kms:us-west-2:012345678901:key/0000AAAA-BB11-CC22-DD33-EEEEEE444444",
+                "iam-principal-arn": "arn:aws:iam::012345678901:role/MyRoleName",
+                "actions-csv": "Encrypt,Decrypt,Generate*,Get*,List*,ReEncrypt*"
+            }
+        }
+    }
+}

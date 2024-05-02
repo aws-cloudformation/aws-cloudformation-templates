@@ -12,19 +12,31 @@
         }
     },
     "Resources": {
-        "S3BUCKET": {
+        "Bucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
                 "BucketName": {
                     "Ref": "BucketName"
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
                 }
             }
         },
-        "S3BUCKETPOL": {
+        "BucketPolicy": {
             "Type": "AWS::S3::BucketPolicy",
             "Properties": {
                 "Bucket": {
-                    "Ref": "S3BUCKET"
+                    "Ref": "Bucket"
                 },
                 "PolicyDocument": {
                     "Id": "CrossAccessPolicy",
@@ -35,21 +47,14 @@
                             "Action": "s3:ListBucket",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BUCKET}"
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${Bucket}"
                             },
                             "Principal": {
-                                "AWS": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:iam::",
-                                            {
-                                                "Ref": "PublisherAccountID"
-                                            },
-                                            ":root"
-                                        ]
-                                    ]
-                                }
+                                "AWS": [
+                                    {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${PublisherAccountID}:root"
+                                    }
+                                ]
                             }
                         },
                         {
@@ -57,20 +62,27 @@
                             "Action": "s3:GetObject",
                             "Effect": "Allow",
                             "Resource": {
-                                "Fn::Sub": "arn${AWS::Partition}s3:::${S3BUCKET}/*"
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${Bucket}/*"
                             },
                             "Principal": {
-                                "AWS": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:iam::",
-                                            {
-                                                "Ref": "PublisherAccountID"
-                                            },
-                                            ":root"
-                                        ]
-                                    ]
+                                "AWS": [
+                                    {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${PublisherAccountID}:root"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "Sid": "HttpsOnly",
+                            "Action": "*",
+                            "Effect": "Deny",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${BucketName}/*"
+                            },
+                            "Principal": "*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": "false"
                                 }
                             }
                         }
@@ -83,13 +95,13 @@
         "Bucket": {
             "Description": "S3 Bucket Name",
             "Value": {
-                "Ref": "S3BUCKET"
+                "Ref": "Bucket"
             }
         },
         "BucketPolicy": {
             "Description": "S3 Bucket Policy Name",
             "Value": {
-                "Ref": "S3BUCKETPOL"
+                "Ref": "BucketPolicy"
             }
         }
     }

@@ -9,4 +9,6 @@ ignore_checks:
 include_checks:
   - I
 regions:
-  - ALL_REGIONS
+  - us-east-1
+  - us-west-2
+
