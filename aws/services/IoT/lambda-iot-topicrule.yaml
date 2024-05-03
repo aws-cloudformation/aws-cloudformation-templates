@@ -16,18 +16,18 @@ Resources:
           - Action: iot:Connect
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:client/*
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:client/*
           - Action: iot:*
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*
           - Action: iot:Subscribe
             Effect: Allow
             Resource:
-              - !Sub arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*
+              - !Sub arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*
         Version: "2012-10-17"
 
   OpenIoTStarPolicy:
@@ -66,13 +66,17 @@ Resources:
           - Lambda:
               FunctionArn: !GetAtt MyLambda.Arn
         AwsIotSqlVersion: "2016-03-23"
-        Sql: !Sub ' SELECT * FROM ''topic_2'''
+        Sql: ' SELECT * FROM ''topic_2'''
         RuleDisabled: false
 
   MyLambda:
     Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
-      Runtime: nodejs10.x
+      Runtime: nodejs20.x
       Handler: index.handler
       Code:
         ZipFile: |
@@ -107,12 +111,12 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*
 
   MyLambdaPermission:
     Type: AWS::Lambda::Permission

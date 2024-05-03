@@ -96,7 +96,11 @@
                             "Fn::Join": [
                                 ":",
                                 [
-                                    "arn:aws:iot",
+                                    "arn:",
+                                    {
+                                        "Ref": "AWS::Partition"
+                                    },
+                                    ":iot",
                                     {
                                         "Ref": "AWS::Region"
                                     },
@@ -129,7 +133,11 @@
                             "Fn::Join": [
                                 ":",
                                 [
-                                    "arn:aws:iot",
+                                    "arn:",
+                                    {
+                                        "Ref": "AWS::Partition"
+                                    },
+                                    ":iot",
                                     {
                                         "Ref": "AWS::Region"
                                     },
@@ -277,6 +285,13 @@
         },
         "GGSampleFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "FunctionName": {
                     "Fn::Join": [
@@ -291,7 +306,7 @@
                 },
                 "Description": "Long running lambda that provides telemetry and pub/sub echo",
                 "Handler": "index.function_handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.12",
                 "Role": {
                     "Fn::GetAtt": [
                         "LambdaExecutionRole",
@@ -388,6 +403,13 @@
         },
         "InstanceSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "INCOMING_SSH_DISABLED"
+                    ]
+                }
+            },
             "Properties": {
                 "GroupDescription": "Allow inbound SSH access",
                 "VpcId": {
@@ -449,10 +471,9 @@
                     "Ref": "SubnetAPublic"
                 },
                 "UserData": {
-                    "Fn::Base64": {
-                        "Fn::Sub": "#!/bin/bash\nyum -y install python3-pip\npip3 install greengrasssdk\nadduser --system ggc_user\ngroupadd --system ggc_group\n\n# https://docs.aws.amazon.com/greengrass/latest/developerguide/what-is-gg.html#gg-core-download-tab\ncurl -O https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.1/greengrass-linux-x86-64-1.9.1.tar.gz\ntar xf greengrass-linux-x86*.gz -C /\necho -n \"${IoTThing.certificatePem}\" > /greengrass/certs/${IoTThing.certificateId}.pem\necho -n \"${IoTThing.privateKey}\" > /greengrass/certs/${IoTThing.certificateId}.key\ncd /greengrass/config\n# Create Greengrass config file from inputs and parameters\n# Can be enhanced to manage complete installation of Greengrass and credentials\ncat <<EOT > config.json          \n{\n  \"coreThing\" : {\n    \"caPath\" : \"root.ca.pem\",\n    \"certPath\" : \"${IoTThing.certificateId}.pem\",\n    \"keyPath\" : \"${IoTThing.certificateId}.key\",\n    \"thingArn\" : \"arn:aws:iot:${AWS::Region}:${AWS::AccountId}:thing/${CoreName}_Core\",\n    \"iotHost\" : \"${IoTThing.iotEndpoint}\",\n    \"ggHost\" : \"greengrass-ats.iot.${AWS::Region}.amazonaws.com\"\n  },\n  \"runtime\" : {\n    \"cgroup\" : {\n      \"useSystemd\" : \"yes\"\n    }\n  },\n  \"managedRespawn\" : false,\n  \"crypto\" : {\n    \"principals\" : {\n      \"SecretsManager\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\"\n      },\n      \"IoTCertificate\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\",\n        \"certificatePath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.pem\"\n      }\n    },\n    \"caPath\" : \"file:///greengrass/certs/root.ca.pem\"\n  }\n}\nEOT\n\ncd /greengrass/certs/\ncurl -o root.ca.pem https://www.amazontrust.com/repository/AmazonRootCA1.pem\ncd /tmp\n# Create Greengrass systemd file - thanks to: https://gist.github.com/matthewberryman/fa21ca796c3a2e0dfe8224934b7b055c\ncat <<EOT > greengrass.service\n[Unit]\nDescription=greengrass daemon\nAfter=network.target\n\n[Service]\nExecStart=/greengrass/ggc/core/greengrassd start\nType=simple\nRestartSec=2\nRestart=always\nUser=root\nPIDFile=/var/run/greengrassd.pid\n\n[Install]\nWantedBy=multi-user.target\nEOT\ncp greengrass.service /etc/systemd/system\nsystemctl enable greengrass.service\nreboot\n"
-                    }
-                }
+                    "Fn::Base64": null
+                },
+                "Fn::Sub": "#!/bin/bash\nyum -y install python3-pip\npip3 install greengrasssdk\nadduser --system ggc_user\ngroupadd --system ggc_group\n\n# https://docs.aws.amazon.com/greengrass/latest/developerguide/what-is-gg.html#gg-core-download-tab\ncurl -O https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.1/greengrass-linux-x86-64-1.9.1.tar.gz\ntar xf greengrass-linux-x86*.gz -C /\necho -n \"${IoTThing.certificatePem}\" > /greengrass/certs/${IoTThing.certificateId}.pem\necho -n \"${IoTThing.privateKey}\" > /greengrass/certs/${IoTThing.certificateId}.key\ncd /greengrass/config\n# Create Greengrass config file from inputs and parameters\n# Can be enhanced to manage complete installation of Greengrass and credentials\ncat <<EOT > config.json          \n{\n  \"coreThing\" : {\n    \"caPath\" : \"root.ca.pem\",\n    \"certPath\" : \"${IoTThing.certificateId}.pem\",\n    \"keyPath\" : \"${IoTThing.certificateId}.key\",\n    \"thingArn\" : \"arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:thing/${CoreName}_Core\",\n    \"iotHost\" : \"${IoTThing.iotEndpoint}\",\n    \"ggHost\" : \"greengrass-ats.iot.${AWS::Region}.amazonaws.com\"\n  },\n  \"runtime\" : {\n    \"cgroup\" : {\n      \"useSystemd\" : \"yes\"\n    }\n  },\n  \"managedRespawn\" : false,\n  \"crypto\" : {\n    \"principals\" : {\n      \"SecretsManager\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\"\n      },\n      \"IoTCertificate\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\",\n        \"certificatePath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.pem\"\n      }\n    },\n    \"caPath\" : \"file:///greengrass/certs/root.ca.pem\"\n  }\n}\nEOT\n\ncd /greengrass/certs/\ncurl -o root.ca.pem https://www.amazontrust.com/repository/AmazonRootCA1.pem\ncd /tmp\n# Create Greengrass systemd file - thanks to: https://gist.github.com/matthewberryman/fa21ca796c3a2e0dfe8224934b7b055c\ncat <<EOT > greengrass.service\n[Unit]\nDescription=greengrass daemon\nAfter=network.target\n\n[Service]\nExecStart=/greengrass/ggc/core/greengrassd start\nType=simple\nRestartSec=2\nRestart=always\nUser=root\nPIDFile=/var/run/greengrassd.pid\n\n[Install]\nWantedBy=multi-user.target\nEOT\ncp greengrass.service /etc/systemd/system\nsystemctl enable greengrass.service\nreboot\n"
             }
         },
         "IoTThing": {
@@ -479,10 +500,17 @@
         },
         "CreateThingFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "Create thing, certificate, and policy, return cert and private key",
                 "Handler": "index.handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.12",
                 "Role": {
                     "Fn::GetAtt": [
                         "LambdaExecutionRole",
@@ -523,10 +551,17 @@
         },
         "GroupDeploymentResetFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "Resets any deployments during stack delete and manages Greengrass service role needs",
                 "Handler": "index.handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.12",
                 "Role": {
                     "Fn::GetAtt": [
                         "LambdaExecutionRole",
@@ -542,7 +577,9 @@
                     }
                 },
                 "Code": {
-                    "ZipFile": "import os\nimport sys\nimport json\nimport logging\nimport cfnresponse\nimport boto3\nfrom botocore.exceptions import ClientError\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\nc = boto3.client('greengrass')\niam = boto3.client('iam')\nrole_name = 'greengrass_cfn_{}_ServiceRole'.format(os.environ['STACK_NAME'])\n\ndef find_group(thingName):\n    response_auth = ''\n\n    response = c.list_groups()\n    for group in response['Groups']:\n        thingfound = False\n        group_version = c.get_group_version(\n            GroupId=group['Id'],\n            GroupVersionId=group['LatestVersion']\n        )\n        \n        core_arn = group_version['Definition'].get('CoreDefinitionVersionArn', '')\n        if core_arn:\n            core_id = core_arn[core_arn.index('/cores/')+7:core_arn.index('/versions/')]\n            core_version_id = core_arn[core_arn.index('/versions/')+10:len(core_arn)]\n            thingfound = False\n            response_core_version = c.get_core_definition_version(\n                CoreDefinitionId=core_id,\n                CoreDefinitionVersionId=core_version_id\n            )\n            if 'Cores' in response_core_version['Definition']:\n                for thing_arn in response_core_version['Definition']['Cores']:\n                    if thingName == thing_arn['ThingArn'].split('/')[1]:\n                        thingfound = True\n                        break\n        if(thingfound):\n            logger.info('found thing: %s, group id is: %s' % (thingName, group['Id']))\n            response_auth = group['Id']\n            return(response_auth)\n\n\ndef manage_greengrass_role(cmd):\n    if cmd == 'CREATE':\n        r = iam.create_role(\n            RoleName=role_name,\n            AssumeRolePolicyDocument='{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Service\": \"greengrass.amazonaws.com\"},\"Action\": \"sts:AssumeRole\"}]}',\n            Description='Role for CloudFormation blog post',\n        )\n        role_arn = r['Role']['Arn']\n        iam.attach_role_policy(\n            RoleName=role_name,\n            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy'\n        )\n        c.associate_service_role_to_account(RoleArn=role_arn)\n        logger.info('Created and associated role {}'.format(role_name))\n    else:\n        try:\n            r = iam.get_role(RoleName=role_name)\n            role_arn = r['Role']['Arn']\n            c.disassociate_service_role_from_account()\n            iam.delete_role(RoleName=role_name)\n            logger.info('Disassociated and deleted role {}'.format(role_name))\n        except ClientError:\n            return\n\n\ndef handler(event, context):\n    responseData = {}\n    try:\n        logger.info('Received event: {}'.format(json.dumps(event)))\n        result = cfnresponse.FAILED\n        thingName=event['ResourceProperties']['ThingName']\n        if event['RequestType'] == 'Create':\n            try:\n                c.get_service_role_for_account()\n                result = cfnresponse.SUCCESS\n            except ClientError as e:\n                manage_greengrass_role('CREATE')\n                logger.info('Greengrass service role created')\n                result = cfnresponse.SUCCESS\n        elif event['RequestType'] == 'Delete':\n            group_id = find_group(thingName)\n            logger.info('Group id to delete: %s' % group_id)\n            if group_id:\n                c.reset_deployments(\n                    Force=True,\n                    GroupId=group_id\n                )\n                result = cfnresponse.SUCCESS\n                logger.info('Forced reset of Greengrass deployment')\n                manage_greengrass_role('DELETE')\n            else:\n                logger.error('No group Id for thing: %s found' % thingName)\n    except ClientError as e:\n        logger.error('Error: %s' % e)\n        result = cfnresponse.FAILED\n    logger.info('Returning response of: %s, with result of: %s' % (result, responseData))\n    sys.stdout.flush()\n    cfnresponse.send(event, context, result, responseData)\n"
+                    "ZipFile": {
+                        "Rain::Embed": "reset_function.py"
+                    }
                 }
             }
         },
@@ -562,10 +599,17 @@
         },
         "InstanceAZFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "Queries account and region for supported AZ",
                 "Handler": "index.handler",
-                "Runtime": "python3.7",
+                "Runtime": "python3.12",
                 "Role": {
                     "Fn::GetAtt": [
                         "LambdaExecutionRole",
@@ -606,7 +650,9 @@
                                         "logs:CreateLogStream",
                                         "logs:PutLogEvents"
                                     ],
-                                    "Resource": "arn:aws:logs:*:*:*"
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                                    }
                                 },
                                 {
                                     "Effect": "Allow",
@@ -639,20 +685,7 @@
                                         "iam:PassRole"
                                     ],
                                     "Resource": {
-                                        "Fn::Join": [
-                                            "",
-                                            [
-                                                "arn:aws:iam::",
-                                                {
-                                                    "Ref": "AWS::AccountId"
-                                                },
-                                                ":role/greengrass_cfn_",
-                                                {
-                                                    "Ref": "AWS::StackName"
-                                                },
-                                                "_ServiceRole"
-                                            ]
-                                        ]
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/greengrass_cfn_${AWS::StackName}_ServiceRole"
                                     }
                                 }
                             ]
@@ -689,7 +722,9 @@
                                         "logs:CreateLogStream",
                                         "logs:PutLogEvents"
                                     ],
-                                    "Resource": "arn:aws:logs:*:*:*"
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                                    }
                                 },
                                 {
                                     "Effect": "Allow",

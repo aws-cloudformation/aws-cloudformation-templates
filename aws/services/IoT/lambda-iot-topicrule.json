@@ -18,7 +18,7 @@
                             "Effect": "Allow",
                             "Resource": [
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:client/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:client/*"
                                 }
                             ]
                         },
@@ -27,16 +27,16 @@
                             "Effect": "Allow",
                             "Resource": [
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}"
                                 },
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1"
                                 },
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2"
                                 },
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*"
                                 }
                             ]
                         },
@@ -45,7 +45,7 @@
                             "Effect": "Allow",
                             "Resource": [
                                 {
-                                    "Fn::Sub": "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*"
                                 }
                             ]
                         }
@@ -119,17 +119,22 @@
                         }
                     ],
                     "AwsIotSqlVersion": "2016-03-23",
-                    "Sql": {
-                        "Fn::Sub": " SELECT * FROM 'topic_2'"
-                    },
+                    "Sql": " SELECT * FROM 'topic_2'",
                     "RuleDisabled": false
                 }
             }
         },
         "MyLambda": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
-                "Runtime": "nodejs10.x",
+                "Runtime": "nodejs20.x",
                 "Handler": "index.handler",
                 "Code": {
                     "ZipFile": "exports.handler = async (event) => { console.log(event); return {'statusCode': 200, 'body': \"OK\"}; }\n"
@@ -188,7 +193,7 @@
                                         "logs:CreateLogGroup"
                                     ],
                                     "Resource": {
-                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
                                     }
                                 },
                                 {
@@ -198,7 +203,7 @@
                                         "logs:PutLogEvents"
                                     ],
                                     "Resource": {
-                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*"
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*"
                                     }
                                 }
                             ]

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+#
+# This script runs all tests. 
+#
+# It formats YAML templates using rain, creates a JSON version, lints, 
+# runs a basic set of Guard rules, and runs pylint on function code.
 
 set -eou pipefail
 
@@ -12,7 +17,7 @@ echo "Generating JSON files based on YAML..."
 ${SCRIPT_DIR}/create-json-all.sh
 
 echo "Linting with config file ${CONFIG_FILE}"
-cfn-lint --config-file ${CONFIG_FILE} **/*.yaml
+find . -name "*.yaml" | grep -v "\.env" | xargs -n 1 ${SCRIPT_DIR}/lint-single.sh
 
 echo "Guarding..."
 cfn-guard validate --data . \
@@ -37,6 +42,8 @@ then
     pylint $RCFILE $MACROS/S3Objects/lambda/*.py
     pylint $RCFILE $MACROS/StackMetrics/lambda/*.py
     pylint $RCFILE $MACROS/StringFunctions/*.py
+
+    pylint $RCFILE aws/services/IoT/reset_function.py
 fi
 
 echo "Success"
