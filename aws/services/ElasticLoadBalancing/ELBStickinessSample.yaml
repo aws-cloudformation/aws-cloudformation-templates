@@ -79,6 +79,9 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
+  SubnetId:
+    Type: String
+
 Mappings:
   Region2Examples:
     us-east-1:
@@ -360,6 +363,7 @@ Resources:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
     Properties:
+      SubnetId: !Ref SubnetId
       SecurityGroups:
         - !Ref InstanceSecurityGroup
       KeyName: !Ref KeyName
@@ -397,6 +401,7 @@ Resources:
         Timeout: PT15M
     Type: AWS::EC2::Instance
     Properties:
+      SubnetId: !Ref SubnetId
       SecurityGroups:
         - !Ref InstanceSecurityGroup
       KeyName: !Ref KeyName

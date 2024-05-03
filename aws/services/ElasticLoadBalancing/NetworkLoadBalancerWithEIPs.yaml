@@ -29,12 +29,12 @@ Resources:
   EIP1:
     Type: AWS::EC2::EIP
     Properties:
-      Domain: VPC
+      Domain: vpc
 
   EIP2:
     Type: AWS::EC2::EIP
     Properties:
-      Domain: VPC
+      Domain: vpc
 
   loadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
