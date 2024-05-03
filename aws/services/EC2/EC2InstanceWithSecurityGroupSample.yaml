@@ -62,7 +62,7 @@ Parameters:
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
-    Default: 0.0.0.0/0
+    Default: 192.168.1.0/0
     MinLength: 9
     MaxLength: 18
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
@@ -72,11 +72,17 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
+      SubnetId: !Select
+        - 0
+        - !Ref Subnets
       SecurityGroups:
         - !Ref InstanceSecurityGroup
       KeyName: !Ref KeyName
@@ -84,6 +90,10 @@ Resources:
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      guard:
+        SuppressedRules:
+          - INCOMING_SSH_DISABLED
     Properties:
       GroupDescription: Enable SSH access via port 22
       SecurityGroupIngress:
