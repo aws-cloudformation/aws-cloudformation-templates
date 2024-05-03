@@ -297,8 +297,8 @@ Resources:
           - AWSInstanceType2Arch
           - !Ref InstanceType
           - Arch
-      UserData: !Base64 
-        !Sub |
+      UserData: !Base64
+        Fn::Sub: |
           #!/bin/bash -xe
           sudo apt-get update -y
           sudo apt-get -y install python3-pip

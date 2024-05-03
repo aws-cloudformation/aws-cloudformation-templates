@@ -301,22 +301,7 @@
                         "files": {
                             "/etc/cfn/cfn-hup.conf": {
                                 "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[main]\n",
-                                            "stack=",
-                                            {
-                                                "Ref": "AWS::StackId"
-                                            },
-                                            "",
-                                            "region=",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ""
-                                        ]
-                                    ]
+                                    "Fn::Sub": "[main]\nstack=${AWS::StackId}\nregion=${AWS::Region}\n"
                                 },
                                 "mode": "000400",
                                 "owner": "root",
@@ -324,48 +309,14 @@
                             },
                             "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
                                 "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[cfn-auto-reloader-hook]\n",
-                                            "triggers=post.update\n",
-                                            "path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init\n",
-                                            "action=/opt/aws/bin/cfn-init -v ",
-                                            "         --stack ",
-                                            {
-                                                "Ref": "AWS::StackName"
-                                            },
-                                            "         --resource EC2Instance ",
-                                            "         --configsets InstallAndRun ",
-                                            "         --region ",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "",
-                                            "runas=root\n"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init\naction=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --configsets InstallAndRun --region ${AWS::Region}\nrunas=root\n"
                                 },
                                 "mode": "000400",
                                 "owner": "root",
                                 "group": "root"
                             },
                             "/lib/systemd/system/cfn-hup.service": {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "[Unit]\n",
-                                            "Description=cfn-hup daemon\n\n",
-                                            "[Service]\n",
-                                            "Type=simple ",
-                                            "ExecStart=/usr/local/bin/cfn-hup ",
-                                            "Restart=always\n\n",
-                                            "[Install]\n",
-                                            "WantedBy=multi-user.target"
-                                        ]
-                                    ]
-                                }
+                                "content": "[Unit]\nDescription=cfn-hup daemon\n[Service]\nType=simple\nExecStart=/usr/local/bin/cfn-hup\nRestart=always\n[Install]\nWantedBy=multi-user.target\n"
                             }
                         },
                         "commands": {
@@ -409,7 +360,9 @@
                     ]
                 },
                 "UserData": {
-                    "Fn::Base64": "\"#!/bin/bash -xe\"\nsudo apt-get update -y\nsudo apt-get -y install python3-pip\nmkdir -p /opt/aws/\nsudo pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\nsudo ln -s /usr/local/init/ubuntu/cfn-hup /etc/init.d/cfn-hup\n/usr/local/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --configsets full_install --region ${AWS::Region}\n/usr/local/bin/cfn-signal -e $?  --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}\n"
+                    "Fn::Base64": {
+                        "Fn::Sub": "#!/bin/bash -xe\nsudo apt-get update -y\nsudo apt-get -y install python3-pip\nmkdir -p /opt/aws/\nsudo pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\nsudo ln -s /usr/local/init/ubuntu/cfn-hup /etc/init.d/cfn-hup\n/usr/local/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --configsets full_install --region ${AWS::Region}\n/usr/local/bin/cfn-signal -e $?  --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}\n"
+                    }
                 }
             }
         },

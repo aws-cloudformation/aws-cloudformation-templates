@@ -227,59 +227,33 @@ Resources:
         install_and_enable_cfn_hup:
           files:
             /etc/cfn/cfn-hup.conf:
-              content: !Join
-                - ""
-                - - |
-                    [main]
-                  - stack=
-                  - !Ref AWS::StackId
-                  - ""
-                  - region=
-                  - !Ref AWS::Region
-                  - ""
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
               mode: "000400"
               owner: root
               group: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
-              content: !Join
-                - ""
-                - - |
-                    [cfn-auto-reloader-hook]
-                  - |
-                    triggers=post.update
-                  - |
-                    path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
-                  - 'action=/opt/aws/bin/cfn-init -v '
-                  - '         --stack '
-                  - !Ref AWS::StackName
-                  - '         --resource EC2Instance '
-                  - '         --configsets InstallAndRun '
-                  - '         --region '
-                  - !Ref AWS::Region
-                  - ""
-                  - |
-                    runas=root
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --configsets InstallAndRun --region ${AWS::Region}
+                runas=root
               mode: "000400"
               owner: root
               group: root
             /lib/systemd/system/cfn-hup.service:
-              content: !Join
-                - ""
-                - - |
-                    [Unit]
-                  - |+
-                    Description=cfn-hup daemon
-
-                  - |
-                    [Service]
-                  - 'Type=simple '
-                  - 'ExecStart=/usr/local/bin/cfn-hup '
-                  - |+
-                    Restart=always
-
-                  - |
-                    [Install]
-                  - WantedBy=multi-user.target
+              content: |
+                [Unit]
+                Description=cfn-hup daemon
+                [Service]
+                Type=simple
+                ExecStart=/usr/local/bin/cfn-hup
+                Restart=always
+                [Install]
+                WantedBy=multi-user.target
           commands:
             01enable_cfn_hup:
               command: systemctl enable cfn-hup.service
@@ -297,8 +271,8 @@ Resources:
           - AWSInstanceType2Arch
           - !Ref InstanceType
           - Arch
-      UserData: !Base64 
-        !Sub |
+      UserData: !Base64
+        Fn::Sub: |
           #!/bin/bash -xe
           sudo apt-get update -y
           sudo apt-get -y install python3-pip
