@@ -11,7 +11,6 @@
                     "Parameters": [
                         "pDomainName",
                         "pMicrosoftADShortName",
-                        "pMicrosoftADPW",
                         "pEdition",
                         "pCreateAlias",
                         "pEnableSingleSignOn"
@@ -34,9 +33,6 @@
                 },
                 "pMicrosoftADShortName": {
                     "default": "Short Name"
-                },
-                "pMicrosoftADPW": {
-                    "default": "Active Directory Admin Password"
                 },
                 "pEdition": {
                     "default": "Edition"
@@ -97,12 +93,6 @@
             ],
             "Default": "false"
         },
-        "pMicrosoftADPW": {
-            "Description": "The password for the default administrative user, Admin.\n",
-            "Type": "String",
-            "Default": "Pass@w0rd",
-            "NoEcho": true
-        },
         "pPrivateSubnet1": {
             "Description": "A subnet within the selected VPC. Each subnet must be in different Availability Zones (AZs). AWS Directory Service creates a directory server and a DNS server in each subnet.\n",
             "Type": "AWS::EC2::Subnet::Id"
@@ -142,9 +132,7 @@
                 "Name": {
                     "Ref": "pDomainName"
                 },
-                "Password": {
-                    "Ref": "pMicrosoftADPW"
-                },
+                "Password": "{{resolve:secretsmanager:microsoft-ad-pw:SecretString:password}}",
                 "ShortName": {
                     "Ref": "pMicrosoftADShortName"
                 },
@@ -175,7 +163,7 @@
             "Description": "DNS IPs of the MS Directory",
             "Value": {
                 "Fn::Select": [
-                    "0",
+                    0,
                     {
                         "Fn::GetAtt": [
                             "rMSDirectory",
@@ -189,7 +177,7 @@
             "Description": "DNS IPs of the MSDirectory",
             "Value": {
                 "Fn::Select": [
-                    "1",
+                    1,
                     {
                         "Fn::GetAtt": [
                             "rMSDirectory",

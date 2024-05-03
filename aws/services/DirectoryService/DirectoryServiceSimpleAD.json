@@ -1,4 +1,5 @@
 {
+    "AWSTemplateFormatVersion": "2010-09-09",
     "Parameters": {
         "DomainName": {
             "Description": "FQDN of the domain for this directory",
@@ -10,15 +11,6 @@
             "Type": "String",
             "Default": "corp"
         },
-        "EnableSingleSignOn": {
-            "Description": "Enable SSO",
-            "Type": "String",
-            "AllowedValues": [
-                "true",
-                "false"
-            ],
-            "Default": "false"
-        },
         "CreateAlias": {
             "Description": "Only required for applications which need a URL to connect to the directory",
             "Type": "String",
@@ -27,12 +19,6 @@
                 "false"
             ],
             "Default": "false"
-        },
-        "SimpleADPW": {
-            "Description": "Domain admin Password",
-            "Type": "String",
-            "Default": "Pass@w0rd",
-            "NoEcho": true
         },
         "PrivateSubnet1": {
             "Description": "Subnet to be used for the Directoty",
@@ -75,9 +61,7 @@
                 "Name": {
                     "Ref": "DomainName"
                 },
-                "Password": {
-                    "Ref": "SimpleADPW"
-                },
+                "Password": "{{resolve:secretsmanager:simple-ad-pw:SecretString:pasword}}",
                 "ShortName": {
                     "Ref": "SimpleADShortName"
                 },
@@ -126,7 +110,7 @@
             "Description": "DNS IPs of the SimpleAD",
             "Value": {
                 "Fn::Select": [
-                    "0",
+                    0,
                     {
                         "Fn::GetAtt": [
                             "SimpleAD",
@@ -140,7 +124,7 @@
             "Description": "DNS IPs of the SimpleAD",
             "Value": {
                 "Fn::Select": [
-                    "1",
+                    1,
                     {
                         "Fn::GetAtt": [
                             "SimpleAD",
