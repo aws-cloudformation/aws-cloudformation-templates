@@ -113,6 +113,7 @@
                         "Name": {
                             "Ref": "ServiceName"
                         },
+                        "Essential": true,
                         "Cpu": {
                             "Ref": "ContainerCpu"
                         },

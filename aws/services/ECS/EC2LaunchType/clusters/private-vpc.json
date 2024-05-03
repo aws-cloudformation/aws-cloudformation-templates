@@ -453,7 +453,7 @@
             },
             "UpdatePolicy": {
                 "AutoScalingReplacingUpdate": {
-                    "WillReplace": "true"
+                    "WillReplace": true
                 }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup",
@@ -469,7 +469,7 @@
                 "LaunchConfigurationName": {
                     "Ref": "ContainerInstances"
                 },
-                "MinSize": "1",
+                "MinSize": 1,
                 "MaxSize": {
                     "Ref": "MaxSize"
                 },

@@ -245,7 +245,7 @@
             },
             "UpdatePolicy": {
                 "AutoScalingReplacingUpdate": {
-                    "WillReplace": "true"
+                    "WillReplace": true
                 }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup",

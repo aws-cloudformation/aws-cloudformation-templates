@@ -75,6 +75,7 @@ Resources:
         - !Ref AWS::NoValue
       ContainerDefinitions:
         - Name: !Ref ServiceName
+          Essential: true
           Cpu: !Ref ContainerCpu
           Memory: !Ref ContainerMemory
           Image: !Ref ImageUrl

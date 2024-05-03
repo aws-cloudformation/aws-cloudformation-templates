@@ -206,7 +206,7 @@ Resources:
         Timeout: PT15M
     UpdatePolicy:
       AutoScalingReplacingUpdate:
-        WillReplace: "true"
+        WillReplace: true
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:

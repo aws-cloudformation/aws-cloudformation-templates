@@ -17,17 +17,17 @@
         "DesiredCapacity": {
             "Description": "Number of instances to launch in your ECS cluster.",
             "Type": "Number",
-            "Default": "1"
+            "Default": 1
         },
         "MaxSize": {
             "Description": "Maximum number of instances that can be launched in your ECS cluster.",
             "Type": "Number",
-            "Default": "1"
+            "Default": 1
         },
         "SchedulerTasksCount": {
             "Description": "Maximum number of Tasks that you want to the Scheduler to run",
             "Type": "Number",
-            "Default": "1"
+            "Default": 1
         },
         "CronOrRate": {
             "Description": "Choose to use a cron expression or a rate expression you want to use.",
@@ -87,46 +87,14 @@
             ],
             "Default": "t2.micro",
             "ConstraintDescription": "Please choose a valid instance type."
-        }
-    },
-    "Mappings": {
-        "AWSRegionToAMI": {
-            "amazon-ecs-optimized": {
-                "amznami": "2017.03.f"
-            },
-            "us-east-1": {
-                "AMIID": "ami-9eb4b1e5"
-            },
-            "us-east-2": {
-                "AMIID": "ami-1c002379"
-            },
-            "us-west-1": {
-                "AMIID": "ami-4a2c192a"
-            },
-            "us-west-2": {
-                "AMIID": "ami-1d668865"
-            },
-            "eu-west-1": {
-                "AMIID": "ami-8fcc32f6"
-            },
-            "eu-west-2": {
-                "AMIID": "ami-cb1101af"
-            },
-            "eu-central-1": {
-                "AMIID": "ami-0460cb6b"
-            },
-            "ap-northeast-1": {
-                "AMIID": "ami-b743bed1"
-            },
-            "ap-southeast-1": {
-                "AMIID": "ami-9d1f7efe"
-            },
-            "ap-southeast-2": {
-                "AMIID": "ami-c1a6bda2"
-            },
-            "ca-central-1": {
-                "AMIID": "ami-b677c9d2"
-            }
+        },
+        "LatestAmiId": {
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+        },
+        "KmsKeyArn": {
+            "Description": "Used to encrypt logs",
+            "Type": "String"
         }
     },
     "Conditions": {
@@ -173,7 +141,7 @@
                 "IpProtocol": "tcp",
                 "FromPort": "22",
                 "ToPort": "22",
-                "CidrIp": "0.0.0.0/0"
+                "CidrIp": "192.168.1.0/0"
             }
         },
         "EcsSecurityGroupALBports": {
@@ -204,10 +172,13 @@
                         ]
                     ]
                 },
-                "RetentionInDays": 14
+                "RetentionInDays": 14,
+                "KmsKeyId": {
+                    "Ref": "KmsKeyArn"
+                }
             }
         },
-        "taskdefinition": {
+        "TaskDefinition": {
             "Type": "AWS::ECS::TaskDefinition",
             "Properties": {
                 "Family": {
@@ -383,7 +354,7 @@
             },
             "UpdatePolicy": {
                 "AutoScalingReplacingUpdate": {
-                    "WillReplace": "true"
+                    "WillReplace": true
                 }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup",
@@ -407,13 +378,7 @@
             "Type": "AWS::AutoScaling::LaunchConfiguration",
             "Properties": {
                 "ImageId": {
-                    "Fn::FindInMap": [
-                        "AWSRegionToAMI",
-                        {
-                            "Ref": "AWS::Region"
-                        },
-                        "AMIID"
-                    ]
+                    "Ref": "LatestAmiId"
                 },
                 "SecurityGroups": [
                     {
@@ -436,7 +401,7 @@
                 }
             }
         },
-        "service": {
+        "Service": {
             "Type": "AWS::ECS::Service",
             "DependsOn": "ALBListener",
             "Properties": {
@@ -457,7 +422,7 @@
                     "Ref": "ECSServiceRole"
                 },
                 "TaskDefinition": {
-                    "Ref": "taskdefinition"
+                    "Ref": "TaskDefinition"
                 }
             }
         },
@@ -498,7 +463,7 @@
                                 "Ref": "SchedulerTasksCount"
                             },
                             "TaskDefinitionArn": {
-                                "Ref": "taskdefinition"
+                                "Ref": "TaskDefinition"
                             }
                         }
                     }
@@ -587,7 +552,7 @@
         },
         "ServiceScalingTarget": {
             "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
-            "DependsOn": "service",
+            "DependsOn": "Service",
             "Properties": {
                 "MaxCapacity": 2,
                 "MinCapacity": 1,
@@ -602,7 +567,7 @@
                             "/",
                             {
                                 "Fn::GetAtt": [
-                                    "service",
+                                    "Service",
                                     "Name"
                                 ]
                             }
@@ -658,7 +623,7 @@
                     {
                         "Name": "ECSService",
                         "Value": {
-                            "Ref": "service"
+                            "Ref": "Service"
                         }
                     }
                 ],
@@ -765,19 +730,19 @@
         }
     },
     "Outputs": {
-        "ecsservice": {
+        "EcsService": {
             "Value": {
-                "Ref": "service"
+                "Ref": "Service"
             }
         },
-        "ecscluster": {
+        "EcsCluster": {
             "Value": {
                 "Ref": "ECSCluster"
             }
         },
-        "ecstaskdef": {
+        "EcsTaskDef": {
             "Value": {
-                "Ref": "taskdefinition"
+                "Ref": "TaskDefinition"
             }
         },
         "ECSALB": {
