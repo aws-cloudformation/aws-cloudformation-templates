@@ -16,7 +16,9 @@
                 "BackupRetentionPeriod": 7,
                 "Engine": "MySQL",
                 "MasterUsername": "myName",
-                "ManageMasterUserPassword": true
+                "ManageMasterUserPassword": true,
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true
             }
         }
     },

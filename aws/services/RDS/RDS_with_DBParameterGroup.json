@@ -52,7 +52,9 @@
                 "ManageMasterUserPassword": true,
                 "DBParameterGroupName": {
                     "Ref": "MyRDSParamGroup"
-                }
+                },
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true
             }
         },
         "MyRDSParamGroup": {

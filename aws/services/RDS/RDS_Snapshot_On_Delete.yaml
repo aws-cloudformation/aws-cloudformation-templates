@@ -18,6 +18,8 @@ Resources:
       Engine: MySQL
       MasterUsername: myName
       ManageMasterUserPassword: true
+      PubliclyAccessible: false
+      StorageEncrypted: true
 
 Outputs:
   JDBCConnectionString:

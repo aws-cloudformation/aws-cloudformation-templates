@@ -49,6 +49,8 @@ Resources:
       MasterUsername: !Ref DBUser
       ManageMasterUserPassword: true
       DBParameterGroupName: !Ref MyRDSParamGroup
+      PubliclyAccessible: false
+      StorageEncrypted: true
 
   MyRDSParamGroup:
     Type: AWS::RDS::DBParameterGroup
