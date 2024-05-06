@@ -8,6 +8,10 @@ Parameters:
 Resources:
   S3TriggerLambdaFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
       Code:
         ZipFile: |
@@ -58,8 +62,25 @@ Resources:
     Type: AWS::S3::Bucket
     DependsOn:
       - LambdaInvokePermission
+    Metadata:
+      Comment: The suppressed guard rules are not vital for this sample but should be considered for production infrastructure
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
     Properties:
       BucketName: !Sub ${NotificationBucket}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:Put
