@@ -23,15 +23,6 @@
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
         },
-        "DBPassword": {
-            "Description": "The database admin account password",
-            "Type": "String",
-            "NoEcho": "true",
-            "MinLength": "1",
-            "MaxLength": "41",
-            "AllowedPattern": "[a-zA-Z0-9]+",
-            "ConstraintDescription": "must contain only alphanumeric characters."
-        },
         "DBAllocatedStorage": {
             "Description": "The size of the database (Gb)",
             "Type": "Number",
@@ -43,24 +34,7 @@
         "DBInstanceClass": {
             "Description": "The database instance type",
             "Type": "String",
-            "AllowedValues": [
-                "db.m5.xlarge",
-                "db.m5.2xlarge",
-                "db.m5.4xlarge",
-                "db.r5.large",
-                "db.r5.xlarge",
-                "db.r5.2xlarge",
-                "db.r5.4xlarge",
-                "db.r5.8xlarge",
-                "db.m5.xlarge",
-                "db.m5.2xlarge",
-                "db.m5.4xlarge",
-                "db.t3.micro",
-                "db.t3.small",
-                "db.t3.medium",
-                "db.t3.large"
-            ],
-            "Default": "db.t3.small",
+            "Default": "db.t3.medium",
             "ConstraintDescription": "must select a valid database instance type."
         },
         "EC2SecurityGroup": {
@@ -92,7 +66,7 @@
         }
     },
     "Conditions": {
-        "Is-EC2-VPC": {
+        "IsEC2VPC": {
             "Fn::Or": [
                 {
                     "Fn::Equals": [
@@ -112,14 +86,7 @@
                 }
             ]
         },
-        "Is-EC2-Classic": {
-            "Fn::Not": [
-                {
-                    "Condition": "Is-EC2-VPC"
-                }
-            ]
-        },
-        "Enable-Read-Replica": {
+        "EnableReadReplica": {
             "Fn::Equals": [
                 {
                     "Ref": "EnableReadReplica"
@@ -144,23 +111,9 @@
                     }
                 ]
             },
-            "Condition": "Is-EC2-VPC"
+            "Condition": "IsEC2VPC"
         },
-        "DBSecurityGroup": {
-            "Type": "AWS::RDS::DBSecurityGroup",
-            "Properties": {
-                "DBSecurityGroupIngress": [
-                    {
-                        "EC2SecurityGroupName": {
-                            "Ref": "EC2SecurityGroup"
-                        }
-                    }
-                ],
-                "GroupDescription": "database access"
-            },
-            "Condition": "Is-EC2-Classic"
-        },
-        "MasterDB": {
+        "MainDB": {
             "DeletionPolicy": "Snapshot",
             "UpdateReplacePolicy": "Snapshot",
             "Type": "AWS::RDS::DBInstance",
@@ -179,12 +132,12 @@
                 "MasterUsername": {
                     "Ref": "DBUser"
                 },
-                "MasterUserPassword": {
-                    "Ref": "DBPassword"
-                },
+                "MasterUserPassword": "{{resolve:secretsmanager:my-db-password}}",
                 "MultiAZ": {
                     "Ref": "MultiAZ"
                 },
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true,
                 "Tags": [
                     {
                         "Key": "Name",
@@ -193,26 +146,13 @@
                 ],
                 "VPCSecurityGroups": {
                     "Fn::If": [
-                        "Is-EC2-VPC",
+                        "IsEC2VPC",
                         [
                             {
                                 "Fn::GetAtt": [
                                     "DBEC2SecurityGroup",
                                     "GroupId"
                                 ]
-                            }
-                        ],
-                        {
-                            "Ref": "AWS::NoValue"
-                        }
-                    ]
-                },
-                "DBSecurityGroups": {
-                    "Fn::If": [
-                        "Is-EC2-Classic",
-                        [
-                            {
-                                "Ref": "DBSecurityGroup"
                             }
                         ],
                         {
@@ -226,11 +166,20 @@
             "DeletionPolicy": "Retain",
             "UpdateReplacePolicy": "Retain",
             "Type": "AWS::RDS::DBInstance",
+            "Metadata": {
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "I3013"
+                        ]
+                    }
+                }
+            },
             "Properties": {
-                "BackupRetentionPeriod": 7,
                 "SourceDBInstanceIdentifier": {
-                    "Ref": "MasterDB"
+                    "Ref": "MainDB"
                 },
+                "PubliclyAccessible": false,
                 "DBInstanceClass": {
                     "Ref": "DBInstanceClass"
                 },
@@ -241,7 +190,7 @@
                     }
                 ]
             },
-            "Condition": "Enable-Read-Replica"
+            "Condition": "EnableReadReplica"
         }
     },
     "Outputs": {
@@ -249,13 +198,13 @@
             "Description": "Platform in which this stack is deployed",
             "Value": {
                 "Fn::If": [
-                    "Is-EC2-VPC",
-                    "EC2-VPC",
-                    "EC2-Classic"
+                    "IsEC2VPC",
+                    "true",
+                    "EC2VPC"
                 ]
             }
         },
-        "MasterJDBCConnectionString": {
+        "JDBCConnectionString": {
             "Description": "JDBC connection string for the master database",
             "Value": {
                 "Fn::Join": [
@@ -264,14 +213,14 @@
                         "jdbc:mysql://",
                         {
                             "Fn::GetAtt": [
-                                "MasterDB",
+                                "MainDB",
                                 "Endpoint.Address"
                             ]
                         },
                         ":",
                         {
                             "Fn::GetAtt": [
-                                "MasterDB",
+                                "MainDB",
                                 "Endpoint.Port"
                             ]
                         },
@@ -310,7 +259,7 @@
                     ]
                 ]
             },
-            "Condition": "Enable-Read-Replica"
+            "Condition": "EnableReadReplica"
         }
     }
 }

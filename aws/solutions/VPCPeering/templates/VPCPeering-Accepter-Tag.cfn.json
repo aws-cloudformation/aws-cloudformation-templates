@@ -1,0 +1,293 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template uses a custom resource Lambda to apply a Name tag to the VPC peering connection on the Accepter Account.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "VPC Peering Configuration"
+                    },
+                    "Parameters": [
+                        "PeerName",
+                        "VPCPeeringConnectionId"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Lambda Function"
+                    },
+                    "Parameters": [
+                        "LambdaLogLevel",
+                        "LambdaFunctionName",
+                        "LambdaLogsLogGroupRetention",
+                        "LambdaLogsCloudWatchKMSKey"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "LambdaFunctionName": {
+                    "default": "Lambda Function Name"
+                },
+                "LambdaLogLevel": {
+                    "default": "Lambda Log Level"
+                },
+                "LambdaLogsCloudWatchKMSKey": {
+                    "default": "CloudWatch Logs KMS Key for Lambda logs"
+                },
+                "LambdaLogsLogGroupRetention": {
+                    "default": "Lambda Log Group Retention"
+                },
+                "PeerName": {
+                    "default": "Peer Name"
+                },
+                "VPCPeeringConnectionId": {
+                    "default": "VPC Peering Connection ID"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "LambdaFunctionName": {
+            "Description": "Lambda Function Name for Custom Resource",
+            "Type": "String",
+            "Default": "CR-TagVpcPeeringConnections",
+            "AllowedPattern": "^[\\w-]{1,64}$",
+            "ConstraintDescription": "Max 64 alphanumeric characters. Also special characters supported [_, -]"
+        },
+        "LambdaLogLevel": {
+            "Description": "Lambda logging level",
+            "Type": "String",
+            "AllowedValues": [
+                "INFO",
+                "DEBUG"
+            ],
+            "Default": "INFO"
+        },
+        "LambdaLogsCloudWatchKMSKey": {
+            "Description": "(Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side encryption keys.",
+            "Type": "String",
+            "AllowedPattern": "^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\\d{12}:key\\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+            "ConstraintDescription": "Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+        },
+        "LambdaLogsLogGroupRetention": {
+            "Description": "Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs",
+            "Type": "String",
+            "AllowedValues": [
+                1,
+                3,
+                5,
+                7,
+                14,
+                30,
+                60,
+                90,
+                120,
+                150,
+                180,
+                365,
+                400,
+                545,
+                731,
+                1827,
+                3653
+            ],
+            "Default": 14
+        },
+        "PeerName": {
+            "Description": "Name of the VPC Peer",
+            "Type": "String",
+            "MaxLength": 255
+        },
+        "VPCPeeringConnectionId": {
+            "Description": "ID of the VPC Peering Connection",
+            "Type": "String",
+            "AllowedPattern": "^pcx-[0-9a-f]{17}$",
+            "ConstraintDescription": "Must have a prefix of \"pcx-\". Followed by 17 characters (numbers, letters \"a-f\")"
+        }
+    },
+    "Conditions": {
+        "LambdaLogsCloudWatchKMSKeyCondition": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "LambdaLogsCloudWatchKMSKey"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "TagVpcPeeringConnectionsLambdaLogsLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/lambda/${LambdaFunctionName}"
+                },
+                "RetentionInDays": {
+                    "Ref": "LambdaLogsLogGroupRetention"
+                },
+                "KmsKeyId": {
+                    "Fn::If": [
+                        "LambdaLogsCloudWatchKMSKeyCondition",
+                        {
+                            "Ref": "LambdaLogsCloudWatchKMSKey"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                }
+            }
+        },
+        "TagVpcPeeringConnectionsLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W28",
+                            "reason": "The role name is defined to identify automation resources"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "${LambdaFunctionName}-LambdaRole"
+                },
+                "Description": "Rights to Tag VPC Peering Connection",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Tags": [
+                    {
+                        "Key": "StackName",
+                        "Value": {
+                            "Ref": "AWS::StackName"
+                        }
+                    }
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "CloudWatchLogGroup",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "CreateLogGroup",
+                                    "Effect": "Allow",
+                                    "Action": "logs:CreateLogGroup",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TagVpcPeeringConnectionsLambdaLogsLogGroup}"
+                                    }
+                                },
+                                {
+                                    "Sid": "CreateLogStreamAndEvents",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TagVpcPeeringConnectionsLambdaLogsLogGroup}:log-stream:*"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "TagVpcPeeringConnections",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "Tagging",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:CreateTags",
+                                        "ec2:DeleteTags"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc-peering-connection/*"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "TagVpcPeeringConnectionsLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W58",
+                            "reason": "Permissions to write to CloudWatch Logs provided by the attached IAM role."
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "LambdaFunctionName"
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "TagVpcPeeringConnectionsLambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.8",
+                "MemorySize": 128,
+                "Timeout": 120,
+                "Environment": {
+                    "Variables": {
+                        "LOG_LEVEL": {
+                            "Ref": "LambdaLogLevel"
+                        }
+                    }
+                },
+                "Code": {
+                    "ZipFile": "import cfnresponse, json, os, logging, boto3\n\nLOGGER = logging.getLogger()\nLOGGER.setLevel(logging.INFO)\n\ntry:\n  logging.getLogger(\"boto3\").setLevel(logging.CRITICAL)\n\n  # Process Environment Variables\n  LOGGER.setLevel(os.environ.get(\"LOG_LEVEL\", logging.ERROR))\n\n  ec2_client = boto3.client(\"ec2\")\nexcept Exception as error:\n  LOGGER.error(error)\n  cfnresponse.send(event, context, cfnresponse.FAILED, {})\n  raise\n\n\ndef apply_name_tag(resource, name):\n  return ec2_client.create_tags(Resources=[resource], Tags=[{\"Key\": \"Name\", \"Value\": name}])\n\n\ndef delete_name_tag(resource):\n  return ec2_client.delete_tags(Resources=[resource], Tags=[{\"Key\": \"Name\"}])\n\n\ndef handler(event, context):\n  try:\n    LOGGER.info(f\"REQUEST RECEIVED: {json.dumps(event, default=str)}\")\n    response_data = {}\n    physical_resource_id = event.get(\"PhysicalResourceId\")\n    resource = event[\"ResourceProperties\"].get(\"Resource\")\n    name = event[\"ResourceProperties\"].get(\"Name\")\n\n    if event.get(\"RequestType\") in [\"Create\", \"Update\"]:\n      response = apply_name_tag(resource, name)\n      LOGGER.info(f\"response = {json.dumps(response, default=str)}\")\n    if event.get(\"RequestType\") == \"Delete\":\n      response = delete_name_tag(resource)\n      LOGGER.info(f\"response = {json.dumps(response, default=str)}\")\n\n    LOGGER.info(\"Sending Custom Resource Response\")\n    cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)\n    return\n  except Exception as error:\n    LOGGER.error(error)\n    cfnresponse.send(event, context, cfnresponse.FAILED, {})\n    return\n"
+                }
+            }
+        },
+        "TagVpcPeeringConnectionsResource": {
+            "Type": "Custom::TagVpcPeeringConnection",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "TagVpcPeeringConnectionsLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "Resource": {
+                    "Ref": "VPCPeeringConnectionId"
+                },
+                "Name": {
+                    "Ref": "PeerName"
+                }
+            },
+            "Version": "1.0"
+        }
+    }
+}

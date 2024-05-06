@@ -1,0 +1,303 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Deploy a service on AWS Fargate, hosted in a private subnet, but accessible via a public load balancer.",
+    "Parameters": {
+        "StackName": {
+            "Description": "The name of the parent Fargate networking stack that you created. Necessary to locate and reference resources created by that stack.",
+            "Type": "String",
+            "Default": "production"
+        },
+        "ServiceName": {
+            "Description": "A name for the service",
+            "Type": "String",
+            "Default": "nginx"
+        },
+        "ImageUrl": {
+            "Description": "The url of a docker image that contains the application process that will handle the traffic for this service",
+            "Type": "String",
+            "Default": "nginx"
+        },
+        "ContainerPort": {
+            "Description": "What port number the application inside the docker container is binding to",
+            "Type": "Number",
+            "Default": 80
+        },
+        "ContainerCpu": {
+            "Description": "How much CPU to give the container. 1024 is 1 CPU",
+            "Type": "Number",
+            "Default": 256
+        },
+        "ContainerMemory": {
+            "Description": "How much memory in megabytes to give the container",
+            "Type": "Number",
+            "Default": 512
+        },
+        "Path": {
+            "Description": "A path on the public load balancer that this service should be connected to. Use * to send all load balancer traffic to this service.",
+            "Type": "String",
+            "Default": "*"
+        },
+        "Priority": {
+            "Description": "The priority for the routing rule added to the load balancer. This only applies if your have multiple services which have been assigned to different paths on the load balancer.",
+            "Type": "Number",
+            "Default": 1
+        },
+        "DesiredCount": {
+            "Description": "How many copies of the service task to run",
+            "Type": "Number",
+            "Default": 2
+        },
+        "Role": {
+            "Description": "(Optional) An IAM role to give the service's containers if the code within needs to access other AWS resources like S3 buckets, DynamoDB tables, etc",
+            "Type": "String",
+            "Default": ""
+        }
+    },
+    "Conditions": {
+        "HasCustomRole": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "Role"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "TaskDefinition": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "Properties": {
+                "Family": {
+                    "Ref": "ServiceName"
+                },
+                "Cpu": {
+                    "Ref": "ContainerCpu"
+                },
+                "Memory": {
+                    "Ref": "ContainerMemory"
+                },
+                "NetworkMode": "awsvpc",
+                "RequiresCompatibilities": [
+                    "FARGATE"
+                ],
+                "ExecutionRoleArn": {
+                    "Fn::ImportValue": {
+                        "Fn::Join": [
+                            ":",
+                            [
+                                {
+                                    "Ref": "StackName"
+                                },
+                                "ECSTaskExecutionRole"
+                            ]
+                        ]
+                    }
+                },
+                "TaskRoleArn": {
+                    "Fn::If": [
+                        "HasCustomRole",
+                        {
+                            "Ref": "Role"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "ContainerDefinitions": [
+                    {
+                        "Name": {
+                            "Ref": "ServiceName"
+                        },
+                        "Essential": true,
+                        "Cpu": {
+                            "Ref": "ContainerCpu"
+                        },
+                        "Memory": {
+                            "Ref": "ContainerMemory"
+                        },
+                        "Image": {
+                            "Ref": "ImageUrl"
+                        },
+                        "PortMappings": [
+                            {
+                                "ContainerPort": {
+                                    "Ref": "ContainerPort"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "Service": {
+            "Type": "AWS::ECS::Service",
+            "DependsOn": "LoadBalancerRule",
+            "Properties": {
+                "ServiceName": {
+                    "Ref": "ServiceName"
+                },
+                "Cluster": {
+                    "Fn::ImportValue": {
+                        "Fn::Join": [
+                            ":",
+                            [
+                                {
+                                    "Ref": "StackName"
+                                },
+                                "ClusterName"
+                            ]
+                        ]
+                    }
+                },
+                "LaunchType": "FARGATE",
+                "DeploymentConfiguration": {
+                    "MaximumPercent": 200,
+                    "MinimumHealthyPercent": 75
+                },
+                "DesiredCount": {
+                    "Ref": "DesiredCount"
+                },
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "AssignPublicIp": "ENABLED",
+                        "SecurityGroups": [
+                            {
+                                "Fn::ImportValue": {
+                                    "Fn::Join": [
+                                        ":",
+                                        [
+                                            {
+                                                "Ref": "StackName"
+                                            },
+                                            "FargateContainerSecurityGroup"
+                                        ]
+                                    ]
+                                }
+                            }
+                        ],
+                        "Subnets": [
+                            {
+                                "Fn::ImportValue": {
+                                    "Fn::Join": [
+                                        ":",
+                                        [
+                                            {
+                                                "Ref": "StackName"
+                                            },
+                                            "PrivateSubnetOne"
+                                        ]
+                                    ]
+                                }
+                            },
+                            {
+                                "Fn::ImportValue": {
+                                    "Fn::Join": [
+                                        ":",
+                                        [
+                                            {
+                                                "Ref": "StackName"
+                                            },
+                                            "PrivateSubnetTwo"
+                                        ]
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                "TaskDefinition": {
+                    "Ref": "TaskDefinition"
+                },
+                "LoadBalancers": [
+                    {
+                        "ContainerName": {
+                            "Ref": "ServiceName"
+                        },
+                        "ContainerPort": {
+                            "Ref": "ContainerPort"
+                        },
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
+                        }
+                    }
+                ]
+            }
+        },
+        "TargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckIntervalSeconds": 6,
+                "HealthCheckPath": "/",
+                "HealthCheckProtocol": "HTTP",
+                "HealthCheckTimeoutSeconds": 5,
+                "HealthyThresholdCount": 2,
+                "TargetType": "ip",
+                "Name": {
+                    "Ref": "ServiceName"
+                },
+                "Port": {
+                    "Ref": "ContainerPort"
+                },
+                "Protocol": "HTTP",
+                "UnhealthyThresholdCount": 2,
+                "VpcId": {
+                    "Fn::ImportValue": {
+                        "Fn::Join": [
+                            ":",
+                            [
+                                {
+                                    "Ref": "StackName"
+                                },
+                                "VPCId"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "LoadBalancerRule": {
+            "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+            "Properties": {
+                "Actions": [
+                    {
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
+                        },
+                        "Type": "forward"
+                    }
+                ],
+                "Conditions": [
+                    {
+                        "Field": "path-pattern",
+                        "Values": [
+                            {
+                                "Ref": "Path"
+                            }
+                        ]
+                    }
+                ],
+                "ListenerArn": {
+                    "Fn::ImportValue": {
+                        "Fn::Join": [
+                            ":",
+                            [
+                                {
+                                    "Ref": "StackName"
+                                },
+                                "PublicListener"
+                            ]
+                        ]
+                    }
+                },
+                "Priority": {
+                    "Ref": "Priority"
+                }
+            }
+        }
+    }
+}

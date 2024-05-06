@@ -1,0 +1,592 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Create Greengrass resources and group, with supporting AWS services. See https://aws.amazon.com/blogs/iot/automating-aws-iot-greengrass-setup-with-aws-cloudformation/ for further details.
+
+Parameters:
+  CoreName:
+    Description: Greengrass Core name to be created. A "Thing" with be created with _Core appended to the name
+    Type: String
+    Default: gg_cfn
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+  SecurityAccessCIDR:
+    Description: CIDR block to limit inbound access for only SSH
+    Type: String
+    Default: 0.0.0.0/0
+
+  myKeyPair:
+    Description: Amazon EC2 Key Pair for accessing Greengrass Core instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+  CreateThingFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+    Properties:
+      Code:
+        ZipFile: "import sys\nimport cfnresponse\nimport boto3\nfrom botocore.exceptions import ClientError\nimport json\nimport logging\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\npolicyDocument = {\n    'Version': '2012-10-17',\n    'Statement': [\n        {\n            'Effect': 'Allow',\n            'Action': 'iot:*',\n            'Resource': '*'\n        },\n        {\n            'Effect': 'Allow',\n            'Action': 'greengrass:*',\n            'Resource': '*'\n        }\n    ]\n}\n\n\ndef handler(event, context):\n    responseData = {}\n    try:\n        logger.info('Received event: {}'.format(json.dumps(event)))\n        result = cfnresponse.FAILED\n        client = boto3.client('iot')\n        thingName=event['ResourceProperties']['ThingName']\n        if event['RequestType'] == 'Create':\n            thing = client.create_thing(\n                thingName=thingName\n            )\n            response = client.create_keys_and_certificate(\n                setAsActive=True\n            )\n            certId = response['certificateId']\n            certArn = response['certificateArn']\n            certPem = response['certificatePem']\n            privateKey = response['keyPair']['PrivateKey']\n            client.create_policy(\n                policyName='{}-full-access'.format(thingName),\n                policyDocument=json.dumps(policyDocument)\n            )\n            response = client.attach_policy(\n                policyName='{}-full-access'.format(thingName),\n                target=certArn\n            )\n            response = client.attach_thing_principal(\n                thingName=thingName,\n                principal=certArn,\n            )\n            logger.info('Created thing: %s, cert: %s and policy: %s' % \n                (thingName, certId, '{}-full-access'.format(thingName)))\n            result = cfnresponse.SUCCESS\n            responseData['certificateId'] = certId\n            responseData['certificatePem'] = certPem\n            responseData['privateKey'] = privateKey\n            responseData['iotEndpoint'] = client.describe_endpoint(endpointType='iot:Data-ATS')['endpointAddress']\n        elif event['RequestType'] == 'Update':\n            logger.info('Updating thing: %s' % thingName)\n            result = cfnresponse.SUCCESS\n        elif event['RequestType'] == 'Delete':\n            logger.info('Deleting thing: %s and cert/policy' % thingName)\n            response = client.list_thing_principals(\n                thingName=thingName\n            )\n            for i in response['principals']:\n                response = client.detach_thing_principal(\n                    thingName=thingName,\n                    principal=i\n                )\n                response = client.detach_policy(\n                    policyName='{}-full-access'.format(thingName),\n                    target=i\n                )\n                response = client.update_certificate(\n                    certificateId=i.split('/')[-1],\n                    newStatus='INACTIVE'\n                )\n                response = client.delete_certificate(\n                    certificateId=i.split('/')[-1],\n                    forceDelete=True\n                )\n                response = client.delete_policy(\n                    policyName='{}-full-access'.format(thingName),\n                )\n                response = client.delete_thing(\n                    thingName=thingName\n                )\n            result = cfnresponse.SUCCESS\n    except ClientError as e:\n        logger.error('Error: {}'.format(e))\n        result = cfnresponse.FAILED\n    logger.info('Returning response of: {}, with result of: {}'.format(result, responseData))\n    sys.stdout.flush()\n    cfnresponse.send(event, context, result, responseData)\n"
+      Description: Create thing, certificate, and policy, return cert and private key
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+
+  FunctionDefinition:
+    Type: AWS::Greengrass::FunctionDefinition
+    Properties:
+      InitialVersion:
+        DefaultConfig:
+          Execution:
+            IsolationMode: GreengrassContainer
+        Functions:
+          - FunctionArn: !Ref GGSampleFunctionVersion
+            FunctionConfiguration:
+              EncodingType: binary
+              Environment:
+                AccessSysfs: "false"
+                Execution:
+                  IsolationMode: GreengrassContainer
+                  RunAs:
+                    Gid: "10"
+                    Uid: "1"
+                Variables:
+                  CORE_NAME: !Ref CoreName
+              Executable: index.py
+              MemorySize: "65536"
+              Pinned: "true"
+              Timeout: "300"
+            Id: !Join
+              - _
+              - - !Ref CoreName
+                - sample
+      Name: FunctionDefinition
+
+  GGSampleFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          from threading import Timer
+          import greengrasssdk
+
+
+          counter = 0
+          client = greengrasssdk.client('iot-data')
+
+
+          def telemetry():
+              '''Publish incrementing value to telemetry topic every 2 seconds'''
+              global counter
+              counter += 1
+              client.publish(
+                  topic='{}/telem'.format(os.environ['CORE_NAME']),
+                  payload='Example telemetry counter, value: {}'.format(counter)
+              )
+              Timer(5, telemetry).start()
+          # Call telemetry() to start telemetry publish
+          telemetry()
+
+
+          def function_handler(event, context):
+              '''Echo message on /in topic to /out topic'''
+              client.publish(
+                  topic='{}/out'.format(os.environ['CORE_NAME']),
+                  payload=event
+              )
+      Description: Long running lambda that provides telemetry and pub/sub echo
+      FunctionName: !Join
+        - _
+        - - !Ref CoreName
+          - sample
+      Handler: index.function_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+
+  GGSampleFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !GetAtt GGSampleFunction.Arn
+
+  GreengrassCoreDefinition:
+    Type: AWS::Greengrass::CoreDefinition
+    Properties:
+      Name: !Join
+        - _
+        - - !Ref CoreName
+          - Core
+
+  GreengrassCoreDefinitionVersion:
+    Type: AWS::Greengrass::CoreDefinitionVersion
+    Properties:
+      CoreDefinitionId: !Ref GreengrassCoreDefinition
+      Cores:
+        - CertificateArn: !Join
+            - ':'
+            - - 'arn:'
+              - !Ref AWS::Partition
+              - :iot
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Join
+                - /
+                - - cert
+                  - !GetAtt IoTThing.certificateId
+          Id: !Join
+            - _
+            - - !Ref CoreName
+              - Core
+          SyncShadow: "false"
+          ThingArn: !Join
+            - ':'
+            - - 'arn:'
+              - !Ref AWS::Partition
+              - :iot
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Join
+                - /
+                - - thing
+                  - !Join
+                    - _
+                    - - !Ref CoreName
+                      - Core
+
+  GreengrassGroup:
+    Type: AWS::Greengrass::Group
+    Properties:
+      InitialVersion:
+        CoreDefinitionVersionArn: !Ref GreengrassCoreDefinitionVersion
+        FunctionDefinitionVersionArn: !GetAtt FunctionDefinition.LatestVersionArn
+        SubscriptionDefinitionVersionArn: !GetAtt SubscriptionDefinition.LatestVersionArn
+      Name: !Ref CoreName
+      RoleArn: !GetAtt GreengrassResourceRole.Arn
+
+  GreengrassInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: GreengrassGroup
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref myKeyPair
+      SecurityGroupIds: !Split
+        - ','
+        - !GetAtt InstanceSecurityGroup.GroupId
+      SubnetId: !Ref SubnetAPublic
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - 'Greengrass Core Blog '
+              - !Ref CoreName
+      UserData: !Base64
+        Fn::Sub: "#!/bin/bash\nyum -y install python3-pip\npip3 install greengrasssdk\nadduser --system ggc_user\ngroupadd --system ggc_group\n\n# https://docs.aws.amazon.com/greengrass/latest/developerguide/what-is-gg.html#gg-core-download-tab\ncurl -O https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.1/greengrass-linux-x86-64-1.9.1.tar.gz\ntar xf greengrass-linux-x86*.gz -C /\necho -n \"${IoTThing.certificatePem}\" > /greengrass/certs/${IoTThing.certificateId}.pem\necho -n \"${IoTThing.privateKey}\" > /greengrass/certs/${IoTThing.certificateId}.key\ncd /greengrass/config\n# Create Greengrass config file from inputs and parameters\n# Can be enhanced to manage complete installation of Greengrass and credentials\ncat <<EOT > config.json          \n{\n  \"coreThing\" : {\n    \"caPath\" : \"root.ca.pem\",\n    \"certPath\" : \"${IoTThing.certificateId}.pem\",\n    \"keyPath\" : \"${IoTThing.certificateId}.key\",\n    \"thingArn\" : \"arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:thing/${CoreName}_Core\",\n    \"iotHost\" : \"${IoTThing.iotEndpoint}\",\n    \"ggHost\" : \"greengrass-ats.iot.${AWS::Region}.amazonaws.com\"\n  },\n  \"runtime\" : {\n    \"cgroup\" : {\n      \"useSystemd\" : \"yes\"\n    }\n  },\n  \"managedRespawn\" : false,\n  \"crypto\" : {\n    \"principals\" : {\n      \"SecretsManager\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\"\n      },\n      \"IoTCertificate\" : {\n        \"privateKeyPath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.key\",\n        \"certificatePath\" : \"file:///greengrass/certs/${IoTThing.certificateId}.pem\"\n      }\n    },\n    \"caPath\" : \"file:///greengrass/certs/root.ca.pem\"\n  }\n}\nEOT\n\ncd /greengrass/certs/\ncurl -o root.ca.pem https://www.amazontrust.com/repository/AmazonRootCA1.pem\ncd /tmp\n# Create Greengrass systemd file - thanks to: https://gist.github.com/matthewberryman/fa21ca796c3a2e0dfe8224934b7b055c\ncat <<EOT > greengrass.service\n[Unit]\nDescription=greengrass daemon\nAfter=network.target\n\n[Service]\nExecStart=/greengrass/ggc/core/greengrassd start\nType=simple\nRestartSec=2\nRestart=always\nUser=root\nPIDFile=/var/run/greengrassd.pid\n\n[Install]\nWantedBy=multi-user.target\nEOT\ncp greengrass.service /etc/systemd/system\nsystemctl enable greengrass.service\nreboot\n"
+
+  GreengrassResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: greengrass.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Action:
+                  - iot:*
+                Effect: Allow
+                Resource: '*'
+            Version: "2012-10-17"
+          PolicyName: root
+
+  GroupDeploymentReset:
+    Type: Custom::GroupDeploymentReset
+    DependsOn: GreengrassGroup
+    Properties:
+      Region: !Ref AWS::Region
+      ServiceToken: !GetAtt GroupDeploymentResetFunction.Arn
+      ThingName: !Join
+        - _
+        - - !Ref CoreName
+          - Core
+
+  GroupDeploymentResetFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+    Properties:
+      Code:
+        ZipFile: |-
+          "Group Deployment Reset Function"
+
+          # pylint: disable=line-too-long,logging-fstring-interpolation
+
+          import os
+          import sys
+          import json
+          import logging
+          import cfnresponse
+          import boto3
+          from botocore.exceptions import ClientError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          session = boto3.session.Session()
+          region = os.env["AWS_REGION"]
+          partition = session.get_partition_for_region(region)
+          c = session.client("greengrass")
+          iam = session.client("iam")
+          role_name = f"greengrass_cfn_{os.environ['STACK_NAME']}_ServiceRole"
+
+
+          def find_group(thingName):
+              "Find the group based on the name"
+
+              response_auth = ""
+
+              response = c.list_groups()
+              for group in response["Groups"]:
+                  thingfound = False
+                  group_version = c.get_group_version(
+                      GroupId=group["Id"], GroupVersionId=group["LatestVersion"]
+                  )
+
+                  core_arn = group_version["Definition"].get("CoreDefinitionVersionArn", "")
+                  if core_arn:
+                      core_id = core_arn[
+                          core_arn.index("/cores/") + 7 : core_arn.index("/versions/")
+                      ]
+                      core_version_id = core_arn[
+                          core_arn.index("/versions/") + 10 : len(core_arn)
+                      ]
+                      thingfound = False
+                      response_core_version = c.get_core_definition_version(
+                          CoreDefinitionId=core_id, CoreDefinitionVersionId=core_version_id
+                      )
+                      if "Cores" in response_core_version["Definition"]:
+                          for thing_arn in response_core_version["Definition"]["Cores"]:
+                              if thingName == thing_arn["ThingArn"].split("/")[1]:
+                                  thingfound = True
+                                  break
+                  if thingfound:
+                      logger.info(f"found thing: {thingName}, group id is: {group['Id']}")
+                      response_auth = group["Id"]
+                      return response_auth
+
+              return ""
+
+
+          def manage_greengrass_role(cmd):
+              "Greengrass role"
+
+              if cmd == "CREATE":
+                  r = iam.create_role(
+                      RoleName=role_name,
+                      AssumeRolePolicyDocument='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Principal": {"Service": "greengrass.amazonaws.com"},"Action": "sts:AssumeRole"}]}',
+                      Description="Role for CloudFormation blog post",
+                  )
+                  role_arn = r["Role"]["Arn"]
+                  iam.attach_role_policy(
+                      RoleName=role_name,
+                      PolicyArn=f"arn:{partition}:iam::policy/service-role/AWSGreengrassResourceAccessRolePolicy",
+                  )
+                  c.associate_service_role_to_account(RoleArn=role_arn)
+                  logger.info(f"Created and associated role {role_name}")
+              else:
+                  try:
+                      r = iam.get_role(RoleName=role_name)
+                      role_arn = r["Role"]["Arn"]
+                      c.disassociate_service_role_from_account()
+                      iam.delete_role(RoleName=role_name)
+                      logger.info(f"Disassociated and deleted role {role_name}")
+                  except ClientError:
+                      return
+
+
+          def handler(event, context):
+              "Lambda handler"
+
+              responseData = {}
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+                  result = cfnresponse.FAILED
+                  thingName = event["ResourceProperties"]["ThingName"]
+                  if event["RequestType"] == "Create":
+                      try:
+                          c.get_service_role_for_account()
+                          result = cfnresponse.SUCCESS
+                      except ClientError:
+                          manage_greengrass_role("CREATE")
+                          logger.info("Greengrass service role created")
+                          result = cfnresponse.SUCCESS
+                  elif event["RequestType"] == "Delete":
+                      group_id = find_group(thingName)
+                      logger.info(f"Group id to delete: {group_id}")
+                      if group_id:
+                          c.reset_deployments(Force=True, GroupId=group_id)
+                          result = cfnresponse.SUCCESS
+                          logger.info("Forced reset of Greengrass deployment")
+                          manage_greengrass_role("DELETE")
+                      else:
+                          logger.error(f"No group Id for thing: {thingName} found")
+              except ClientError as e:
+                  logger.error(f"Error: {e}")
+                  result = cfnresponse.FAILED
+              logger.info(f"Returning response of: {result}, with result of: {responseData}")
+              sys.stdout.flush()
+              cfnresponse.send(event, context, result, responseData)
+      Description: Resets any deployments during stack delete and manages Greengrass service role needs
+      Environment:
+        Variables:
+          STACK_NAME: !Ref AWS::StackName
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+
+  InstanceAZ:
+    Type: Custom::InstanceAZ
+    Properties:
+      Region: !Ref AWS::Region
+      ServiceToken: !GetAtt InstanceAZFunction.Arn
+
+  InstanceAZFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+    Properties:
+      Code:
+        ZipFile: |
+          import sys
+          import cfnresponse
+          import boto3
+          from botocore.exceptions import ClientError
+          import json
+          import logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          c = boto3.client('ec2')
+
+
+          def handler(event, context):
+              responseData = {}
+              try:
+                  logger.info('Received event: {}'.format(json.dumps(event)))
+                  result = cfnresponse.FAILED
+                  if event['RequestType'] == 'Create':
+                      r = c.describe_reserved_instances_offerings(
+                          Filters=[
+                              {
+                                  'Name': 'scope',
+                                  'Values': [
+                                      'Availability Zone',
+                                  ]
+                              },
+                          ],
+                          IncludeMarketplace=False,
+                          InstanceType='t3.micro',
+                      )
+                      x = r['ReservedInstancesOfferings']
+                      while 'NextToken' in r:
+                          r = c.describe_reserved_instances_offerings(
+                              Filters=[
+                                  {
+                                      'Name': 'scope',
+                                      'Values': [
+                                          'Availability Zone',
+                                      ]
+                                  },
+                              ],
+                              IncludeMarketplace=False,
+                              InstanceType='t3.micro',
+                              NextToken=r['NextToken']
+                          )
+                          x.extend(r['ReservedInstancesOfferings'])
+                      responseData['AvailabilityZone'] = set(d['AvailabilityZone'] for d in x).pop()
+                      result = cfnresponse.SUCCESS
+                  else:
+                      result = cfnresponse.SUCCESS
+              except ClientError as e:
+                  logger.error('Error: {}'.format(e))
+                  result = cfnresponse.FAILED
+              logger.info('Returning response of: %s, with result of: %s' % (result, responseData))
+              sys.stdout.flush()
+              cfnresponse.send(event, context, result, responseData)
+      Description: Queries account and region for supported AZ
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 60
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      guard:
+        SuppressedRules:
+          - INCOMING_SSH_DISABLED
+    Properties:
+      GroupDescription: Allow inbound SSH access
+      SecurityGroupIngress:
+        - CidrIp: !Ref SecurityAccessCIDR
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      VpcId: !Ref VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  IoTThing:
+    Type: Custom::IoTThing
+    Properties:
+      ServiceToken: !GetAtt CreateThingFunction.Arn
+      ThingName: !Join
+        - _
+        - - !Ref CoreName
+          - Core
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:*:*:*
+              - Action:
+                  - iot:*
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - greengrass:*
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - ec2:DescribeReservedInstancesOfferings
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - iam:CreateRole
+                  - iam:AttachRolePolicy
+                  - iam:GetRole
+                  - iam:DeleteRole
+                  - iam:PassRole
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/greengrass_cfn_${AWS::StackName}_ServiceRole
+            Version: "2012-10-17"
+          PolicyName: root
+
+  RouteTableAssociationAPublic:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetAPublic
+
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  RouteTablePublicInternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTablePublic
+
+  SubnetAPublic:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !GetAtt InstanceAZ.AvailabilityZone
+      CidrBlock: 172.31.0.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+
+  SubscriptionDefinition:
+    Type: AWS::Greengrass::SubscriptionDefinition
+    Properties:
+      InitialVersion:
+        Subscriptions:
+          - Id: Subscription1
+            Source: cloud
+            Subject: !Join
+              - /
+              - - !Ref CoreName
+                - in
+            Target: !Ref GGSampleFunctionVersion
+          - Id: Subscription2
+            Source: !Ref GGSampleFunctionVersion
+            Subject: !Join
+              - /
+              - - !Ref CoreName
+                - out
+            Target: cloud
+          - Id: Subscription3
+            Source: !Ref GGSampleFunctionVersion
+            Subject: !Join
+              - /
+              - - !Ref CoreName
+                - telem
+            Target: cloud
+      Name: SubscriptionDefinition
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.31.0.0/24
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+Outputs:
+  EC2IPAddress:
+    Description: EC2 Instance Public IP Address
+    Value: !GetAtt GreengrassInstance.PublicIp

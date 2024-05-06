@@ -334,14 +334,14 @@ Resources:
         Timeout: PT15M
     UpdatePolicy:
       AutoScalingReplacingUpdate:
-        WillReplace: "true"
+        WillReplace: true
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
         - !Ref PrivateSubnetOne
         - !Ref PrivateSubnetTwo
       LaunchConfigurationName: !Ref ContainerInstances
-      MinSize: "1"
+      MinSize: 1
       MaxSize: !Ref MaxSize
       DesiredCapacity: !Ref DesiredCapacity
 

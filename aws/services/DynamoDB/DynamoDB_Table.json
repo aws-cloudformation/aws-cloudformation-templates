@@ -68,6 +68,9 @@
                     "WriteCapacityUnits": {
                         "Ref": "WriteCapacityUnits"
                     }
+                },
+                "PointInTimeRecoverySpecification": {
+                    "PointInTimeRecoveryEnabled": true
                 }
             }
         }

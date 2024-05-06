@@ -25,92 +25,6 @@
             "Private1": {
                 "CIDR": "10.0.3.0/24"
             }
-        },
-        "AZRegions": {
-            "ap-northeast-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "ap-northeast-2": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "ap-south-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "ap-southeast-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "ap-southeast-2": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "ca-central-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "eu-central-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "eu-west-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "eu-west-2": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "sa-east-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "us-east-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "us-east-2": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "us-west-1": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            },
-            "us-west-2": {
-                "AZs": [
-                    "a",
-                    "b"
-                ]
-            }
         }
     },
     "Resources": {
@@ -160,13 +74,7 @@
                                 "Fn::Select": [
                                     0,
                                     {
-                                        "Fn::FindInMap": [
-                                            "AZRegions",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "AZs"
-                                        ]
+                                        "Fn::GetAZs": null
                                     }
                                 ]
                             }
@@ -206,13 +114,7 @@
                                         "Fn::Select": [
                                             0,
                                             {
-                                                "Fn::FindInMap": [
-                                                    "AZRegions",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "AZs"
-                                                ]
+                                                "Fn::GetAZs": null
                                             }
                                         ]
                                     }
@@ -237,13 +139,7 @@
                                 "Fn::Select": [
                                     1,
                                     {
-                                        "Fn::FindInMap": [
-                                            "AZRegions",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "AZs"
-                                        ]
+                                        "Fn::GetAZs": null
                                     }
                                 ]
                             }
@@ -283,13 +179,7 @@
                                         "Fn::Select": [
                                             1,
                                             {
-                                                "Fn::FindInMap": [
-                                                    "AZRegions",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "AZs"
-                                                ]
+                                                "Fn::GetAZs": null
                                             }
                                         ]
                                     }
@@ -314,13 +204,7 @@
                                 "Fn::Select": [
                                     0,
                                     {
-                                        "Fn::FindInMap": [
-                                            "AZRegions",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "AZs"
-                                        ]
+                                        "Fn::GetAZs": null
                                     }
                                 ]
                             }
@@ -359,13 +243,7 @@
                                         "Fn::Select": [
                                             0,
                                             {
-                                                "Fn::FindInMap": [
-                                                    "AZRegions",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "AZs"
-                                                ]
+                                                "Fn::GetAZs": null
                                             }
                                         ]
                                     }
@@ -390,13 +268,7 @@
                                 "Fn::Select": [
                                     1,
                                     {
-                                        "Fn::FindInMap": [
-                                            "AZRegions",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "AZs"
-                                        ]
+                                        "Fn::GetAZs": null
                                     }
                                 ]
                             }
@@ -435,13 +307,7 @@
                                         "Fn::Select": [
                                             1,
                                             {
-                                                "Fn::FindInMap": [
-                                                    "AZRegions",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "AZs"
-                                                ]
+                                                "Fn::GetAZs": null
                                             }
                                         ]
                                     }

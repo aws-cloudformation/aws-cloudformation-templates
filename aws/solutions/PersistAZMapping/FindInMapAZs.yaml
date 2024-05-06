@@ -1,4 +1,4 @@
-Description:  This template deploys a VPC, with a pair of public and private subnets spread across two Availability Zones. It uses a static AZ Mapping known as RegionMap to ensure that your resources persist in a given Availability Zone if we add or remove zones
+Description: This template deploys a VPC, with a pair of public and private subnets spread across two Availability Zones. It uses a static AZ Mapping known as RegionMap to ensure that your resources persist in a given Availability Zone if we add or remove zones
 
 Parameters:
   VpcCIDR:
@@ -29,9 +29,15 @@ Parameters:
 Mappings:
   RegionMap:
     ap-northeast-2:
-      AZs: [ap-northeast-2a,ap-northeast-2c,ap-northeast-2b]
+      AZs:
+        - ap-northeast-2a
+        - ap-northeast-2c
+        - ap-northeast-2b
     sa-east-1:
-      AZs: [sa-east-1a,sa-east-1c,sa-east-1b]
+      AZs:
+        - sa-east-1a
+        - sa-east-1c
+        - sa-east-1b
 
 Resources:
   VPC:
@@ -54,7 +60,12 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !FindInMap [ RegionMap, !Ref 'AWS::Region', AZs ]]
+      AvailabilityZone: !Select
+        - 0
+        - !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AZs
       CidrBlock: !Ref PublicSubnet1CIDR
       MapPublicIpOnLaunch: true
 
@@ -62,7 +73,12 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !FindInMap [ RegionMap, !Ref 'AWS::Region', AZs ]]
+      AvailabilityZone: !Select
+        - 1
+        - !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AZs
       CidrBlock: !Ref PublicSubnet2CIDR
       MapPublicIpOnLaunch: true
 
@@ -70,7 +86,12 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !FindInMap [ RegionMap, !Ref 'AWS::Region', AZs ]]
+      AvailabilityZone: !Select
+        - 0
+        - !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AZs
       CidrBlock: !Ref PrivateSubnet1CIDR
       MapPublicIpOnLaunch: false
 
@@ -78,7 +99,12 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !FindInMap [ RegionMap, !Ref 'AWS::Region', AZs ]]
+      AvailabilityZone: !Select
+        - 1
+        - !FindInMap
+          - RegionMap
+          - !Ref AWS::Region
+          - AZs
       CidrBlock: !Ref PrivateSubnet2CIDR
       MapPublicIpOnLaunch: false
 
@@ -170,6 +196,6 @@ Resources:
   NoIngressSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: "no-ingress-sg"
-      GroupDescription: "Security group with no ingress rule"
+      GroupName: no-ingress-sg
+      GroupDescription: Security group with no ingress rule
       VpcId: !Ref VPC

@@ -1,0 +1,624 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template updates the specified route tables & security groups to allow communications via the VPC peering connection.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "RouteTableIds",
+                        "NumberOfRouteTables",
+                        "VPCPeeringConnectionId"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Security Groups Configuration"
+                    },
+                    "Parameters": [
+                        "SecurityGroupIds",
+                        "NumberOfSecurityGroups"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "VPC Peering Configuration"
+                    },
+                    "Parameters": [
+                        "PeerName",
+                        "PeerVPCCIDR"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "NumberOfRouteTables": {
+                    "default": "Number of Route Tables"
+                },
+                "NumberOfSecurityGroups": {
+                    "default": "Number of Security Groups"
+                },
+                "PeerName": {
+                    "default": "Peer Name"
+                },
+                "PeerVPCCIDR": {
+                    "default": "Peer VPC CIDR"
+                },
+                "RouteTableIds": {
+                    "default": "Route Table IDs"
+                },
+                "SecurityGroupIds": {
+                    "default": "Security Group IDs"
+                },
+                "VPCPeeringConnectionId": {
+                    "default": "VPC Peering Connection ID"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "NumberOfRouteTables": {
+            "Description": "Number of Route Table IDs to update. This must match your items in the comma-separated list of RouteTableIds parameter.",
+            "Type": "String",
+            "AllowedValues": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ]
+        },
+        "NumberOfSecurityGroups": {
+            "Description": "Number of Security Group IDs. This must match your selections in the list of SecurityGroupIds parameter.",
+            "Type": "String",
+            "AllowedValues": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ]
+        },
+        "PeerName": {
+            "Description": "Name of the VPC Peer",
+            "Type": "String",
+            "MaxLength": 255
+        },
+        "PeerVPCCIDR": {
+            "Description": "CIDR of the VPC Peer",
+            "Type": "String",
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28"
+        },
+        "RouteTableIds": {
+            "Description": "Route Table IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.",
+            "Type": "String",
+            "AllowedPattern": "^(rtb-[0-9a-f]{17})$|^((rtb-[0-9a-f]{17}(,|, ))*rtb-[0-9a-f]{17})$",
+            "ConstraintDescription": "Must have a prefix of \"rtb-\". Followed by 17 characters (numbers, letters \"a-f\"). Additional route tables can be provided, separated by a \"comma\"."
+        },
+        "SecurityGroupIds": {
+            "Description": "Security Group IDs that will be updated to allow communications via the VPC peering connection. Note, the logical order is preserved.",
+            "Type": "List<AWS::EC2::SecurityGroup::Id>"
+        },
+        "VPCPeeringConnectionId": {
+            "Description": "ID of the VPC Peering Connection",
+            "Type": "String",
+            "AllowedPattern": "^pcx-[0-9a-f]{17}$",
+            "ConstraintDescription": "Must have a prefix of \"pcx-\". Followed by 17 characters (numbers, letters \"a-f\")"
+        }
+    },
+    "Conditions": {
+        "2RouteTableCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRouteTables"
+                        },
+                        2
+                    ]
+                },
+                {
+                    "Condition": "3RouteTableCondition"
+                },
+                {
+                    "Condition": "4RouteTableCondition"
+                },
+                {
+                    "Condition": "5RouteTableCondition"
+                },
+                {
+                    "Condition": "6RouteTableCondition"
+                }
+            ]
+        },
+        "3RouteTableCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRouteTables"
+                        },
+                        3
+                    ]
+                },
+                {
+                    "Condition": "4RouteTableCondition"
+                },
+                {
+                    "Condition": "5RouteTableCondition"
+                },
+                {
+                    "Condition": "6RouteTableCondition"
+                }
+            ]
+        },
+        "4RouteTableCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRouteTables"
+                        },
+                        4
+                    ]
+                },
+                {
+                    "Condition": "5RouteTableCondition"
+                },
+                {
+                    "Condition": "6RouteTableCondition"
+                }
+            ]
+        },
+        "5RouteTableCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRouteTables"
+                        },
+                        5
+                    ]
+                },
+                {
+                    "Condition": "6RouteTableCondition"
+                }
+            ]
+        },
+        "6RouteTableCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NumberOfRouteTables"
+                },
+                6
+            ]
+        },
+        "2SecurityGroupCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfSecurityGroups"
+                        },
+                        2
+                    ]
+                },
+                {
+                    "Condition": "3SecurityGroupCondition"
+                },
+                {
+                    "Condition": "4SecurityGroupCondition"
+                },
+                {
+                    "Condition": "5SecurityGroupCondition"
+                },
+                {
+                    "Condition": "6SecurityGroupCondition"
+                }
+            ]
+        },
+        "3SecurityGroupCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfSecurityGroups"
+                        },
+                        3
+                    ]
+                },
+                {
+                    "Condition": "4SecurityGroupCondition"
+                },
+                {
+                    "Condition": "5SecurityGroupCondition"
+                },
+                {
+                    "Condition": "6SecurityGroupCondition"
+                }
+            ]
+        },
+        "4SecurityGroupCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfSecurityGroups"
+                        },
+                        4
+                    ]
+                },
+                {
+                    "Condition": "5SecurityGroupCondition"
+                },
+                {
+                    "Condition": "6SecurityGroupCondition"
+                }
+            ]
+        },
+        "5SecurityGroupCondition": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfSecurityGroups"
+                        },
+                        5
+                    ]
+                },
+                {
+                    "Condition": "6SecurityGroupCondition"
+                }
+            ]
+        },
+        "6SecurityGroupCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NumberOfSecurityGroups"
+                },
+                6
+            ]
+        }
+    },
+    "Resources": {
+        "PeerRoute1": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            }
+        },
+        "PeerRoute2": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            },
+            "Condition": "2RouteTableCondition"
+        },
+        "PeerRoute3": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            },
+            "Condition": "3RouteTableCondition"
+        },
+        "PeerRoute4": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            },
+            "Condition": "4RouteTableCondition"
+        },
+        "PeerRoute5": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        4,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            },
+            "Condition": "5RouteTableCondition"
+        },
+        "PeerRoute6": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Fn::Select": [
+                        5,
+                        {
+                            "Fn::Split": [
+                                ",",
+                                {
+                                    "Ref": "RouteTableIds"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "DestinationCidrBlock": {
+                    "Ref": "PeerVPCCIDR"
+                },
+                "VpcPeeringConnectionId": {
+                    "Ref": "VPCPeeringConnectionId"
+                }
+            },
+            "Condition": "6RouteTableCondition"
+        },
+        "PeerIngressRule1": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            }
+        },
+        "PeerIngressRule2": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer CIDR, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            },
+            "Condition": "2SecurityGroupCondition"
+        },
+        "PeerIngressRule3": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            },
+            "Condition": "3SecurityGroupCondition"
+        },
+        "PeerIngressRule4": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            },
+            "Condition": "4SecurityGroupCondition"
+        },
+        "PeerIngressRule5": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        4,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            },
+            "Condition": "5SecurityGroupCondition"
+        },
+        "PeerIngressRule6": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Metadata": {
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W42",
+                            "reason": "Allow all inbound communications from VPC Peer CIDR (for Lab purposes)"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "IpProtocol": "-1",
+                "Description": {
+                    "Fn::Sub": "LAB - Allow All Inbound Communications from VPC Peer, ${PeerName}"
+                },
+                "GroupId": {
+                    "Fn::Select": [
+                        5,
+                        {
+                            "Ref": "SecurityGroupIds"
+                        }
+                    ]
+                },
+                "CidrIp": {
+                    "Ref": "PeerVPCCIDR"
+                }
+            },
+            "Condition": "6SecurityGroupCondition"
+        }
+    }
+}

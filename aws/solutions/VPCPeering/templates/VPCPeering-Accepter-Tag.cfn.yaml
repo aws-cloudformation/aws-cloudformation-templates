@@ -1,5 +1,7 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
+
 Description: This template uses a custom resource Lambda to apply a Name tag to the VPC peering connection on the Accepter Account.
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -28,41 +30,69 @@ Metadata:
         default: Peer Name
       VPCPeeringConnectionId:
         default: VPC Peering Connection ID
+
 Parameters:
   LambdaFunctionName:
-    AllowedPattern: '^[\w-]{1,64}$'
-    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
-    Default: CR-TagVpcPeeringConnections
     Description: Lambda Function Name for Custom Resource
     Type: String
+    Default: CR-TagVpcPeeringConnections
+    AllowedPattern: ^[\w-]{1,64}$
+    ConstraintDescription: Max 64 alphanumeric characters. Also special characters supported [_, -]
+
   LambdaLogLevel:
-    AllowedValues: [INFO, DEBUG]
-    Default: INFO
     Description: Lambda logging level
     Type: String
+    AllowedValues:
+      - INFO
+      - DEBUG
+    Default: INFO
+
   LambdaLogsCloudWatchKMSKey:
-    AllowedPattern: '^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
-    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
-    Description:
-      (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side
-      encryption keys.
+    Description: (Optional) KMS Key ARN to use for encrypting the Lambda logs data. If empty, encryption is enabled with CloudWatch Logs managing the server-side encryption keys.
     Type: String
+    AllowedPattern: ^$|^arn:(aws[a-zA-Z-]*)?:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+
   LambdaLogsLogGroupRetention:
-    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
-    Default: 14
     Description: Specifies the number of days you want to retain Lambda log events in the CloudWatch Logs
     Type: String
+    AllowedValues:
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+      - 60
+      - 90
+      - 120
+      - 150
+      - 180
+      - 365
+      - 400
+      - 545
+      - 731
+      - 1827
+      - 3653
+    Default: 14
+
   PeerName:
     Description: Name of the VPC Peer
-    MaxLength: 255
     Type: String
+    MaxLength: 255
+
   VPCPeeringConnectionId:
-    AllowedPattern: '^pcx-[0-9a-f]{17}$'
-    ConstraintDescription: Must have a prefix of "pcx-". Followed by 17 characters (numbers, letters "a-f")
     Description: ID of the VPC Peering Connection
     Type: String
+    AllowedPattern: ^pcx-[0-9a-f]{17}$
+    ConstraintDescription: Must have a prefix of "pcx-". Followed by 17 characters (numbers, letters "a-f")
+
 Conditions:
-  LambdaLogsCloudWatchKMSKeyCondition: !Not [!Equals [!Ref LambdaLogsCloudWatchKMSKey, '']]
+  LambdaLogsCloudWatchKMSKeyCondition: !Not
+    - !Equals
+      - !Ref LambdaLogsCloudWatchKMSKey
+      - ""
+
 Resources:
   TagVpcPeeringConnectionsLambdaLogsLogGroup:
     Type: AWS::Logs::LogGroup
@@ -73,18 +103,19 @@ Resources:
         - LambdaLogsCloudWatchKMSKeyCondition
         - !Ref LambdaLogsCloudWatchKMSKey
         - !Ref AWS::NoValue
+
   TagVpcPeeringConnectionsLambdaRole:
+    Type: AWS::IAM::Role
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W28
             reason: The role name is defined to identify automation resources
-    Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub ${LambdaFunctionName}-LambdaRole
       Description: Rights to Tag VPC Peering Connection
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Action: sts:AssumeRole
@@ -98,7 +129,7 @@ Resources:
       Policies:
         - PolicyName: CloudWatchLogGroup
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Sid: CreateLogGroup
                 Effect: Allow
@@ -112,7 +143,7 @@ Resources:
                 Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${TagVpcPeeringConnectionsLambdaLogsLogGroup}:log-stream:*
         - PolicyName: TagVpcPeeringConnections
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
               - Sid: Tagging
                 Effect: Allow
@@ -120,13 +151,14 @@ Resources:
                   - ec2:CreateTags
                   - ec2:DeleteTags
                 Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc-peering-connection/*
+
   TagVpcPeeringConnectionsLambdaFunction:
+    Type: AWS::Lambda::Function
     Metadata:
       cfn_nag:
         rules_to_suppress:
           - id: W58
             reason: Permissions to write to CloudWatch Logs provided by the attached IAM role.
-    Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Ref LambdaFunctionName
       Handler: index.handler
@@ -189,9 +221,9 @@ Resources:
               return
 
   TagVpcPeeringConnectionsResource:
-    Version: 1.0
     Type: Custom::TagVpcPeeringConnection
     Properties:
       ServiceToken: !GetAtt TagVpcPeeringConnectionsLambdaFunction.Arn
       Resource: !Ref VPCPeeringConnectionId
       Name: !Ref PeerName
+    Version: "1.0"

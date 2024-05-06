@@ -1,128 +1,132 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress is web software you can use to create a beautiful website or blog. This template installs WordPress with a local MySQL database for storage. It demonstrates using the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.'
+
 Metadata:
   License: Apache-2.0
+
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "Database"
+          default: Database
         Parameters:
           - DBName
           - DBUser
           - DBPassword
           - DBRootPassword
       - Label:
-          default: "Instance connection"
+          default: Instance connection
         Parameters:
           - InstanceType
           - KeyName
           - SSHLocation
-Description: 'AWS CloudFormation Sample Template WordPress_Single_Instance: WordPress
-  is web software you can use to create a beautiful website or blog. This template
-  installs WordPress with a local MySQL database for storage. It demonstrates using
-  the AWS CloudFormation bootstrap scripts to deploy WordPress. **WARNING** This template
-  creates an Amazon EC2 instance. You will be billed for the AWS resources used if
-  you create a stack from this template.'
+
 Parameters:
   DBName:
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric
-      characters.
-    Default: wordpressdb
     Description: The WordPress database name
-    MaxLength: '64'
-    MinLength: '1'
     Type: String
-  DBPassword:
-    AllowedPattern: '[a-zA-Z0-9]+'
-    ConstraintDescription: must contain only alphanumeric characters. Valid length is 8-41 characters
-    Description: The WordPress database admin account password
-    MaxLength: '41'
-    MinLength: '8'
-    NoEcho: 'true'
-    Type: String
-  DBRootPassword:
-    AllowedPattern: '[a-zA-Z0-9]+'
-    ConstraintDescription: must contain only alphanumeric characters. Valid length is 8-41 characters
-    Description: MySQL root password
-    MaxLength: '41'
-    MinLength: '8'
-    NoEcho: 'true'
-    Type: String
-  DBUser:
+    Default: wordpressdb
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric
-      characters.
-    Description: The WordPress database admin account username
-    MaxLength: '16'
-    MinLength: '1'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    MaxLength: "64"
+    MinLength: "1"
+
+  DBPassword:
+    Description: The WordPress database admin account password
     Type: String
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: must contain only alphanumeric characters. Valid length is 8-41 characters
+    MaxLength: "41"
+    MinLength: "8"
+    NoEcho: "true"
+
+  DBRootPassword:
+    Description: MySQL root password
+    Type: String
+    AllowedPattern: '[a-zA-Z0-9]+'
+    ConstraintDescription: must contain only alphanumeric characters. Valid length is 8-41 characters
+    MaxLength: "41"
+    MinLength: "8"
+    NoEcho: "true"
+
+  DBUser:
+    Description: The WordPress database admin account username
+    Type: String
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    MaxLength: "16"
+    MinLength: "1"
+
   InstanceType:
-    AllowedValues:
-    - t2.nano
-    - t2.micro
-    - t2.small
-    - t2.medium
-    - t2.large
-    - t3.nano
-    - t3.micro
-    - t3.small
-    - t3.medium
-    - t3.large
-    - t3.xlarge
-    - t3.2xlarge
-    - m3.medium
-    - m3.large
-    - m3.xlarge
-    - m3.2xlarge
-    - m4.large
-    - m4.xlarge
-    - m4.2xlarge
-    - m4.4xlarge
-    - m4.10xlarge
-    - c3.large
-    - c3.xlarge
-    - c3.2xlarge
-    - c3.4xlarge
-    - c3.8xlarge
-    - c4.large
-    - c4.xlarge
-    - c4.2xlarge
-    - c4.4xlarge
-    - c4.8xlarge
-    - g2.2xlarge
-    - g2.8xlarge
-    - r3.large
-    - r3.xlarge
-    - r3.2xlarge
-    - r3.4xlarge
-    - r3.8xlarge
-    - i2.xlarge
-    - i2.2xlarge
-    - i2.4xlarge
-    - i2.8xlarge
-    - d2.xlarge
-    - d2.2xlarge
-    - d2.4xlarge
-    - d2.8xlarge
-    - hs1.8xlarge
-    - cr1.8xlarge
-    - cc2.8xlarge
-    ConstraintDescription: must be a valid EC2 instance type.
-    Default: t3.nano
     Description: WebServer EC2 instance type
     Type: String
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
+    Default: t3.nano
+    ConstraintDescription: must be a valid EC2 instance type.
+
   KeyName:
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
   SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    Default: 0.0.0.0/0
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
-    Default: 0.0.0.0/0
-    Description: The IP address range that can be used to SSH to the EC2 instances
-    MaxLength: '18'
-    MinLength: '9'
-    Type: String
+    MaxLength: "18"
+    MinLength: "9"
+
 Mappings:
   AWSInstanceType2Arch:
     c3.2xlarge:
@@ -223,6 +227,7 @@ Mappings:
       Arch: HVM64
     t3.2xlarge:
       Arch: HVM64
+
   AWSRegionArch2AMI:
     ap-northeast-1:
       HVM64: ami-383c1956
@@ -260,19 +265,20 @@ Mappings:
     af-south-1:
       HVM64: ami-0576c852ff9d8e746
       HVMG2: NOT_SUPPORTED
+
 Resources:
   WebServer:
-    Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
+    Type: AWS::EC2::Instance
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
           wordpress_install:
-          - install_cfn
-          - install_wordpress
-          - configure_wordpress
+            - install_cfn
+            - install_wordpress
+            - configure_wordpress
         configure_wordpress:
           commands:
             01_set_mysql_root_password:
@@ -296,7 +302,7 @@ Resources:
                 stack= ${AWS::StackId}
                 region=${AWS::Region}
               group: root
-              mode: '000400'
+              mode: "000400"
               owner: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
               content: !Sub |
@@ -305,7 +311,7 @@ Resources:
                 path=Resources.WebServer.Metadata.AWS::CloudFormation::Init
                 action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource WebServer --configsets wordpress_install --url https://stackbuilder.amazonaws.com
               group: root
-              mode: '000400'
+              mode: "000400"
               owner: root
           services:
             sysvinit:
@@ -313,8 +319,8 @@ Resources:
                 enabled: true
                 ensureRunning: true
                 files:
-                - /etc/cfn/cfn-hup.conf
-                - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
         install_wordpress:
           files:
             /tmp/create-wp-config:
@@ -325,7 +331,7 @@ Resources:
                 sed -i "s/'username_here'/'${DBUser}'/g" wp-config.php
                 sed -i "s/'password_here'/'${DBPassword}'/g" wp-config.php
               group: root
-              mode: '000500'
+              mode: "000500"
               owner: root
             /tmp/setup.mysql:
               content: !Sub |
@@ -334,7 +340,7 @@ Resources:
                 GRANT ALL ON ${DBName}.* TO '${DBUser}'@'localhost';
                 FLUSH PRIVILEGES;
               group: root
-              mode: '000400'
+              mode: "000400"
               owner: root
             /var/www/noindex/index.html:
               content: |
@@ -366,37 +372,44 @@ Resources:
           sources:
             /var/www/html: http://wordpress.org/latest.tar.gz
     Properties:
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]
-      InstanceType:
-        Ref: InstanceType
-      KeyName:
-        Ref: KeyName
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref AWS::Region
+        - !FindInMap
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
       SecurityGroups:
-      - Ref: WebServerSecurityGroup
-      UserData:
-        Fn::Base64: !Sub |
-           #!/bin/bash -xe
-           yum update -y
-           yum update -y aws-cfn-bootstrap
-           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource WebServer --configsets wordpress_install --region ${AWS::Region}
-           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServer --region ${AWS::Region}
+        - !Ref WebServerSecurityGroup
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+          yum update -y
+          yum update -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource WebServer --configsets wordpress_install --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource WebServer --region ${AWS::Region}
+
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Enable HTTP access via port 80 locked down to the load balancer + SSH access"
+      GroupDescription: Enable HTTP access via port 80 locked down to the load balancer + SSH access
       SecurityGroupIngress:
-      - CidrIp: 0.0.0.0/0
-        FromPort: 80
-        IpProtocol: tcp
-        ToPort: 80
-      - CidrIp: !Ref SSHLocation
-        FromPort: 22
-        IpProtocol: tcp
-        ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: !Ref SSHLocation
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+
 Outputs:
   PublicIP:
     Description: EC2 public IP
     Value: !GetAtt WebServer.PublicIp
+
   WebsiteURL:
     Description: WordPress Website
-    Value: !Sub "http://${WebServer.PublicDnsName}/wordpress"
+    Value: !Sub http://${WebServer.PublicDnsName}/wordpress

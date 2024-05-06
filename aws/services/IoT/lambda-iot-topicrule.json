@@ -1,0 +1,235 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creates required AWS resources",
+    "Parameters": {
+        "CertificateARN": {
+            "Description": "The Amazon Resource Name (ARN) of an existing AWS IoT certificate aws iot create-keys-and-certificate --set-as-active --certificate-pem-outfile certificate.pem.crt --private-key-outfile private.pem.key",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "IoTPolicy": {
+            "Type": "AWS::IoT::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "iot:Connect",
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:client/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "iot:*",
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/${AWS::StackName}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_1"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/topic_2"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topic/sdk/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "iot:Subscribe",
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "OpenIoTStarPolicy": {
+            "Type": "AWS::IoT::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "iot:*",
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "IoTPolicyPrincipalAttachment": {
+            "Type": "AWS::IoT::PolicyPrincipalAttachment",
+            "Properties": {
+                "PolicyName": {
+                    "Ref": "IoTPolicy"
+                },
+                "Principal": {
+                    "Ref": "CertificateARN"
+                }
+            }
+        },
+        "IoTThing": {
+            "Type": "AWS::IoT::Thing",
+            "Properties": {
+                "ThingName": {
+                    "Fn::Sub": "${AWS::StackName}"
+                }
+            }
+        },
+        "IoTThingPrincipalAttachment": {
+            "Type": "AWS::IoT::ThingPrincipalAttachment",
+            "Properties": {
+                "Principal": {
+                    "Ref": "CertificateARN"
+                },
+                "ThingName": {
+                    "Ref": "IoTThing"
+                }
+            }
+        },
+        "IoTTopicRule": {
+            "Type": "AWS::IoT::TopicRule",
+            "Properties": {
+                "RuleName": {
+                    "Fn::Sub": "${AWS::StackName}"
+                },
+                "TopicRulePayload": {
+                    "Actions": [
+                        {
+                            "Lambda": {
+                                "FunctionArn": {
+                                    "Fn::GetAtt": [
+                                        "MyLambda",
+                                        "Arn"
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "AwsIotSqlVersion": "2016-03-23",
+                    "Sql": " SELECT * FROM 'topic_2'",
+                    "RuleDisabled": false
+                }
+            }
+        },
+        "MyLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
+            "Properties": {
+                "Runtime": "nodejs20.x",
+                "Handler": "index.handler",
+                "Code": {
+                    "ZipFile": "exports.handler = async (event) => { console.log(event); return {'statusCode': 200, 'body': \"OK\"}; }\n"
+                },
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}"
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MyLambdaRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "MyLambdaVersion": {
+            "Type": "AWS::Lambda::Version",
+            "DependsOn": "MyLambda",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}"
+                }
+            }
+        },
+        "MyLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Sub": "${AWS::StackName}"
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}:*"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "MyLambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}"
+                },
+                "Principal": "iot.amazonaws.com",
+                "SourceAccount": {
+                    "Fn::Sub": "${AWS::AccountId}"
+                },
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "IoTTopicRule",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

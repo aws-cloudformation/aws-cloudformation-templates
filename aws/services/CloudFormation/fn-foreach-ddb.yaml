@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: This template demonstrates how to use the Fn::ForEach function to create mutiple tables
+
+Transform: AWS::LanguageExtensions
+
+Resources:
+  Fn::ForEach::Tables:
+    - TableName
+    - - Points
+      - Score
+      - Name
+      - Leaderboard
+    - DynamoDB${TableName}:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: !Ref TableName
+          AttributeDefinitions:
+            - AttributeName: id
+              AttributeType: S
+          KeySchema:
+            - AttributeName: id
+              KeyType: HASH
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"

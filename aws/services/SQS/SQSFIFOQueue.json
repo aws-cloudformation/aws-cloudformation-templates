@@ -15,11 +15,6 @@
             "Description": "This stack will append fifo to the end of this name.",
             "Type": "String"
         },
-        "DelaySeconds": {
-            "Description": "The Id of the AMI you wish to launch the instance from.",
-            "Type": "Number",
-            "Default": "5"
-        },
         "MaximumMessageSize": {
             "Description": "The limit of how many bytes that a message can contain before Amazon SQS rejects it, 1024 bytes (1 KiB) to 262144 bytes (256 KiB)",
             "Type": "Number",
@@ -126,7 +121,8 @@
                             ".fifo"
                         ]
                     ]
-                }
+                },
+                "MessageRetentionPeriod": 1209600
             },
             "Condition": "CreateDeadLetterQueue"
         }

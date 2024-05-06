@@ -97,7 +97,10 @@
                             }
                         }
                     }
-                ]
+                ],
+                "PointInTimeRecoverySpecification": {
+                    "PointInTimeRecoveryEnabled": true
+                }
             }
         }
     },

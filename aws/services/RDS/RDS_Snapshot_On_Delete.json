@@ -4,12 +4,6 @@
     "Metadata": {
         "License": "Apache-2.0"
     },
-    "Parameters": {
-        "MyPassword": {
-            "Type": "String",
-            "NoEcho": "true"
-        }
-    },
     "Resources": {
         "MyDB": {
             "DeletionPolicy": "Snapshot",
@@ -22,9 +16,9 @@
                 "BackupRetentionPeriod": 7,
                 "Engine": "MySQL",
                 "MasterUsername": "myName",
-                "MasterUserPassword": {
-                    "Ref": "MyPassword"
-                }
+                "ManageMasterUserPassword": true,
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true
             }
         }
     },

@@ -1,96 +1,66 @@
-# /*
-# * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# *
-# * Permission is hereby granted, free of charge, to any person obtaining a copy of this
-# * software and associated documentation files (the "Software"), to deal in the Software
-# * without restriction, including without limitation the rights to use, copy, modify,
-# * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-# * permit persons to whom the Software is furnished to do so.
-# *
-# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-# * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# */
+AWSTemplateFormatVersion: "2010-09-09"
 
-# Builders
-
-# Nikola Bravo: @NikolaBravo
-# Rohit Rangnekar: @rrangnekar
-# Anubha Singhal: @anubha16
-
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS CloudFront Distribution with Custom Origin with an example of using the AWS Application Load Balancer (ALB) and a basic Amazon EC2 Instance.
-             AWS CloudFront Distribution is associated with Lambda@Edge for Security Headers inspection.
-             In addition, AWS CloudFormation Template will provision an Examples of necessary IAM, S3, KMS and Security Groups resources.
-             ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ###
-             **WARNING**
-             This template creates one Amazon EC2 instance and an Application Load Balancer, KMS Keys, S3 bucket, CloudFront Distribution resources.
-             You will be billed for the AWS resources used if you create a stack from this template.'
+Description: 'CI/CD optimized AWS CloudFormation Sample Template for AWS CloudFront Distribution with Custom Origin with an example of using the AWS Application Load Balancer (ALB) and a basic Amazon EC2 Instance. AWS CloudFront Distribution is associated with Lambda@Edge for Security Headers inspection. In addition, AWS CloudFormation Template will provision an Examples of necessary IAM, S3, KMS and Security Groups resources. ### Before deployment please make sure that all parameters are reviewed and updated according the specific use case. ### **WARNING** This template creates one Amazon EC2 instance and an Application Load Balancer, KMS Keys, S3 bucket, CloudFront Distribution resources. You will be billed for the AWS resources used if you create a stack from this template.'
 
 Metadata:
   cfn-lint:
     config:
       regions:
-      - us-east-1
-      - us-west-2
+        - us-east-1
+        - us-west-2
 
 Parameters:
-
   Environment:
-    Description:    Please specify the target environment.
-    Type:           String
-    Default:        "dev"
+    Description: Please specify the target environment.
+    Type: String
     AllowedValues:
       - prod
       - staging
       - dev
       - qa
+    Default: dev
 
   AppName:
-    Description:  Application environment name.
-    Type:         String
-    Default:      "example"
+    Description: Application environment name.
+    Type: String
+    Default: example
 
   AlternateDomainNames:
-    Description:    CNAMEs (alternate domain names), if any, for the distribution. Example. mydomain.com
-    Type:           String
-    Default:        "name.domain.com"
+    Description: CNAMEs (alternate domain names), if any, for the distribution. Example. mydomain.com
+    Type: String
+    Default: name.domain.com
 
   ACMCertificateIdentifier:
-    Description:    The AWS Certificate Manager (ACM) certificate identifier.
-    Type:           String
-    Default:        "1234567890abcdefgh"
+    Description: The AWS Certificate Manager (ACM) certificate identifier.
+    Type: String
+    Default: 1234567890abcdefgh
 
   LambdaEventType:
-    Description:    Please specify the event type that triggers a Lambda function invocation.
-    Type:           String
-    Default:        "viewer-response"
+    Description: Please specify the event type that triggers a Lambda function invocation.
+    Type: String
     AllowedValues:
       - viewer-request
       - origin-request
       - origin-response
       - viewer-response
+    Default: viewer-response
 
   IPV6Enabled:
-    Description:    Should CloudFront to respond to IPv6 DNS requests with an IPv6 address for your distribution.
-    Type:           String
-    Default:        "true"
+    Description: Should CloudFront to respond to IPv6 DNS requests with an IPv6 address for your distribution.
+    Type: String
     AllowedValues:
       - "true"
       - "false"
+    Default: "true"
 
   EC2ImageId:
-    Description:    EC2 AMI Id
-    Type:           AWS::EC2::Image::Id
-    Default:        "ami-xxx"
+    Description: EC2 AMI Id
+    Type: AWS::EC2::Image::Id
+    Default: ami-xxx
 
   EC2InstanceType:
-    Description:    Amazon EC2 instance type.
-    Type:           String
-    Default:        "t2.small"
+    Description: Amazon EC2 instance type.
+    Type: String
     AllowedValues:
       - t2.small
       - t2.medium
@@ -115,227 +85,228 @@ Parameters:
       - m5d.4xlarge
       - m5d.12xlarge
       - m5d.24xlarge
+    Default: t2.small
 
   KeyPairName:
-    Description:     EC2 KeyPair.
-    Type:           'AWS::EC2::KeyPair::KeyName'
-    Default:        "keypair"
+    Description: EC2 KeyPair.
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: keypair
 
   BootVolSize:
-    Description:    EC2 Instance Boot volume size.
-    Type:           String
-    Default:        "100"
+    Description: EC2 Instance Boot volume size.
+    Type: String
+    Default: "100"
 
   BootVolType:
-    Description:    EC2 Instance Boot volume type.
-    Type:           String
-    Default:        "gp2"
+    Description: EC2 Instance Boot volume type.
+    Type: String
     AllowedValues:
       - gp2
       - io1
       - sc1
       - st1
+    Default: gp2
 
   ALBType:
-    Description:    AWS Load Balancer Type.
-    Type:           String
-    Default:        "application"
+    Description: AWS Load Balancer Type.
+    Type: String
     AllowedValues:
       - application
       - network
+    Default: application
 
   OriginALBTGPort:
-    Description:    Port number the application is running on, for Origin ALB Target Group and Health Check port.
-    Type:           String
-    Default:        "8080"
+    Description: Port number the application is running on, for Origin ALB Target Group and Health Check port.
+    Type: String
+    Default: "8080"
 
   OriginProtocolPolicy:
-    Description:    CloudFront Origin Protocol Policy to apply to your origin.
-    Type:           String
-    Default:        "http-only"
+    Description: CloudFront Origin Protocol Policy to apply to your origin.
+    Type: String
     AllowedValues:
       - http-only
       - match-viewer
       - https-only
+    Default: http-only
 
   Compress:
-    Description:    "CloudFront should support gzip compression requests: Accept-Encoding: gzip."
-    Type:           String
-    Default:        "false"
+    Description: 'CloudFront should support gzip compression requests: Accept-Encoding: gzip.'
+    Type: String
     AllowedValues:
       - "true"
       - "false"
+    Default: "false"
 
   DefaultTTL:
-    Description:    The default time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 86400 seconds (one day).
-    Type:           String
-    Default:        "0"
+    Description: The default time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 86400 seconds (one day).
+    Type: String
+    Default: "0"
 
   MaxTTL:
-    Description:    The maximum time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 31536000 seconds (one year).
-    Type:           String
-    Default:        "0"
+    Description: The maximum time in seconds that objects stay in CloudFront caches before CloudFront forwards another request to your custom origin. By default, AWS CloudFormation specifies 31536000 seconds (one year).
+    Type: String
+    Default: "0"
 
   MinTTL:
-    Description:    The minimum amount of time that you want objects to stay in the cache before CloudFront queries your origin to see whether the object has been updated.
-    Type:           String
-    Default:        "0"
+    Description: The minimum amount of time that you want objects to stay in the cache before CloudFront queries your origin to see whether the object has been updated.
+    Type: String
+    Default: "0"
 
   QueryString:
-    Description:    CIndicates whether you want CloudFront to forward query strings to the origin that is associated with this cache behavior.
-    Type:           String
-    Default:        "true"
+    Description: CIndicates whether you want CloudFront to forward query strings to the origin that is associated with this cache behavior.
+    Type: String
     AllowedValues:
       - "true"
       - "false"
+    Default: "true"
 
   ForwardCookies:
-    Description:    Forwards specified cookies to the origin of the cache behavior.
-    Type:           String
-    Default:        "all"
+    Description: Forwards specified cookies to the origin of the cache behavior.
+    Type: String
     AllowedValues:
       - all
       - whitelist
       - none
+    Default: all
 
   ViewerProtocolPolicy:
-    Description:    The protocol that users can use to access the files in the origin that you specified in the TargetOriginId property when the default cache behavior is applied to a request.
-    Type:           String
-    Default:        "redirect-to-https"
+    Description: The protocol that users can use to access the files in the origin that you specified in the TargetOriginId property when the default cache behavior is applied to a request.
+    Type: String
     AllowedValues:
       - redirect-to-https
       - allow-all
       - https-only
+    Default: redirect-to-https
 
   PriceClass:
-    Description:    The price class that corresponds with the maximum price that you want to pay for CloudFront service. If you specify PriceClass_All, CloudFront responds to requests for your objects from all CloudFront edge locations.
-    Type:           String
-    Default:        "PriceClass_All"
+    Description: The price class that corresponds with the maximum price that you want to pay for CloudFront service. If you specify PriceClass_All, CloudFront responds to requests for your objects from all CloudFront edge locations.
+    Type: String
     AllowedValues:
       - PriceClass_All
       - PriceClass_100
       - PriceClass_200
+    Default: PriceClass_All
 
   SslSupportMethod:
-    Description:    Specifies how CloudFront serves HTTPS requests.
-    Type:           String
-    Default:        "sni-only"
+    Description: Specifies how CloudFront serves HTTPS requests.
+    Type: String
     AllowedValues:
       - sni-only
       - vip
+    Default: sni-only
 
   MinimumProtocolVersion:
-    Description:    The minimum version of the SSL protocol that you want CloudFront to use for HTTPS connections.
-    Type:           String
-    Default:        "TLSv1"
+    Description: The minimum version of the SSL protocol that you want CloudFront to use for HTTPS connections.
+    Type: String
     AllowedValues:
       - TLSv1
       - TLSv1.2_2018
       - TLSv1.1_2016
       - TLSv1_2016
       - SSLv3
+    Default: TLSv1
 
   OriginKeepaliveTimeout:
-    Description:    You can create a custom keep-alive timeout. All timeout units are in seconds. The default keep-alive timeout is 5 seconds, but you can configure custom timeout lengths. The minimum timeout length is 1 second; the maximum is 60 seconds.
-    Type:           String
-    Default:        "60"
+    Description: You can create a custom keep-alive timeout. All timeout units are in seconds. The default keep-alive timeout is 5 seconds, but you can configure custom timeout lengths. The minimum timeout length is 1 second; the maximum is 60 seconds.
+    Type: String
+    Default: "60"
 
   OriginReadTimeout:
-    Description:    You can create a custom origin read timeout. All timeout units are in seconds. The default origin read timeout is 30 seconds, but you can configure custom timeout lengths. The minimum timeout length is 4 seconds; the maximum is 60 seconds.
-    Type:           String
-    Default:        "30"
+    Description: You can create a custom origin read timeout. All timeout units are in seconds. The default origin read timeout is 30 seconds, but you can configure custom timeout lengths. The minimum timeout length is 4 seconds; the maximum is 60 seconds.
+    Type: String
+    Default: "30"
 
   ALBScheme:
-    Description:    Origin ALB scheme.
-    Type:           String
-    Default:        "internet-facing"
+    Description: Origin ALB scheme.
+    Type: String
     AllowedValues:
       - internet-facing
       - internal
+    Default: internet-facing
 
   ALBTargetGroupHealthCheckIntervalSeconds:
-    Description:    Origin ALB Target Group Health Check Interval in Seconds.
-    Type:           String
-    Default:        "30"
+    Description: Origin ALB Target Group Health Check Interval in Seconds.
+    Type: String
+    Default: "30"
 
   ALBTargetGroupHealthCheckTimeoutSeconds:
-    Description:    Origin ALB Target Group Health Check Timeout in Seconds.
-    Type:           String
-    Default:        "5"
+    Description: Origin ALB Target Group Health Check Timeout in Seconds.
+    Type: String
+    Default: "5"
 
   ALBTargetGroupHealthyThresholdCount:
-    Description:    Origin ALB Target Group Healthy Threshold Count.
-    Type:           String
-    Default:        "5"
+    Description: Origin ALB Target Group Healthy Threshold Count.
+    Type: String
+    Default: "5"
 
   ALBTargetGroupUnhealthyThresholdCount:
-    Description:    Origin ALB Target Group Unhealthy Threshold Count.
-    Type:           String
-    Default:        "2"
+    Description: Origin ALB Target Group Unhealthy Threshold Count.
+    Type: String
+    Default: "2"
 
   ALBAttributeIdleTimeOut:
-    Description:    Origin ALB Target Group Unhealthy Threshold Count.
-    Type:           String
-    Default:        "60"
+    Description: Origin ALB Target Group Unhealthy Threshold Count.
+    Type: String
+    Default: "60"
 
   ALBAttributeDeletionProtection:
-    Description:    Origin ALB Target Group Unhealthy Threshold Count.
-    Type:           String
-    Default:        "false"
+    Description: Origin ALB Target Group Unhealthy Threshold Count.
+    Type: String
     AllowedValues:
       - "true"
       - "false"
+    Default: "false"
 
   ALBAttributeRoutingHttp2:
-    Description:    Origin ALB Target Group Unhealthy Threshold Count.
-    Type:           String
-    Default:        "true"
+    Description: Origin ALB Target Group Unhealthy Threshold Count.
+    Type: String
     AllowedValues:
       - "true"
       - "false"
+    Default: "true"
 
   ALBTargetGroupAttributeDeregistration:
-    Description:    Origin ALB Target Group Deregistration Timeout.
-    Type:           String
-    Default:        "300"
+    Description: Origin ALB Target Group Deregistration Timeout.
+    Type: String
+    Default: "300"
 
   HealthCheckProtocol:
-    Description:    Origin ALB Target Group Health Check Protocol.
-    Type:           String
-    Default:        "HTTP"
+    Description: Origin ALB Target Group Health Check Protocol.
+    Type: String
     AllowedValues:
       - HTTPS
       - HTTP
+    Default: HTTP
 
   HealthCheckPath:
-    Description:    Origin ALB Target Group Health Check Path.
-    Type:           String
-    Default:        "/health.html"
+    Description: Origin ALB Target Group Health Check Path.
+    Type: String
+    Default: /health.html
 
   LambdaFunctionVersion:
-    Description:    AWS Lambda@Edge function version.
-    Type:           String
-    Default:        "1"
+    Description: AWS Lambda@Edge function version.
+    Type: String
+    Default: "1"
 
   LoggingBucketVersioning:
-    Description:    The versioning state of an Amazon S3 bucket. If you enable versioning, you must suspend versioning to disable it.
-    Type:           String
-    Default:        "Suspended"
+    Description: The versioning state of an Amazon S3 bucket. If you enable versioning, you must suspend versioning to disable it.
+    Type: String
     AllowedValues:
       - Enabled
       - Suspended
+    Default: Suspended
 
 Resources:
 
-# IAM ROLE USED FOR LOGGING KMS KEY ACCESS
+  # IAM ROLE USED FOR LOGGING KMS KEY ACCESS
   AdministratorAccessIAMRole:
-    Type: 'AWS::IAM::Role'
+    Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "AdministratorAccess-${AppName}"
+      RoleName: !Sub AdministratorAccess-${AppName}
       ManagedPolicyArns:
-        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess"
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -343,15 +314,15 @@ Resources:
                 - ec2.amazonaws.com
             Action:
               - sts:AssumeRole
-      Path: '/'
+      Path: /
 
-# IAM ROLE USED FOR LAMBDA EDGE
+      # IAM ROLE USED FOR LAMBDA EDGE
   LambdaEdgeIAMRole:
-    Type: 'AWS::IAM::Role'
+    Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AppName}-iam-lambda-edge-role-${Environment}"
+      RoleName: !Sub ${AppName}-iam-lambda-edge-role-${Environment}
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowLambdaServiceToAssumeRole
             Effect: Allow
@@ -368,290 +339,295 @@ Resources:
       Policies:
         - PolicyName: PublishNewLambdaEdgeVersion
           PolicyDocument:
-            Version: 2012-10-17
+            Version: "2012-10-17"
             Statement:
-            - Effect: Allow
-              Action:
-                - lambda:PublishVersion
-              Resource: '*'
+              - Effect: Allow
+                Action:
+                  - lambda:PublishVersion
+                Resource: '*'
 
-# KMS KEY USED FOR LOGGING S3 BUCKET
+                # KMS KEY USED FOR LOGGING S3 BUCKET
   LoggingBucketKMSKey:
-    Type: 'AWS::KMS::Key'
+    Type: AWS::KMS::Key
     DependsOn: AdministratorAccessIAMRole
     Properties:
-      Description: 'Logging S3 Bucket KMS Key'
+      Description: Logging S3 Bucket KMS Key
       Enabled: true
       EnableKeyRotation: true
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: Enable IAM policies to allow access to the Key
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
             Action:
-              - 'kms:*'
+              - kms:*
             Resource: '*'
           - Sid: Allow administration of the key
             Effect: Allow
             Principal:
               AWS:
-                - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AdministratorAccess-${AppName}'
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AdministratorAccess-${AppName}
             Action:
-              - 'kms:Put*'
-              - 'kms:ScheduleKeyDeletion'
-              - 'kms:CancelKeyDeletion'
-              - 'kms:Describe*'
-              - 'kms:Revoke*'
-              - 'kms:Disable*'
-              - 'kms:Enable*'
-              - 'kms:Delete*'
-              - 'kms:List*'
-              - 'kms:Update*'
-              - 'kms:Create*'
+              - kms:Put*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:Describe*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Enable*
+              - kms:Delete*
+              - kms:List*
+              - kms:Update*
+              - kms:Create*
             Resource: '*'
 
-# KMS KEY ALIAS USED FOR LOGGING BUCKET
+            # KMS KEY ALIAS USED FOR LOGGING BUCKET
   LoggingBucketKMSKeyAlias:
-    Type: 'AWS::KMS::Alias'
+    Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AppName}/${Environment}/s3-logging-kms'
-      TargetKeyId: !Sub '${LoggingBucketKMSKey}'
+      AliasName: !Sub alias/${AppName}/${Environment}/s3-logging-kms
+      TargetKeyId: !Sub ${LoggingBucketKMSKey}
 
-# LOGGING S3 BUCKET
+      # LOGGING S3 BUCKET
   LoggingBucket:
-    Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+    Type: AWS::S3::Bucket
     DependsOn: LoggingBucketKMSKey
     Properties:
-      BucketName: !Sub '${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}'
+      BucketName: !Sub ${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              KMSMasterKeyID: !GetAtt 'LoggingBucketKMSKey.Arn'
-              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt LoggingBucketKMSKey.Arn
+              SSEAlgorithm: aws:kms
       VersioningConfiguration:
-        Status: !Ref 'LoggingBucketVersioning'
+        Status: !Ref LoggingBucketVersioning
 
-# LOGGING S3 BUCKET POLICY
+        # LOGGING S3 BUCKET POLICY
   LoggingBucketPolicy:
-    Type: 'AWS::S3::BucketPolicy'
+    Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref 'LoggingBucket'
+      Bucket: !Ref LoggingBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: LoggingBucketPermissions
-            Effect: 'Allow'
+            Effect: Allow
             Principal:
-              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
-            Action: 's3:PutObject'
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: s3:PutObject
             Resource:
-              - !Sub 'arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*'
+              - !Sub arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*
 
-# EC2 INSTANCE
+              # EC2 INSTANCE
   EC2Instance:
-    Type: 'AWS::EC2::Instance'
+    Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref 'EC2ImageId'
-      AvailabilityZone: !Select ['0', !GetAZs {Ref: 'AWS::Region'}]
-      InstanceType: !Ref 'EC2InstanceType'
-      SubnetId:
-        Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-PublicSubnet1ID'
+      ImageId: !Ref EC2ImageId
+      AvailabilityZone: !Select
+        - "0"
+        - !GetAZs
+          Ref: AWS::Region
+      InstanceType: !Ref EC2InstanceType
+      SubnetId: !ImportValue
+        Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet1ID
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-            VolumeSize: !Ref "BootVolSize"
-            VolumeType: !Ref "BootVolType"
+            VolumeSize: !Ref BootVolSize
+            VolumeType: !Ref BootVolType
       SecurityGroupIds:
-        - !Ref 'EC2InstanceSG'
-        - !Ref 'ALBExternalAccessSG'
-      KeyName: !Ref 'KeyPairName'
+        - !Ref EC2InstanceSG
+        - !Ref ALBExternalAccessSG
+      KeyName: !Ref KeyPairName
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Environment}-ec2-instance'
+          Value: !Sub ${AppName}-${Environment}-ec2-instance
         - Key: Environment
-          Value: !Ref 'Environment'
+          Value: !Ref Environment
 
-# EC2 INSTANCE SECURITY GROUP
+          # EC2 INSTANCE SECURITY GROUP
   EC2InstanceSG:
-    Type: 'AWS::EC2::SecurityGroup'
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 'EC2 Instance Security Group'
-      VpcId:
-        Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-VPC-ID'
+      GroupDescription: EC2 Instance Security Group
+      VpcId: !ImportValue
+        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Environment}-ec2-instance-SG'
+          Value: !Sub ${AppName}-${Environment}-ec2-instance-SG
         - Key: Environment
-          Value: !Ref 'Environment'
+          Value: !Ref Environment
 
-# SECURITY GROUP INGRESS
+          # SECURITY GROUP INGRESS
   Tcp8080In:
-    Type: 'AWS::EC2::SecurityGroupIngress'
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref 'EC2InstanceSG'
-      ToPort: '8080'
-      IpProtocol: 'tcp'
-      FromPort: '8080'
-      SourceSecurityGroupId: !Ref 'ALBExternalAccessSG'
+      GroupId: !Ref EC2InstanceSG
+      ToPort: "8080"
+      IpProtocol: tcp
+      FromPort: "8080"
+      SourceSecurityGroupId: !Ref ALBExternalAccessSG
 
-# ORIGIN ALB
+      # ORIGIN ALB
   OriginALB:
-    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub '${AppName}-${Environment}-alb'
-      Scheme: !Ref 'ALBScheme'
-      Type: !Ref 'ALBType'
+      Name: !Sub ${AppName}-${Environment}-alb
+      Scheme: !Ref ALBScheme
+      Type: !Ref ALBType
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
-          Value: !Ref 'ALBAttributeIdleTimeOut'
+          Value: !Ref ALBAttributeIdleTimeOut
         - Key: deletion_protection.enabled
-          Value: !Ref 'ALBAttributeDeletionProtection'
+          Value: !Ref ALBAttributeDeletionProtection
         - Key: routing.http2.enabled
-          Value: !Ref 'ALBAttributeRoutingHttp2'
+          Value: !Ref ALBAttributeRoutingHttp2
       Subnets:
-        - Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-PublicSubnet1ID'
-        - Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-PublicSubnet2ID'
+        - !ImportValue
+          Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet1ID
+        - !ImportValue
+          Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet2ID
       SecurityGroups:
-        - !Ref 'ALBExternalAccessSG'
+        - !Ref ALBExternalAccessSG
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Environment}-alb'
+          Value: !Sub ${AppName}-${Environment}-alb
         - Key: Environment
-          Value: !Ref 'Environment'
+          Value: !Ref Environment
 
-# ORIGIN ALB TARGET GROUP
+          # ORIGIN ALB TARGET GROUP
   OriginALBTG:
-    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: OriginALB
     Properties:
-      Name: !Sub '${AppName}-${Environment}-alb-tg'
-      HealthCheckProtocol: !Ref 'HealthCheckProtocol'
-      HealthCheckPath: !Ref 'HealthCheckPath'
-      HealthCheckPort: !Sub '${OriginALBTGPort}'
-      HealthCheckIntervalSeconds: !Ref 'ALBTargetGroupHealthCheckIntervalSeconds'
-      HealthCheckTimeoutSeconds: !Ref 'ALBTargetGroupHealthCheckTimeoutSeconds'
-      HealthyThresholdCount: !Ref 'ALBTargetGroupHealthyThresholdCount'
-      UnhealthyThresholdCount: !Ref 'ALBTargetGroupUnhealthyThresholdCount'
+      Name: !Sub ${AppName}-${Environment}-alb-tg
+      HealthCheckProtocol: !Ref HealthCheckProtocol
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckPort: !Sub ${OriginALBTGPort}
+      HealthCheckIntervalSeconds: !Ref ALBTargetGroupHealthCheckIntervalSeconds
+      HealthCheckTimeoutSeconds: !Ref ALBTargetGroupHealthCheckTimeoutSeconds
+      HealthyThresholdCount: !Ref ALBTargetGroupHealthyThresholdCount
+      UnhealthyThresholdCount: !Ref ALBTargetGroupUnhealthyThresholdCount
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
-          Value: !Ref 'ALBTargetGroupAttributeDeregistration'
-      TargetType: 'instance'
+          Value: !Ref ALBTargetGroupAttributeDeregistration
+      TargetType: instance
       Targets:
-        - Id: !Ref 'EC2Instance'
-          Port: !Sub '${OriginALBTGPort}'
-      Port: !Sub '${OriginALBTGPort}'
+        - Id: !Ref EC2Instance
+          Port: !Sub ${OriginALBTGPort}
+      Port: !Sub ${OriginALBTGPort}
       Protocol: HTTP
-      VpcId:
-        Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-VPC-ID'
+      VpcId: !ImportValue
+        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Environment}-alb-tg'
+          Value: !Sub ${AppName}-${Environment}-alb-tg
         - Key: Environment
-          Value: !Ref 'Environment'
+          Value: !Ref Environment
 
-# ORIGIN ALB HTTPS LISTENER
+          # ORIGIN ALB HTTPS LISTENER
   OriginALBHttpsListener:
-    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn: OriginALBTG
     Properties:
       DefaultActions:
-        - TargetGroupArn: !Ref 'OriginALBTG'
+        - TargetGroupArn: !Ref OriginALBTG
           Type: forward
-      LoadBalancerArn: !Ref 'OriginALB'
-      Port: '443'
-      Protocol: 'HTTPS'
+      LoadBalancerArn: !Ref OriginALB
+      Port: "443"
+      Protocol: HTTPS
       Certificates:
-        - CertificateArn: !Sub 'arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
-      SslPolicy: 'ELBSecurityPolicy-FS-2018-06'
+        - CertificateArn: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}
+      SslPolicy: ELBSecurityPolicy-FS-2018-06
 
-# ORIGIN ALB HTTPS LISTENER RULE
+      # ORIGIN ALB HTTPS LISTENER RULE
   OriginALBHttpsListenerRule:
-    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
     DependsOn: OriginALBHttpsListener
     Properties:
       Actions:
         - Type: forward
-          TargetGroupArn: !Ref 'OriginALBTG'
+          TargetGroupArn: !Ref OriginALBTG
       Conditions:
         - Field: path-pattern
           Values:
             - /*
-      ListenerArn: !Ref 'OriginALBHttpsListener'
+      ListenerArn: !Ref OriginALBHttpsListener
       Priority: 1
 
-# ALB EXTERNAL ACCESS SECURITY GROUP
+      # ALB EXTERNAL ACCESS SECURITY GROUP
   ALBExternalAccessSG:
-    Type: 'AWS::EC2::SecurityGroup'
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 'Allow external access to ALB'
-      VpcId:
-        Fn::ImportValue: !Sub '${AppName}-vpc-${Environment}-VPC-ID'
+      GroupDescription: Allow external access to ALB
+      VpcId: !ImportValue
+        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
       Tags:
         - Key: Name
-          Value: !Sub '${AppName}-${Environment}-alb-external-access-ingrees-SG'
+          Value: !Sub ${AppName}-${Environment}-alb-external-access-ingrees-SG
         - Key: Environment
-          Value: !Ref 'Environment'
+          Value: !Ref Environment
 
-# SECURITY GROUP INGRESS
+          # SECURITY GROUP INGRESS
   HTTPSTcpIn:
-    Type: 'AWS::EC2::SecurityGroupIngress'
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref 'ALBExternalAccessSG'
-      ToPort: '443'
-      IpProtocol: 'tcp'
-      FromPort: '443'
-      CidrIp: '0.0.0.0/0'
+      GroupId: !Ref ALBExternalAccessSG
+      ToPort: "443"
+      IpProtocol: tcp
+      FromPort: "443"
+      CidrIp: 0.0.0.0/0
 
   HTTPTcpIn:
-    Type: 'AWS::EC2::SecurityGroupIngress'
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref 'ALBExternalAccessSG'
-      ToPort: '80'
-      IpProtocol: 'tcp'
-      FromPort: '80'
-      CidrIp: '0.0.0.0/0'
+      GroupId: !Ref ALBExternalAccessSG
+      ToPort: "80"
+      IpProtocol: tcp
+      FromPort: "80"
+      CidrIp: 0.0.0.0/0
 
-# SECURITY GROUP EGRESS
+      # SECURITY GROUP EGRESS
   Tcp8080Out:
-    Type: 'AWS::EC2::SecurityGroupEgress'
+    Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      GroupId: !Ref 'ALBExternalAccessSG'
-      ToPort: '8080'
-      IpProtocol: 'tcp'
-      FromPort: '8080'
-      DestinationSecurityGroupId: !Ref 'EC2InstanceSG'
+      GroupId: !Ref ALBExternalAccessSG
+      ToPort: "8080"
+      IpProtocol: tcp
+      FromPort: "8080"
+      DestinationSecurityGroupId: !Ref EC2InstanceSG
 
-# CLOUDFRONT DISTRIBUTION
+      # CLOUDFRONT DISTRIBUTION
   CloudFrontDistribution:
-    Type: 'AWS::CloudFront::Distribution'
+    Type: AWS::CloudFront::Distribution
     DependsOn:
-    - LoggingBucket
-    - LambdaEdgeFunction
+      - LoggingBucket
+      - LambdaEdgeFunction
     Properties:
       DistributionConfig:
-        Comment: 'Cloudfront Distribution pointing ALB Origin'
+        Comment: Cloudfront Distribution pointing ALB Origin
         Origins:
-          - DomainName: !GetAtt 'OriginALB.DNSName'
-            Id: !Ref 'OriginALB'
+          - DomainName: !GetAtt OriginALB.DNSName
+            Id: !Ref OriginALB
             CustomOriginConfig:
-              HTTPPort: '80'
-              HTTPSPort: '443'
-              OriginProtocolPolicy: !Ref 'OriginProtocolPolicy'
-              OriginKeepaliveTimeout: !Ref 'OriginKeepaliveTimeout'
-              OriginReadTimeout: !Ref 'OriginReadTimeout'
+              HTTPPort: "80"
+              HTTPSPort: "443"
+              OriginProtocolPolicy: !Ref OriginProtocolPolicy
+              OriginKeepaliveTimeout: !Ref OriginKeepaliveTimeout
+              OriginReadTimeout: !Ref OriginReadTimeout
               OriginSSLProtocols:
                 - TLSv1
                 - TLSv1.1
                 - TLSv1.2
                 - SSLv3
         Enabled: true
-        HttpVersion: 'http2'
+        HttpVersion: http2
         Aliases:
-          - !Ref 'AlternateDomainNames'
+          - !Ref AlternateDomainNames
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -661,37 +637,37 @@ Resources:
             - PATCH
             - POST
             - PUT
-          Compress: !Ref 'Compress'
-          DefaultTTL: !Ref 'DefaultTTL'
-          MaxTTL: !Ref 'MaxTTL'
-          MinTTL: !Ref 'MinTTL'
-          SmoothStreaming: 'false'
-          TargetOriginId: !Ref 'OriginALB'
+          Compress: !Ref Compress
+          DefaultTTL: !Ref DefaultTTL
+          MaxTTL: !Ref MaxTTL
+          MinTTL: !Ref MinTTL
+          SmoothStreaming: "false"
+          TargetOriginId: !Ref OriginALB
           ForwardedValues:
-            QueryString: !Ref 'QueryString'
+            QueryString: !Ref QueryString
             Cookies:
-              Forward: !Ref 'ForwardCookies'
-          ViewerProtocolPolicy: !Ref 'ViewerProtocolPolicy'
+              Forward: !Ref ForwardCookies
+          ViewerProtocolPolicy: !Ref ViewerProtocolPolicy
           LambdaFunctionAssociations:
-            - EventType: !Ref 'LambdaEventType'
-              LambdaFunctionARN: !Ref 'LambdaEdgeVersion'
-        PriceClass: !Ref 'PriceClass'
+            - EventType: !Ref LambdaEventType
+              LambdaFunctionARN: !Ref LambdaEdgeVersion
+        PriceClass: !Ref PriceClass
         ViewerCertificate:
-          AcmCertificateArn: !Sub 'arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}'
-          SslSupportMethod:  !Ref 'SslSupportMethod'
-          MinimumProtocolVersion: !Ref 'MinimumProtocolVersion'
-        IPV6Enabled: !Ref 'IPV6Enabled'
+          AcmCertificateArn: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}
+          SslSupportMethod: !Ref SslSupportMethod
+          MinimumProtocolVersion: !Ref MinimumProtocolVersion
+        IPV6Enabled: !Ref IPV6Enabled
         Logging:
-          Bucket: !Sub '${LoggingBucket}.s3.amazonaws.com'
+          Bucket: !Sub ${LoggingBucket}.s3.amazonaws.com
 
-# LAMBDA@EDGE FUNCTION
+          # LAMBDA@EDGE FUNCTION
   LambdaEdgeFunction:
-    Type: 'AWS::Lambda::Function'
+    Type: AWS::Lambda::Function
     Properties:
-      Description: 'A custom Lambda@Edge function for serving custom headers from CloudFront Distribution'
-      FunctionName: !Sub '${AppName}-lambda-edge-${Environment}'
+      Description: A custom Lambda@Edge function for serving custom headers from CloudFront Distribution
+      FunctionName: !Sub ${AppName}-lambda-edge-${Environment}
       Handler: index.handler
-      Role: !GetAtt 'LambdaEdgeIAMRole.Arn'
+      Role: !GetAtt LambdaEdgeIAMRole.Arn
       MemorySize: 128
       Timeout: 5
       Code:
@@ -730,22 +706,22 @@ Resources:
             };
       Runtime: nodejs10.x
 
-# LAMBDA@EDGE VERSION VERSION
+      # LAMBDA@EDGE VERSION VERSION
   LambdaEdgeVersion:
-    Type: 'Custom::LambdaVersion'
+    Type: Custom::LambdaVersion
     Properties:
-      ServiceToken: !GetAtt 'LambdaEdgeVersionFunction.Arn'
-      FunctionName: !Ref 'LambdaEdgeFunction'
-      LambdaCodeVersion: !Ref 'LambdaFunctionVersion'
+      ServiceToken: !GetAtt LambdaEdgeVersionFunction.Arn
+      FunctionName: !Ref LambdaEdgeFunction
+      LambdaCodeVersion: !Ref LambdaFunctionVersion
 
-# LAMBDA@EDGE VERSION FUNCTION
+      # LAMBDA@EDGE VERSION FUNCTION
   LambdaEdgeVersionFunction:
-    Type: 'AWS::Lambda::Function'
+    Type: AWS::Lambda::Function
     Properties:
-      Description: 'A custom Lambda@Edge Version function'
-      FunctionName: !Sub '${AppName}-lambda-edge-version-${Environment}'
+      Description: A custom Lambda@Edge Version function
+      FunctionName: !Sub ${AppName}-lambda-edge-version-${Environment}
       Handler: index.handler
-      Role: !GetAtt 'LambdaEdgeIAMRole.Arn'
+      Role: !GetAtt LambdaEdgeIAMRole.Arn
       MemorySize: 128
       Timeout: 30
       Code:
@@ -766,85 +742,83 @@ Resources:
           };
       Runtime: nodejs10.x
 
-
 Outputs:
-
   AdministratorAccessIAMRole:
-    Description: "Administrator Access IAM Role"
-    Value:       !Ref 'AdministratorAccessIAMRole'
+    Description: Administrator Access IAM Role
+    Value: !Ref AdministratorAccessIAMRole
     Export:
-      Name:      !Sub '${AppName}-iam-${Environment}-administrator-access-role'
+      Name: !Sub ${AppName}-iam-${Environment}-administrator-access-role
 
   LoggingBucket:
-    Description: "Name of S3 Logging bucket"
-    Value:       !Ref 'LoggingBucket'
+    Description: Name of S3 Logging bucket
+    Value: !Ref LoggingBucket
     Export:
-      Name:      !Sub '${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}'
+      Name: !Sub ${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}
 
   LoggingBucketKMSKey:
-    Description:  "Logging Bucket KMS Key"
-    Value:        !Ref 'LoggingBucketKMSKey'
+    Description: Logging Bucket KMS Key
+    Value: !Ref LoggingBucketKMSKey
     Export:
-      Name:       !Sub '${AppName}-${Environment}-s3-logging-kms'
+      Name: !Sub ${AppName}-${Environment}-s3-logging-kms
 
   OriginALB:
-    Description: "The URL of the Origin ALB"
-    Value:       !GetAtt 'OriginALB.DNSName'
+    Description: The URL of the Origin ALB
+    Value: !GetAtt OriginALB.DNSName
     Export:
-      Name:      !Sub '${AppName}-${Environment}-origin-alb-dns'
+      Name: !Sub ${AppName}-${Environment}-origin-alb-dns
 
   ALBExternalAccessSGID:
-    Description: "ALB External Access Security Group ID"
-    Value:       !Ref 'ALBExternalAccessSG'
+    Description: ALB External Access Security Group ID
+    Value: !Ref ALBExternalAccessSG
     Export:
-      Name:      !Sub '${AppName}-${Environment}-alb-external-access-ingrees-sg'
+      Name: !Sub ${AppName}-${Environment}-alb-external-access-ingrees-sg
 
   EC2InstanceSGID:
-    Description: "EC2 Instance Security Group ID"
-    Value:       !Ref 'EC2InstanceSG'
+    Description: EC2 Instance Security Group ID
+    Value: !Ref EC2InstanceSG
     Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-sg'
+      Name: !Sub ${AppName}-${Environment}-ec2-instance-sg
 
   EC2InstanceDNS:
-    Description: "EC2 Instance DNS Name"
-    Value:       !GetAtt 'EC2Instance.PrivateDnsName'
+    Description: EC2 Instance DNS Name
+    Value: !GetAtt EC2Instance.PrivateDnsName
     Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-dns'
+      Name: !Sub ${AppName}-${Environment}-ec2-instance-dns
 
   EC2InstanceIP:
-    Description: "EC2 Instance IP Address"
-    Value:       !GetAtt 'EC2Instance.PrivateIp'
+    Description: EC2 Instance IP Address
+    Value: !GetAtt EC2Instance.PrivateIp
     Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-ip-address'
+      Name: !Sub ${AppName}-${Environment}-ec2-instance-ip-address
 
   EC2InstanceID:
-    Description: "EC2 Instance Instance ID"
-    Value:       !Ref 'EC2Instance'
+    Description: EC2 Instance Instance ID
+    Value: !Ref EC2Instance
     Export:
-      Name:      !Sub '${AppName}-${Environment}-ec2-instance-id'
+      Name: !Sub ${AppName}-${Environment}-ec2-instance-id
 
   CloudFrontEndpoint:
-    Description: "Endpoint for Cloudfront Distribution"
-    Value:       !Ref 'CloudFrontDistribution'
+    Description: Endpoint for Cloudfront Distribution
+    Value: !Ref CloudFrontDistribution
     Export:
-      Name:      !Sub '${AppName}-${Environment}-cloudfront-distribution'
+      Name: !Sub ${AppName}-${Environment}-cloudfront-distribution
 
   AlternateDomainNames:
-    Description: "Alternate Domain Names (CNAME)"
-    Value:       !Ref 'AlternateDomainNames'
+    Description: Alternate Domain Names (CNAME)
+    Value: !Ref AlternateDomainNames
 
   LambdaEdgeFunction:
-    Description: "The Name of the Lambda@Edge Function"
-    Value:       'LambdaEdgeFunction'
+    Description: The Name of the Lambda@Edge Function
+    Value: LambdaEdgeFunction
     Export:
-      Name:      !Sub '${AppName}-${Environment}-lambda-edge-function-3'
+      Name: !Sub ${AppName}-${Environment}-lambda-edge-function-3
 
   LambdaEdgeFunctionARN:
-    Description: "The ARN of the Lambda@Edge Function"
-    Value:       !GetAtt 'LambdaEdgeFunction.Arn'
+    Description: The ARN of the Lambda@Edge Function
+    Value: !GetAtt LambdaEdgeFunction.Arn
     Export:
-      Name:      !Sub '${AppName}-${Environment}-lambda-edge-function-arn-3'
+      Name: !Sub ${AppName}-${Environment}-lambda-edge-function-arn-3
 
   LambdaEdgeVersion:
-    Description: "Lambda@Edge Version Function"
-    Value:       !GetAtt 'LambdaEdgeVersion.Version'
+    Description: Lambda@Edge Version Function
+    Value: !GetAtt LambdaEdgeVersion.Version

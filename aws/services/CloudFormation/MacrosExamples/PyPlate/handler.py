@@ -5,6 +5,9 @@ Package the CloudFormation template using CloudFormation Rain.
 (If you don't want to use Rain, simply embed the contents of
 this file to replace the !Rain::Embed directive in the template)
 """
+
+#pylint: disable=exec-used
+
 import traceback
 import json
 
@@ -25,7 +28,7 @@ def obj_iterate(obj, params):
     return obj
 
 
-def handler(event, context):
+def handler(event, _):
     "Lambda handler"
 
     print(json.dumps(event))

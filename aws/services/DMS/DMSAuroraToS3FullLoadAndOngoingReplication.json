@@ -1,6 +1,16 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This CloudFormation sample template DMSAuroraToS3FullLoadAndOngoingReplication creates an Aurora RDS instance and DMS instance in a VPC, and a S3 bucket. The Aurora RDS instance is configured as the DMS Source Endpoint and the S3 bucket is configured as the DMS Target Endpoint. A DMS task is created and configured to migrate existing data and replicate ongoing changes from the source endpoint to the target endpoint. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Description": "This CloudFormation sample template DMSAuroraToS3FullLoadAndOngoingReplication creates an Aurora RDS instance and DMS instance in a VPC, and an S3 bucket. The Aurora RDS instance is configured as the DMS Source Endpoint and the S3 bucket is configured as the DMS Target Endpoint. A DMS task is created and configured to migrate existing data and replicate ongoing changes from the source endpoint to the target endpoint. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "ignore_checks": [
+                    "I3013",
+                    "W3005"
+                ]
+            }
+        }
+    },
     "Parameters": {
         "ClientIP": {
             "Description": "The IP address range that can be used to connect to the RDS instances from your local machine. It must be a valid IP CIDR range of the form x.x.x.x/x. Pls get your address using checkip.amazonaws.com or whatsmyip.org",
@@ -28,6 +38,10 @@
             "MaxLength": "1",
             "AllowedPattern": "[YN]",
             "ConstraintDescription": "Permitted value is Y or N."
+        },
+        "SnapshotIdentifier": {
+            "Type": "String",
+            "Default": "arn:aws:rds:us-east-1:01234567890123:cluster-snapshot:dms-sampledb-snapshot"
         }
     },
     "Conditions": {
@@ -250,41 +264,58 @@
             }
         },
         "AuroraCluster": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
             "Type": "AWS::RDS::DBCluster",
             "Properties": {
                 "DatabaseName": "dms_sample",
+                "BackupRetentionPeriod": 7,
                 "DBClusterParameterGroupName": {
                     "Ref": "AuroraClusterParameterGroup"
                 },
                 "DBSubnetGroupName": {
                     "Ref": "AuroraDBSubnetGroup"
                 },
-                "Engine": "aurora",
-                "SnapshotIdentifier": "arn:aws:rds:us-east-1:343299325021:cluster-snapshot:dms-sampledb-snapshot",
+                "Engine": "aurora-postgresql",
+                "SnapshotIdentifier": {
+                    "Ref": "SnapshotIdentifier"
+                },
                 "VpcSecurityGroupIds": [
                     {
                         "Ref": "AuroraSecurityGroup"
                     }
-                ]
+                ],
+                "StorageEncrypted": true
             }
         },
         "AuroraDB": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
             "Type": "AWS::RDS::DBInstance",
             "DependsOn": [
                 "AuroraCluster"
             ],
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "DB_INSTANCE_BACKUP_ENABLED",
+                        "RDS_SNAPSHOT_ENCRYPTED",
+                        "RDS_STORAGE_ENCRYPTED"
+                    ]
+                }
+            },
             "Properties": {
                 "DBClusterIdentifier": {
                     "Ref": "AuroraCluster"
                 },
-                "DBInstanceClass": "db.t2.medium",
+                "DBInstanceClass": "db.t3.medium",
                 "DBInstanceIdentifier": "dms-sample",
                 "DBSubnetGroupName": {
                     "Ref": "AuroraDBSubnetGroup"
                 },
-                "Engine": "aurora",
-                "MultiAZ": "false",
-                "PubliclyAccessible": "true",
+                "Engine": "aurora-postgresql",
+                "MultiAZ": false,
+                "PubliclyAccessible": false,
                 "Tags": [
                     {
                         "Key": "Application",
@@ -297,8 +328,32 @@
         },
         "S3Bucket": {
             "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
             "Properties": {
-                "AccessControl": "Private"
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
             }
         },
         "DMSCloudwatchRole": {
@@ -399,18 +454,7 @@
                                             ]
                                         },
                                         {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    {
-                                                        "Fn::GetAtt": [
-                                                            "S3Bucket",
-                                                            "Arn"
-                                                        ]
-                                                    },
-                                                    "/*"
-                                                ]
-                                            ]
+                                            "Fn::Sub": "${S3Bucket.Arn}/*"
                                         }
                                     ]
                                 },
@@ -468,7 +512,7 @@
                     ]
                 },
                 "PubliclyAccessible": false,
-                "ReplicationInstanceClass": "dms.t2.small",
+                "ReplicationInstanceClass": "dms.t3.medium",
                 "ReplicationInstanceIdentifier": "aurora-s3-repinstance-sampledb",
                 "ReplicationSubnetGroupIdentifier": {
                     "Ref": "DMSReplicationSubnetGroup"
@@ -490,7 +534,7 @@
             "Properties": {
                 "EndpointType": "source",
                 "EngineName": "AURORA",
-                "Password": "password",
+                "Password": "{{resolve:secretsmanager:aurora-source-enpoint-password:SecretString:password}}",
                 "Port": 3306,
                 "ServerName": {
                     "Fn::GetAtt": [

@@ -33,6 +33,11 @@ Conditions:
 Resources:
   Ec2Volume:
     Type: AWS::EC2::Volume
+    Metadata:
+      guard:
+        SuppressedRules:
+          - EC2_EBS_ENCRYPTION_BY_DEFAULT
+          - ENCRYPTED_VOLUMES
     Properties:
       AutoEnableIO: !Ref Ec2VolumeAutoEnableIO
       Size: "5"
@@ -63,6 +68,23 @@ Resources:
 
   ConfigBucket:
     Type: AWS::S3::Bucket
+    Metadata:
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   ConfigTopic:
     Type: AWS::SNS::Topic
@@ -115,6 +137,10 @@ Resources:
 
   ConfigPermissionToCallLambda:
     Type: AWS::Lambda::Permission
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED
     Properties:
       FunctionName: !GetAtt VolumeAutoEnableIOComplianceCheck.Arn
       Action: lambda:InvokeFunction
@@ -122,6 +148,10 @@ Resources:
 
   VolumeAutoEnableIOComplianceCheck:
     Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
       Code:
         ZipFile: |

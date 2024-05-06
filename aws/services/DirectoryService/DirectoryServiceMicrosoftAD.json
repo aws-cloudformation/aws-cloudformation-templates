@@ -1,0 +1,201 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Provision AWS Managed Active Directory\n",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Active Directory Settings"
+                    },
+                    "Parameters": [
+                        "pDomainName",
+                        "pMicrosoftADShortName",
+                        "pEdition",
+                        "pCreateAlias",
+                        "pEnableSingleSignOn"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "VPC Networking Settings"
+                    },
+                    "Parameters": [
+                        "pVPCID",
+                        "pPrivateSubnet1",
+                        "pPrivateSubnet2"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "pDomainName": {
+                    "default": "Name"
+                },
+                "pMicrosoftADShortName": {
+                    "default": "Short Name"
+                },
+                "pEdition": {
+                    "default": "Edition"
+                },
+                "pCreateAlias": {
+                    "default": "Create Alias"
+                },
+                "pEnableSingleSignOn": {
+                    "default": "Enable Single Sign On"
+                },
+                "pVPCID": {
+                    "default": "VPC ID"
+                },
+                "pPrivateSubnet1": {
+                    "default": "Private Subnet 1"
+                },
+                "pPrivateSubnet2": {
+                    "default": "Private Subnet 2"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "pEdition": {
+            "Description": "The AWS Microsoft AD edition. Valid values include Standard and Enterprise. The default is Enterprise.\n",
+            "Type": "String",
+            "AllowedValues": [
+                "Standard",
+                "Enterprise"
+            ],
+            "Default": "Enterprise"
+        },
+        "pDomainName": {
+            "Description": "The fully qualified name for the Microsoft Active Directory in AWS, such as corp.example.com. The name doesn't need to be publicly resolvable; it will resolve inside your VPC only.\n",
+            "Type": "String",
+            "Default": "corp.example.com"
+        },
+        "pMicrosoftADShortName": {
+            "Description": "The NetBIOS name for your domain, such as CORP. If you don't specify a value, AWS Directory Service uses the first part of your directory DNS server name. For example, if your directory DNS server name is corp.example.com, AWS Directory Service specifies CORP for the NetBIOS name.\n",
+            "Type": "String",
+            "Default": "corp"
+        },
+        "pEnableSingleSignOn": {
+            "Description": "Whether to enable single sign-on for a Microsoft Active Directory in AWS. Single sign-on allows users in your directory to access certain AWS services from a computer joined to the directory without having to enter their credentials separately. If you don't specify a value, AWS CloudFormation disables single sign-on by default. If enabling SSO, then \"Create Alias\" need to be set to true.\n",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "false"
+        },
+        "pCreateAlias": {
+            "Description": "A unique alias to assign to the Microsoft Active Directory in AWS. AWS Directory Service uses the alias to construct the access URL for the directory, such as http://alias.awsapps.com. By default, AWS CloudFormation does not create an alias.\n",
+            "Type": "String",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "false"
+        },
+        "pPrivateSubnet1": {
+            "Description": "A subnet within the selected VPC. Each subnet must be in different Availability Zones (AZs). AWS Directory Service creates a directory server and a DNS server in each subnet.\n",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "pPrivateSubnet2": {
+            "Description": "A second subnet in same VPC that is in different AZ. Each subnet must be in different Availability Zones (AZs). AWS Directory Service creates a directory server and a DNS server in each subnet.\n",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "pVPCID": {
+            "Description": "The VPC ID in which to create the Microsoft Active Directory server.\n",
+            "Type": "AWS::EC2::VPC::Id"
+        }
+    },
+    "Conditions": {
+        "cAlias": {
+            "Fn::Equals": [
+                {
+                    "Ref": "pCreateAlias"
+                },
+                "true"
+            ]
+        }
+    },
+    "Resources": {
+        "rMSDirectory": {
+            "Type": "AWS::DirectoryService::MicrosoftAD",
+            "Properties": {
+                "CreateAlias": {
+                    "Ref": "pCreateAlias"
+                },
+                "Edition": {
+                    "Ref": "pEdition"
+                },
+                "EnableSso": {
+                    "Ref": "pEnableSingleSignOn"
+                },
+                "Name": {
+                    "Ref": "pDomainName"
+                },
+                "Password": "{{resolve:secretsmanager:microsoft-ad-pw:SecretString:password}}",
+                "ShortName": {
+                    "Ref": "pMicrosoftADShortName"
+                },
+                "VpcSettings": {
+                    "SubnetIds": [
+                        {
+                            "Ref": "pPrivateSubnet1"
+                        },
+                        {
+                            "Ref": "pPrivateSubnet2"
+                        }
+                    ],
+                    "VpcId": {
+                        "Ref": "pVPCID"
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "DirectoryID": {
+            "Description": "ID of the MS Directory",
+            "Value": {
+                "Ref": "rMSDirectory"
+            }
+        },
+        "PrimaryDNS": {
+            "Description": "DNS IPs of the MS Directory",
+            "Value": {
+                "Fn::Select": [
+                    0,
+                    {
+                        "Fn::GetAtt": [
+                            "rMSDirectory",
+                            "DnsIpAddresses"
+                        ]
+                    }
+                ]
+            }
+        },
+        "SecondaryDNS": {
+            "Description": "DNS IPs of the MSDirectory",
+            "Value": {
+                "Fn::Select": [
+                    1,
+                    {
+                        "Fn::GetAtt": [
+                            "rMSDirectory",
+                            "DnsIpAddresses"
+                        ]
+                    }
+                ]
+            }
+        },
+        "DirectoryAlias": {
+            "Description": "URL for the alias",
+            "Value": {
+                "Fn::GetAtt": [
+                    "rMSDirectory",
+                    "Alias"
+                ]
+            },
+            "Condition": "cAlias"
+        }
+    }
+}

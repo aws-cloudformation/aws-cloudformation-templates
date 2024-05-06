@@ -1,8 +1,16 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Sample Template RDS_with_DBParameterGroup: Sample template showing how to create an Amazon RDS Database Instance with a DBParameterGroup.**WARNING** This template creates an Amazon Relational Database Service database instance. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Description": "Sample template showing how to create an Amazon RDS Database Instance with a\nDBParameterGroup. **WARNING** This template creates an Amazon Relational\nDatabase Service database instance. You will be billed for the AWS\nresources used if you create a stack from this template.\n",
     "Metadata": {
-        "License": "Apache-2.0"
+        "License": "Apache-2.0",
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "us-east-1",
+                    "us-west-2"
+                ]
+            }
+        }
     },
     "Parameters": {
         "DBName": {
@@ -22,15 +30,6 @@
             "MaxLength": "16",
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
-        },
-        "DBPassword": {
-            "Description": "The database admin account password",
-            "Type": "String",
-            "NoEcho": "true",
-            "MinLength": "8",
-            "MaxLength": "41",
-            "AllowedPattern": "[a-zA-Z0-9]*",
-            "ConstraintDescription": "must contain only alphanumeric characters."
         }
     },
     "Resources": {
@@ -46,16 +45,16 @@
                 "DBInstanceClass": "db.t3.small",
                 "BackupRetentionPeriod": 7,
                 "Engine": "MySQL",
-                "EngineVersion": "5.6.19",
+                "EngineVersion": "8.0.36",
                 "MasterUsername": {
                     "Ref": "DBUser"
                 },
-                "MasterUserPassword": {
-                    "Ref": "DBPassword"
-                },
+                "ManageMasterUserPassword": true,
                 "DBParameterGroupName": {
                     "Ref": "MyRDSParamGroup"
-                }
+                },
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true
             }
         },
         "MyRDSParamGroup": {
