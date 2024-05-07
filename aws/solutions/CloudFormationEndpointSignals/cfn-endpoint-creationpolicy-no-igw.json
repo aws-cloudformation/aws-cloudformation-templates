@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This template deploys a VPC with a pair of private subnets spread across two Availabilty Zones. It deploys a VPC Endpoint for CloudFormation so an instance in the private subnet can use cfn-signal for its CreationPolicy. **WARNING** You will be billed for the AWS resources used if you create a stack from this template.\n",
+    "Description": "This template deploys a VPC with a pair of private subnets spread across two Availabilty Zones. It deploys a VPC Endpoint for CloudFormation so an instance in the private subnet can use cfn-signal for its CreationPolicy. **WARNING** You will be billed for the AWS resources used if you create a stack from this template.",
     "Parameters": {
         "EnvironmentName": {
             "Description": "An environment name that will be prefixed to resource names",
@@ -222,6 +222,13 @@
         },
         "PrivateSG": {
             "Type": "AWS::EC2::SecurityGroup",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "INCOMING_SSH_DISABLED"
+                    ]
+                }
+            },
             "Properties": {
                 "GroupDescription": "Traffic from Bastion",
                 "SecurityGroupIngress": [
