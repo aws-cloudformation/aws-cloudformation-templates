@@ -1,0 +1,125 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Template to install CloudWatchAgent on windows. It was validated on windows 2016",
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m4.2xlarge",
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "InstanceAMI": {
+            "Description": "Managed AMI ID for EC2 Instance",
+            "Type": "AWS::EC2::Image::Id",
+            "Default": "ami-3703414f"
+        },
+        "IAMRole": {
+            "Description": "EC2 attached IAM role",
+            "Type": "String",
+            "Default": "CloudWatchAgentAdminRole",
+            "ConstraintDescription": "must be an existing IAM role which will be attached to EC2 instance."
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
+        }
+    },
+    "Resources": {
+        "EC2Instance": {
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Count": 1,
+                    "Timeout": "PT15M"
+                }
+            },
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "default": [
+                            "00_setupCfnHup",
+                            "01_CfnHup_service",
+                            "02_config-amazon-cloudwatch-agent",
+                            "03_restart_amazon-cloudwatch-agent"
+                        ],
+                        "UpdateEnvironment": [
+                            "02_config-amazon-cloudwatch-agent",
+                            "03_restart_amazon-cloudwatch-agent"
+                        ]
+                    },
+                    "00_setupCfnHup": {
+                        "files": {
+                            "c:\\cfn\\cfn-hup.conf": {
+                                "content": {
+                                    "Fn::Sub": "[main]\nstack=${AWS::StackId}\nregion=${AWS::Region}\ninterval=1\n"
+                                }
+                            },
+                            "c:\\cfn\\hooks.d\\amazon-cloudwatch-agent-auto-reloader.conf": {
+                                "content": {
+                                    "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init.02_config-amazon-cloudwatch-agent\naction=cfn-init.exe -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets UpdateEnvironment\n"
+                                }
+                            }
+                        }
+                    },
+                    "01_CfnHup_service": {
+                        "services": {
+                            "windows": {
+                                "cfn-hup": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true",
+                                    "files": [
+                                        "c:\\cfn\\cfn-hup.conf",
+                                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "02_config-amazon-cloudwatch-agent": {
+                        "files": {
+                            "C:\\ProgramData\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.json": {
+                                "content": "{\n  \"metrics\": {\n    \"append_dimensions\": {\n      \"AutoScalingGroupName\": \"${!aws:AutoScalingGroupName}\",\n      \"ImageId\": \"${!aws:ImageId}\",\n      \"InstanceId\": \"${!aws:InstanceId}\",\n      \"InstanceType\": \"${!aws:InstanceType}\"\n    },\n    \"metrics_collected\": {\n      \"Memory\": {\n        \"measurement\": [\n          \"% Committed Bytes In Use\"\n        ],\n        \"metrics_collection_interval\": 60\n      },\n      \"Paging File\": {\n        \"measurement\": [\n          \"% Usage\"\n        ],\n        \"metrics_collection_interval\": 60,\n        \"resources\": [\n          \"*\"\n        ]\n      }\n    }\n  }\n}\n"
+                            }
+                        }
+                    },
+                    "03_restart_amazon-cloudwatch-agent": {
+                        "commands": {
+                            "01_stop_service": {
+                                "command": "powershell -Command \"C:\\\\'Program Files'\\\\Amazon\\\\AmazonCloudWatchAgent\\\\amazon-cloudwatch-agent-ctl.ps1 -a stop\""
+                            },
+                            "02_start_service": {
+                                "command": "powershell -Command \"C:\\\\'Program Files'\\\\Amazon\\\\AmazonCloudWatchAgent\\\\amazon-cloudwatch-agent-ctl.ps1 -a fetch-config -m ec2 -c file:C:\\\\ProgramData\\\\Amazon\\\\AmazonCloudWatchAgent\\\\amazon-cloudwatch-agent.json -s\""
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "IamInstanceProfile": {
+                    "Ref": "IAMRole"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "InstanceAMI"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Sub": "<script>\nmkdir C:\\Downloads\\Amazon\\AmazonCloudWatchAgent\npowershell -Command \"(New-Object Net.WebClient).DownloadFile('https://s3.amazonaws.com/amazoncloudwatch-agent/windows/amd64/latest/amazon-cloudwatch-agent.msi','C:\\Downloads\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.msi')\"\nC:\\Downloads\\Amazon\\AmazonCloudWatchAgent\\amazon-cloudwatch-agent.msi\ncfn-init.exe -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal.exe -e %errorlevel% --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n</script>"
+                    }
+                }
+            }
+        }
+    }
+}
