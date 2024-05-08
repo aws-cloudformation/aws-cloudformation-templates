@@ -29,18 +29,18 @@
     },
     "Mappings": {
         "RegionMap": {
-            "ap-northeast-2": {
+            "us-east-1": {
                 "AZs": [
-                    "ap-northeast-2a",
-                    "ap-northeast-2c",
-                    "ap-northeast-2b"
+                    "us-east-1a",
+                    "us-east-1b",
+                    "us-east-1c"
                 ]
             },
-            "sa-east-1": {
+            "us-west-2": {
                 "AZs": [
-                    "sa-east-1a",
-                    "sa-east-1c",
-                    "sa-east-1b"
+                    "us-west-2a",
+                    "us-west-2b",
+                    "us-west-2c"
                 ]
             }
         }
