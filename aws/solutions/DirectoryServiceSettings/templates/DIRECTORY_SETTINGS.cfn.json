@@ -46,7 +46,7 @@
                     "default": "ID of the Directory (e.g., d-906764663a)"
                 },
                 "DirectoryMonitoringEmail": {
-                    "defaut": "Directory Monitoring Email"
+                    "default": "Directory Monitoring Email"
                 },
                 "DirectoryMonitoringSNSTopicKMSKey": {
                     "default": "SNS Topic KMS Key for Directory Monitoring messages"
@@ -183,6 +183,12 @@
             "Default": "directory_settings_custom_resource.zip",
             "MaxLength": 1024,
             "MinLength": 1
+        },
+        "Subnets": {
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        },
+        "SecurityGroups": {
+            "Type": "List<AWS::EC2::SecurityGroup::Id>"
         }
     },
     "Rules": {
@@ -401,7 +407,7 @@
                         "Arn"
                     ]
                 },
-                "Runtime": "python3.8",
+                "Runtime": "python3.12",
                 "MemorySize": 128,
                 "Timeout": 120,
                 "Environment": {
@@ -417,6 +423,14 @@
                     },
                     "S3Key": {
                         "Ref": "LambdaZipFileName"
+                    }
+                },
+                "VpcConfig": {
+                    "SubnetIds": {
+                        "Ref": "Subnets"
+                    },
+                    "SecurityGroupIds": {
+                        "Ref": "SecurityGroups"
                     }
                 }
             }

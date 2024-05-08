@@ -6,6 +6,8 @@ http://aws.amazon.com/agreement or other written agreement between Customer and 
 Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
 """
 
+#pylint: disable=line-too-long
+
 from __future__ import annotations
 
 import json
@@ -91,9 +93,10 @@ def deregister_directory_monitoring_topic(directory_id: str, topic: str) -> None
     """
     registered_topics: list = get_registered_topics(directory_id)
     for registered_topic in registered_topics:
-        response = ds_client.deregister_event_topic(DirectoryId=directory_id, TopicName=registered_topic)
-        logger.info(f"Directory Monitoring deregistered with Topic '{registered_topic}'")
-        logger.debug(f"deregister_topic_response = {json.dumps(response, default=str)}")
+        if topic == registered_topic:
+            response = ds_client.deregister_event_topic(DirectoryId=directory_id, TopicName=registered_topic)
+            logger.info(f"Directory Monitoring deregistered with Topic '{registered_topic}'")
+            logger.debug(f"deregister_topic_response = {json.dumps(response, default=str)}")
 
 
 def create_directory_alias(directory_id: str, alias: str, existing_alias: str) -> str:
@@ -112,14 +115,15 @@ def create_directory_alias(directory_id: str, alias: str, existing_alias: str) -
     """
     if alias == existing_alias:
         return alias
-    elif not existing_alias:
+
+    if not existing_alias:
         response = ds_client.create_alias(DirectoryId=directory_id, Alias=alias)
         logger.info("Directory alias created")
         logger.debug(f"create_alias_response = {json.dumps(response, default=str)}")
         return alias
-    else:
-        error_message = f"Directory already has a different alias.  Use '{existing_alias}' for the 'DirectoryAlias' CloudFormation parameter."
-        raise ValueError(error_message)
+
+    error_message = f"Directory already has a different alias.  Use '{existing_alias}' for the 'DirectoryAlias' CloudFormation parameter."
+    raise ValueError(error_message)
 
 
 def enable_directory_sso(directory_id: str, existing_sso_enabled: bool) -> None:
@@ -154,7 +158,7 @@ def disable_directory_sso(directory_id: str, existing_sso_enabled: bool) -> None
 
 @helper.create
 @helper.update
-def create_and_update(event, context):
+def create_and_update(event, _):
     """Create/Update Event from AWS CloudFormation.
 
     Args:
@@ -188,7 +192,7 @@ def create_and_update(event, context):
 
 
 @helper.delete
-def delete(event, context):
+def delete(event, _):
     """Delete Event from AWS CloudFormation. Deletes the ADConnector Directory.
 
     Args:
