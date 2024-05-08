@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "This templates creates an AWS Managed Microsoft AD directory. Tasks accomplished, (1) create AWS Managed Microsoft AD directory (2) option to create seamless domain join resources for Windows & Linux EC2 instances (3) option to create a domain members security group that allows all PrivateIP communications inbound (4) option to create DHCPOptionSet pointing to AWS Managed Microsoft AD DNS servers",
+    "Description": "This template creates an AWS Managed Microsoft AD directory. Tasks accomplished, (1) create AWS Managed Microsoft AD directory (2) option to create seamless domain join resources for Windows & Linux EC2 instances (3) option to create a domain members security group that allows all PrivateIP communications inbound (4) option to create DHCPOptionSet pointing to AWS Managed Microsoft AD DNS servers",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
@@ -19,7 +19,6 @@
                         "default": "AWS Managed Microsoft AD Configuration"
                     },
                     "Parameters": [
-                        "AWSManagedADAdminPassword",
                         "AWSManagedADDomainDNSName",
                         "AWSManagedADDomainNetBiosName",
                         "AWSManagedADEdition",
@@ -31,9 +30,6 @@
                 }
             ],
             "ParameterLabels": {
-                "AWSManagedADAdminPassword": {
-                    "default": "AWS Managed Microsoft AD Admin Password"
-                },
                 "AWSManagedADDomainDNSName": {
                     "default": "AWS Managed Microsoft AD Domain DNS Name"
                 },
@@ -87,12 +83,6 @@
             "AllowedPattern": "[a-zA-Z0-9-]+",
             "MaxLength": 15,
             "MinLength": 1
-        },
-        "AWSManagedADAdminPassword": {
-            "Description": "Password for the default administrative user named Admin. 8-64 characters, and must match at least 3 of the 4. (1) lowercase letters (2) Uppercase letters (3) numbers (4) non-alphanumeric characters \"~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/\"",
-            "Type": "String",
-            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
-            "NoEcho": true
         },
         "AWSManagedADEdition": {
             "Description": "AWS Managed AD Edition. Standard supports up to 30,000+ directory objects. Enterprise supports up to 500,000+ directory objects.",
@@ -149,10 +139,7 @@
         },
         "SecretsManagerDomainCredentialsSecretsKMSKey": {
             "Description": "(Optional) KMS Key ARN to use for encrypting the SecretsManager domain credentials secret. If empty, encryption is enabled with SecretsManager managing the server-side encryption keys.",
-            "Type": "String",
-            "Default": "",
-            "AllowedPattern": "^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\\d{12}:key\\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
-            "ConstraintDescription": "Key ARN example:  arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+            "Type": "String"
         },
         "SSMLogsBucketName": {
             "Description": "(Optional) SSM Logs bucket name for where Systems Manager logs should store log files. SSM Logs bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
@@ -234,9 +221,7 @@
                 "ShortName": {
                     "Ref": "AWSManagedADDomainNetBiosName"
                 },
-                "Password": {
-                    "Ref": "AWSManagedADAdminPassword"
-                },
+                "Password": "{{resolve:secretsmanager:AWSManagedADAdminPassword:SecretString:password}}",
                 "Edition": {
                     "Ref": "AWSManagedADEdition"
                 },
@@ -512,9 +497,7 @@
                 "Description": {
                     "Fn::Sub": "AD Credentials for Seamless Domain Join Windows/Linux EC2 instances to ${AWSManagedADDomainNetBiosName} Domain via AWS Managed Microsoft AD"
                 },
-                "SecretString": {
-                    "Fn::Sub": "{ \"awsSeamlessDomainUsername\" : \"Admin\", \"awsSeamlessDomainPassword\" : \"${AWSManagedADAdminPassword}\" }"
-                },
+                "SecretString": "{ \"awsSeamlessDomainUsername\" : \"Admin\", \"awsSeamlessDomainPassword\" : \"{{resolve:secretsmanager:AWSManagedADAdminPassword:SecretString:password}}\" }",
                 "KmsKeyId": {
                     "Fn::If": [
                         "SecretsManagerDomainCredentialsSecretsKMSKeyCondition",
