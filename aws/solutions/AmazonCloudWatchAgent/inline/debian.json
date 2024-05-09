@@ -1,0 +1,157 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Template to install CloudWatchAgent on debian. It was validated on debian 12.0",
+    "Parameters": {
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m4.2xlarge",
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "InstanceAMI": {
+            "Description": "Managed AMI ID for EC2 Instance",
+            "Type": "AWS::EC2::Image::Id",
+            "Default": "ami-6e1a0117"
+        },
+        "IAMRole": {
+            "Description": "EC2 attached IAM role",
+            "Type": "String",
+            "Default": "CloudWatchAgentAdminRole",
+            "ConstraintDescription": "must be an existing IAM role which will be attached to EC2 instance."
+        },
+        "SSHLocation": {
+            "Description": "The IP address range that can be used to SSH to the EC2 instances",
+            "Type": "String",
+            "Default": "0.0.0.0/0",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
+        }
+    },
+    "Resources": {
+        "EC2Instance": {
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Count": 1,
+                    "Timeout": "PT15M"
+                }
+            },
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "default": [
+                            "01_setupCfnHup",
+                            "02_config-amazon-cloudwatch-agent",
+                            "03_restart_amazon-cloudwatch-agent"
+                        ],
+                        "UpdateEnvironment": [
+                            "02_config-amazon-cloudwatch-agent",
+                            "03_restart_amazon-cloudwatch-agent"
+                        ]
+                    },
+                    "02_config-amazon-cloudwatch-agent": {
+                        "files": {
+                            "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json": {
+                                "content": "{\n  \"metrics\": {\n    \"append_dimensions\": {\n      \"AutoScalingGroupName\": \"${!aws:AutoScalingGroupName}\",\n      \"ImageId\": \"${!aws:ImageId}\",\n      \"InstanceId\": \"${!aws:InstanceId}\",\n      \"InstanceType\": \"${!aws:InstanceType}\"\n    },\n    \"metrics_collected\": {\n      \"mem\": {\n        \"measurement\": [\n          \"mem_used_percent\"\n        ]\n      },\n      \"swap\": {\n        \"measurement\": [\n          \"swap_used_percent\"\n        ]\n      }\n    }\n  }\n}\n"
+                            }
+                        }
+                    },
+                    "03_restart_amazon-cloudwatch-agent": {
+                        "commands": {
+                            "01_stop_service": {
+                                "command": "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop"
+                            },
+                            "02_start_service": {
+                                "command": "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s"
+                            }
+                        }
+                    },
+                    "01_setupCfnHup": {
+                        "files": {
+                            "/etc/cfn/cfn-hup.conf": {
+                                "content": {
+                                    "Fn::Sub": "[main]\nstack=${AWS::StackId}\nregion=${AWS::Region}\ninterval=1\n"
+                                },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/etc/cfn/hooks.d/amazon-cloudwatch-agent-auto-reloader.conf": {
+                                "content": {
+                                    "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init.02_config-amazon-cloudwatch-agent\naction=/opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets UpdateEnvironment\nrunas=root\n"
+                                },
+                                "mode": "000400",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/lib/systemd/system/cfn-hup.service": {
+                                "content": "[Unit]\nDescription=cfn-hup daemon\n[Service]\nType=simple\nExecStart=/opt/aws/bin/cfn-hup\nRestart=always\n[Install]\nWantedBy=multi-user.target\n"
+                            }
+                        },
+                        "commands": {
+                            "01enable_cfn_hup": {
+                                "command": "systemctl enable cfn-hup.service"
+                            },
+                            "02start_cfn_hup": {
+                                "command": "systemctl start cfn-hup.service"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "IamInstanceProfile": {
+                    "Ref": "IAMRole"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "ImageId": {
+                    "Ref": "InstanceAMI"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "InstanceSecurityGroup"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Sub": "#!/bin/bash\nwget https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb\ndpkg -i /tmp/amazon-cloudwatch-agent.deb\napt-get update -y\napt-get install -y python3 pipx && pipx ensurepath\npipx install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\ncfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n"
+                    }
+                }
+            }
+        },
+        "InstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable SSH access via port 22",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": {
+                            "Ref": "SSHLocation"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}

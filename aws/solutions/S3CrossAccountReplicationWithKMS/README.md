@@ -25,7 +25,7 @@ Example of cross-account, same-region, S3 bucket replication (v2) using server-s
 
 1. The source and destination resources should be deployed to the same region in different AWS Accounts.
 1. The CloudFormation stack names must be the same in both accounts. This is because of the resource naming convention used in the example templates.
-1. Deploy the destination.yml template by using CloudFormation in the destination account. The destination S3 bucket must exist before configuring a replication rule on the source bucket.
+1. Deploy the destination.yaml template by using CloudFormation in the destination account. The destination S3 bucket must exist before configuring a replication rule on the source bucket.
     1. Name the stack "replication-demo".
     1. Enter the AWS Account Id of the source account in the AccountIdSource parameter.
     1. The destination bucket will be named: replication-demo-{destination-account}-bucket

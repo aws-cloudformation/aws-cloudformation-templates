@@ -4,19 +4,27 @@
 
 This solution creates an AD Connector to connect to an on-premises directory.
 
-- (Optional) Create AWS resources (IAM role & instance profile) to support seamlessly join Windows EC2 instances to your AD Connector directory.
-- (Optional) Create AWS resources (IAM role, instance profile, and secret) to support seamlessly join Linux EC2 instances to your AD Connector
-  directory.
-- (Optional) Creates a Domain Members Security Group with **EXAMPLE** rules allowing all Private IP communications inbound.
+- (Optional) Create AWS resources (IAM role & instance profile) to support
+  seamlessly joining Windows EC2 instances to your AD Connector directory.
+- (Optional) Create AWS resources (IAM role, instance profile, and secret) to
+  support seamlessly joining Linux EC2 instances to your AD Connector directory.
+- (Optional) Creates a Domain Members Security Group with **EXAMPLE** rules
+  allowing all Private IP communications inbound.
 
 ## Notes
 
-- AD Connector is not an AWS CloudFormation supported resource, therefore using an AWS CloudFormation custom resource.
-- CloudWatch Logs Log Group uses Amazon managed server-side encryption. Optionally, a KMS CMK can be used.
-- Secrets Manager Secrets using Amazon managed server-side encryption. Optionally, a KMS CMK can be used.
-- **NOTE** Security Group rules are configured to allow all inbound communications from [RFC1918](https://tools.ietf.org/html/rfc1918#section-3)
-  Private Address Space, which includes: `10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16`, this is used as an **EXAMPLE**, however, all security group
-  rules can be locked down based on the requirements.
+- AD Connector is not an AWS CloudFormation supported resource, therefore using
+  an AWS CloudFormation custom resource.
+- CloudWatch Logs Log Group uses Amazon managed server-side encryption.
+  Optionally, a KMS CMK can be used.
+- Secrets Manager Secrets using Amazon managed server-side encryption.
+  Optionally, a KMS CMK can be used.
+- **NOTE** Security Group rules are configured to allow all inbound
+  communications from [RFC1918](https://tools.ietf.org/html/rfc1918#section-3)
+  Private Address Space, which includes:
+  `10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16`, this is used as an **EXAMPLE**,
+  however, all security group rules can be locked down based on the
+  requirements.
 
 ## Resources
 
@@ -26,11 +34,17 @@ This solution creates an AD Connector to connect to an on-premises directory.
 
 ## Attributions
 
-Using the [aws-cloudformation/custom-resource-heper](https://github.com/aws-cloudformation/custom-resource-helper) to handle the AWS CloudFormation
-Custom Resource responses for the given resources.
+Using the
+[aws-cloudformation/custom-resource-heper](https://github.com/aws-cloudformation/custom-resource-helper)
+to handle the AWS CloudFormation Custom Resource responses for the given
+resources.
 
 ## Instructions
 
 1. Run [src/package.sh](src/package.sh) to package the code and dependencies.
-2. Upload the [src/adconnector_custom_resource.zip](src/adconnector_custom_resource.zip) to an S3 bucket, note the bucket name.
-3. Launch the AWS CloudFormation stack using the [ADCONNECTOR.cfn.yaml](templates/ADCONNECTOR.cfn.yaml) template file as the source.
+1. Upload the
+   [src/adconnector\_custom\_resource.zip](src/adconnector_custom_resource.zip) to
+   an S3 bucket, note the bucket name.
+1. Launch the AWS CloudFormation stack using the
+   [ADCONNECTOR.cfn.yaml](templates/ADCONNECTOR.cfn.yaml) template file as the
+   source.

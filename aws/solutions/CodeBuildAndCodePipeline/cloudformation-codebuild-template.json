@@ -1,0 +1,348 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Deploys the prequisites for creating required code pipelines this includes \n",
+    "Parameters": {
+        "DockerImage": {
+            "Description": "Docker image to use for the build phase",
+            "Type": "String",
+            "Default": "aws/codebuild/standard:6.0"
+        }
+    },
+    "Resources": {
+        "CodeCommitRepo": {
+            "Type": "AWS::CodeCommit::Repository",
+            "Properties": {
+                "RepositoryName": {
+                    "Fn::Sub": "${AWS::StackName}-repo"
+                },
+                "RepositoryDescription": {
+                    "Fn::Sub": "This is a repository for the ${AWS::StackName} project."
+                }
+            }
+        },
+        "PipelineS3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${AWS::StackName}-bucket"
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                }
+            }
+        },
+        "CodeBuildRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "CanLog",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:CreateLogGroup",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}*:log-stream:*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "PipelineS3Bucket",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Sub": "${PipelineS3Bucket.Arn}/*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "CanAccessS3",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "PipelineS3Bucket",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "CanCreateReports",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "codebuild:*"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${AWS::StackName}*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "AppBuild": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-app-build"
+                },
+                "Artifacts": {
+                    "Type": "CODEPIPELINE",
+                    "EncryptionDisabled": true
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "SAMPLEENVVAR",
+                            "Type": "PLAINTEXT",
+                            "Value": "test"
+                        }
+                    ],
+                    "Image": {
+                        "Ref": "DockerImage"
+                    },
+                    "Type": "LINUX_CONTAINER"
+                },
+                "ServiceRole": {
+                    "Ref": "CodeBuildRole"
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE",
+                    "BuildSpec": "codebuild-app-build.yml"
+                }
+            }
+        },
+        "AppDeploy": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-app-deploy"
+                },
+                "Artifacts": {
+                    "Type": "CODEPIPELINE",
+                    "EncryptionDisabled": true
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "SAMPLEENVVAR",
+                            "Type": "PLAINTEXT",
+                            "Value": "test"
+                        }
+                    ],
+                    "Image": {
+                        "Ref": "DockerImage"
+                    },
+                    "Type": "LINUX_CONTAINER"
+                },
+                "ServiceRole": {
+                    "Ref": "CodeBuildRole"
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE",
+                    "BuildSpec": "codebuild-app-deploy.yml"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "CodeCommitName": {
+            "Description": "The code commit repository name",
+            "Value": {
+                "Fn::GetAtt": [
+                    "CodeCommitRepo",
+                    "Name"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-CodeCommitName"
+                }
+            }
+        },
+        "CodeCommitArn": {
+            "Description": "The code commit repository arn",
+            "Value": {
+                "Fn::GetAtt": [
+                    "CodeCommitRepo",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-CodeCommitArn"
+                }
+            }
+        },
+        "PipelineS3Bucket": {
+            "Description": "The s3 bucket used by the deployment codepipelines",
+            "Value": {
+                "Ref": "PipelineS3Bucket"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-PipelineS3Bucket"
+                }
+            }
+        },
+        "PipelineS3BucketArn": {
+            "Description": "The s3 bucket used by the deployment codepipelines",
+            "Value": {
+                "Fn::GetAtt": [
+                    "PipelineS3Bucket",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-PipelineS3BucketArn"
+                }
+            }
+        },
+        "CodeBuildRole": {
+            "Description": "IAM Role ARN associated with CodeBuild projects",
+            "Value": {
+                "Ref": "CodeBuildRole"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-CodeBuildRole"
+                }
+            }
+        },
+        "CodeBuildRoleArn": {
+            "Description": "IAM Role ARN associated with CodeBuild projects",
+            "Value": {
+                "Fn::GetAtt": [
+                    "CodeBuildRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-CodeBuildRoleArn"
+                }
+            }
+        },
+        "AppDeploy": {
+            "Value": {
+                "Ref": "AppDeploy"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-AppDeploy"
+                }
+            }
+        },
+        "AppDeploydArn": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "AppDeploy",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-AppDeployArn"
+                }
+            }
+        },
+        "AppBuild": {
+            "Value": {
+                "Ref": "AppBuild"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-AppBuild"
+                }
+            }
+        },
+        "AppBuildArn": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "AppBuild",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-AppBuildArn"
+                }
+            }
+        }
+    }
+}

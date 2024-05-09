@@ -465,9 +465,25 @@
             "UpdateReplacePolicy": "Retain",
             "Type": "AWS::S3::Bucket",
             "DependsOn": "LoggingBucketKMSKey",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
             "Properties": {
                 "BucketName": {
                     "Fn::Sub": "${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}"
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
                 },
                 "BucketEncryption": {
                     "ServerSideEncryptionConfiguration": [
@@ -509,6 +525,23 @@
                                 }
                             },
                             "Action": "s3:PutObject",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
                             "Resource": [
                                 {
                                     "Fn::Sub": "arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*"
@@ -730,12 +763,12 @@
                             "Ref": "EC2Instance"
                         },
                         "Port": {
-                            "Fn::Sub": "${OriginALBTGPort}"
+                            "Ref": "OriginALBTGPort"
                         }
                     }
                 ],
                 "Port": {
-                    "Fn::Sub": "${OriginALBTGPort}"
+                    "Ref": "OriginALBTGPort"
                 },
                 "Protocol": "HTTP",
                 "VpcId": {
@@ -1000,6 +1033,13 @@
         },
         "LambdaEdgeFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "A custom Lambda@Edge function for serving custom headers from CloudFront Distribution",
                 "FunctionName": {
@@ -1017,7 +1057,7 @@
                 "Code": {
                     "ZipFile": "'use strict';\n\n exports.handler = (event, context, callback) => {\n    console.log('Adding additional headers to CloudFront response.');\n\n    const response = event.Records[0].cf.response;\n    response.headers['strict-transport-security'] = [{\n    key: 'Strict-Transport-Security',\n    value: 'max-age=86400; includeSubdomains; preload',\n    }];\n    response.headers['x-content-type-options'] = [{\n    key: 'X-Content-Type-Options',\n    value: 'nosniff',\n    }];\n    response.headers['x-frame-options'] = [{\n        key:   'X-Frame-Options',\n        value: \"DENY\"\n    }];\n    response.headers['content-security-policy'] = [{\n        key:   'Content-Security-Policy',\n        value: \"default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'\"\n    }];\n    response.headers['x-xss-protection'] = [{\n        key:   'X-XSS-Protection',\n        value: \"1; mode=block\"\n    }];\n    response.headers['referrer-policy'] = [{\n        key:   'Referrer-Policy',\n        value: \"same-origin\"\n    }];\n    callback(null, response);\n  };\n"
                 },
-                "Runtime": "nodejs10.x"
+                "Runtime": "nodejs20.x"
             }
         },
         "LambdaEdgeVersion": {
@@ -1039,6 +1079,13 @@
         },
         "LambdaEdgeVersionFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "A custom Lambda@Edge Version function",
                 "FunctionName": {
@@ -1056,7 +1103,7 @@
                 "Code": {
                     "ZipFile": "var AWS = require('aws-sdk');\nvar response = require('cfn-response');\nexports.handler = (event, context) => {\n  console.log(\"Request received:\\n\", JSON.stringify(event));\n  if (event.RequestType == 'Delete') {\n    return response.send(event, context, response.SUCCESS);\n  }\n  var lambda = new AWS.Lambda();\n  lambda.publishVersion({FunctionName: event.ResourceProperties.FunctionName}).promise().then((data) => {\n    return response.send(event, context, response.SUCCESS, {Version: data.Version}, data.FunctionArn);\n  }).catch((e) => {\n    return response.send(event, context, response.FAILED, e);\n  });\n};\n"
                 },
-                "Runtime": "nodejs10.x"
+                "Runtime": "nodejs20.x"
             }
         }
     },

@@ -44,8 +44,6 @@
                 "c4.2xlarge",
                 "c4.4xlarge",
                 "c4.8xlarge",
-                "g2.2xlarge",
-                "g2.8xlarge",
                 "r3.large",
                 "r3.xlarge",
                 "r3.2xlarge",
@@ -74,6 +72,9 @@
             "MaxLength": "18",
             "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
             "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
         }
     },
     "Mappings": {
@@ -315,9 +316,7 @@
                                 }
                             },
                             "/lib/systemd/system/cfn-hup.service": {
-                                "content": {
-                                    "Fn::Sub": "[Unit]\nDescription=cfn-hup daemon\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/cfn-hup\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n"
-                                }
+                                "content": "[Unit]\nDescription=cfn-hup daemon\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/cfn-hup\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n"
                             }
                         },
                         "commands": {
@@ -334,6 +333,9 @@
             "Properties": {
                 "InstanceType": {
                     "Ref": "InstanceType"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
                 },
                 "SecurityGroups": [
                     {

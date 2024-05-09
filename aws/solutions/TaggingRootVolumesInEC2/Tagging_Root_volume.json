@@ -60,6 +60,9 @@
             "Description": "The Latest Amazon Linux 2 AMI taken from the public Systems Manager Parameter Store",
             "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
             "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
         }
     },
     "Resources": {
@@ -68,6 +71,9 @@
             "Properties": {
                 "ImageId": {
                     "Ref": "WindowsAMIID"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
                 },
                 "InstanceType": {
                     "Ref": "InstanceType"
@@ -110,6 +116,9 @@
             "Properties": {
                 "ImageId": {
                     "Ref": "LinuxAMIID"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
                 },
                 "InstanceType": {
                     "Ref": "InstanceType"

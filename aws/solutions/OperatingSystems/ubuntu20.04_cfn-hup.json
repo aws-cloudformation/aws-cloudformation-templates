@@ -72,6 +72,9 @@
             "MaxLength": "18",
             "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
             "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "SubnetId": {
+            "Type": "AWS::EC2::Subnet::Id"
         }
     },
     "Mappings": {
@@ -382,6 +385,9 @@
             "Properties": {
                 "InstanceType": {
                     "Ref": "InstanceType"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetId"
                 },
                 "SecurityGroups": [
                     {

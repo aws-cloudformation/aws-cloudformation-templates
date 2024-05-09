@@ -1,15 +1,5 @@
 # VPCPeering
 
-- [VPCPeering](#vpcpeering)
-  - [Description](#description)
-  - [Notes](#notes)
-  - [Resources](#resources)
-  - [Instructions (Individual Stacks)](#instructions-individual-stacks)
-  - [Instructions (Nested Stacks)](#instructions-nested-stacks)
-  - [Creating more VPC peering connections from different AWS accounts with same accepter account](#creating-more-vpc-peering-connections-from-different-aws-accounts-with-same-accepter-account)
-
-## Description
-
 This solution lets you peer with another VPC in the same or different AWS account. After creating VPC peering connection, additional templates can be
 deployed to:
 

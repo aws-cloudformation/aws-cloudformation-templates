@@ -232,6 +232,10 @@ Resources:
 
   BastionSG:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      guard:
+        SuppressedRules:
+          - INCOMING_SSH_DISABLED
     Properties:
       GroupDescription: Inbound Bastion Traffic
       SecurityGroupIngress:

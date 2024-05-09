@@ -316,7 +316,7 @@ Resources:
               - sts:AssumeRole
       Path: /
 
-      # IAM ROLE USED FOR LAMBDA EDGE
+  # IAM ROLE USED FOR LAMBDA EDGE
   LambdaEdgeIAMRole:
     Type: AWS::IAM::Role
     Properties:
@@ -346,7 +346,7 @@ Resources:
                   - lambda:PublishVersion
                 Resource: '*'
 
-                # KMS KEY USED FOR LOGGING S3 BUCKET
+  # KMS KEY USED FOR LOGGING S3 BUCKET
   LoggingBucketKMSKey:
     Type: AWS::KMS::Key
     DependsOn: AdministratorAccessIAMRole
@@ -383,21 +383,33 @@ Resources:
               - kms:Create*
             Resource: '*'
 
-            # KMS KEY ALIAS USED FOR LOGGING BUCKET
+  # KMS KEY ALIAS USED FOR LOGGING BUCKET
   LoggingBucketKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
       AliasName: !Sub alias/${AppName}/${Environment}/s3-logging-kms
       TargetKeyId: !Sub ${LoggingBucketKMSKey}
 
-      # LOGGING S3 BUCKET
+  # LOGGING S3 BUCKET
   LoggingBucket:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Type: AWS::S3::Bucket
     DependsOn: LoggingBucketKMSKey
+    Metadata:
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
     Properties:
       BucketName: !Sub ${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -406,7 +418,7 @@ Resources:
       VersioningConfiguration:
         Status: !Ref LoggingBucketVersioning
 
-        # LOGGING S3 BUCKET POLICY
+  # LOGGING S3 BUCKET POLICY
   LoggingBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -421,8 +433,17 @@ Resources:
             Action: s3:PutObject
             Resource:
               - !Sub arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+            Effect: Deny
+            Principal:
+              AWS: '*'
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${LoggingBucket}/AWSLogs/${AWS::AccountId}/*
 
-              # EC2 INSTANCE
+  # EC2 INSTANCE
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -449,7 +470,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-          # EC2 INSTANCE SECURITY GROUP
+  # EC2 INSTANCE SECURITY GROUP
   EC2InstanceSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -462,7 +483,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-          # SECURITY GROUP INGRESS
+  # SECURITY GROUP INGRESS
   Tcp8080In:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -472,7 +493,7 @@ Resources:
       FromPort: "8080"
       SourceSecurityGroupId: !Ref ALBExternalAccessSG
 
-      # ORIGIN ALB
+  # ORIGIN ALB
   OriginALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -499,7 +520,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-          # ORIGIN ALB TARGET GROUP
+  # ORIGIN ALB TARGET GROUP
   OriginALBTG:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: OriginALB
@@ -518,8 +539,8 @@ Resources:
       TargetType: instance
       Targets:
         - Id: !Ref EC2Instance
-          Port: !Sub ${OriginALBTGPort}
-      Port: !Sub ${OriginALBTGPort}
+          Port: !Ref OriginALBTGPort
+      Port: !Ref OriginALBTGPort
       Protocol: HTTP
       VpcId: !ImportValue
         Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
@@ -529,7 +550,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-          # ORIGIN ALB HTTPS LISTENER
+  # ORIGIN ALB HTTPS LISTENER
   OriginALBHttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn: OriginALBTG
@@ -544,7 +565,7 @@ Resources:
         - CertificateArn: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}
       SslPolicy: ELBSecurityPolicy-FS-2018-06
 
-      # ORIGIN ALB HTTPS LISTENER RULE
+  # ORIGIN ALB HTTPS LISTENER RULE
   OriginALBHttpsListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     DependsOn: OriginALBHttpsListener
@@ -559,7 +580,7 @@ Resources:
       ListenerArn: !Ref OriginALBHttpsListener
       Priority: 1
 
-      # ALB EXTERNAL ACCESS SECURITY GROUP
+  # ALB EXTERNAL ACCESS SECURITY GROUP
   ALBExternalAccessSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -572,7 +593,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-          # SECURITY GROUP INGRESS
+  # SECURITY GROUP INGRESS
   HTTPSTcpIn:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -591,7 +612,7 @@ Resources:
       FromPort: "80"
       CidrIp: 0.0.0.0/0
 
-      # SECURITY GROUP EGRESS
+  # SECURITY GROUP EGRESS
   Tcp8080Out:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -601,7 +622,7 @@ Resources:
       FromPort: "8080"
       DestinationSecurityGroupId: !Ref EC2InstanceSG
 
-      # CLOUDFRONT DISTRIBUTION
+  # CLOUDFRONT DISTRIBUTION
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     DependsOn:
@@ -660,9 +681,13 @@ Resources:
         Logging:
           Bucket: !Sub ${LoggingBucket}.s3.amazonaws.com
 
-          # LAMBDA@EDGE FUNCTION
+  # LAMBDA@EDGE FUNCTION
   LambdaEdgeFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
       Description: A custom Lambda@Edge function for serving custom headers from CloudFront Distribution
       FunctionName: !Sub ${AppName}-lambda-edge-${Environment}
@@ -704,9 +729,9 @@ Resources:
               }];
               callback(null, response);
             };
-      Runtime: nodejs10.x
+      Runtime: nodejs20.x
 
-      # LAMBDA@EDGE VERSION VERSION
+  # LAMBDA@EDGE VERSION VERSION
   LambdaEdgeVersion:
     Type: Custom::LambdaVersion
     Properties:
@@ -714,9 +739,13 @@ Resources:
       FunctionName: !Ref LambdaEdgeFunction
       LambdaCodeVersion: !Ref LambdaFunctionVersion
 
-      # LAMBDA@EDGE VERSION FUNCTION
+  # LAMBDA@EDGE VERSION FUNCTION
   LambdaEdgeVersionFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
       Description: A custom Lambda@Edge Version function
       FunctionName: !Sub ${AppName}-lambda-edge-version-${Environment}
@@ -740,7 +769,7 @@ Resources:
               return response.send(event, context, response.FAILED, e);
             });
           };
-      Runtime: nodejs10.x
+      Runtime: nodejs20.x
 
 Outputs:
   AdministratorAccessIAMRole:

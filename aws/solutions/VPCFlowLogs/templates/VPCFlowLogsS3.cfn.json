@@ -189,11 +189,19 @@
         },
         "VPCFlowLogsBucket": {
             "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED",
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED"
+                    ]
+                }
+            },
             "Properties": {
                 "BucketName": {
                     "Fn::Sub": "aws-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
                 },
-                "AccessControl": "Private",
                 "PublicAccessBlockConfiguration": {
                     "BlockPublicAcls": true,
                     "BlockPublicPolicy": true,

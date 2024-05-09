@@ -44,6 +44,9 @@ then
     pylint $RCFILE $MACROS/StringFunctions/*.py
 
     pylint $RCFILE aws/services/IoT/reset_function.py
+
+    pylint $RCFILE aws/solutions/ADConnector/src/adconnector_custom_resource.py
+    pylint $RCFILE aws/solutions/DirectoryServiceSettings/src/directory_settings_custom_resource.py
 fi
 
 echo "Success"

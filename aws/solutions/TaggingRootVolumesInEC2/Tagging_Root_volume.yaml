@@ -61,15 +61,15 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+
 Resources:
-
-  #Tagging the root volume for the EC2 instances with the Windows OS
-
-  #The commented out powershell commands are to utilize if the AMI has the AWS CLI installed and you prefer that approach.
   WindowsInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref WindowsAMIID
+      SubnetId: !Ref SubnetId
       InstanceType: !Ref InstanceType
       AvailabilityZone: !Ref InstanceAZ
       IamInstanceProfile: !Ref InstanceProfile
@@ -85,18 +85,6 @@ Resources:
           $tag.value = "MyRootVolumesValue"
           New-EC2Tag -Resource $ROOT_VOLUME_IDS -Region $AWS_REGION -Tag $tag
         </powershell>
-
-      #$AWS_AVAIL_ZONE=(curl http://169.254.169.254/latest/meta-data/placement/availability-zone).Content
-
-      #$AWS_REGION=$AWS_AVAIL_ZONE.Substring(0,$AWS_AVAIL_ZONE.length-1)
-
-      #$AWS_INSTANCE_ID=(curl http://169.254.169.254/latest/meta-data/instance-id).Content
-
-      #$ROOT_VOLUME_IDS =(aws ec2 describe-instances --region $AWS_REGION --instance-id $AWS_INSTANCE_ID --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
-
-      #aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags Key=MyRootTag,Value=MyRootVolumesValue
-
-      #</powershell>
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
@@ -108,11 +96,11 @@ Resources:
             DeleteOnTermination: "true"
             VolumeSize: "10"
 
-  #Tagging the root volume for EC2 instances with an Unix OS with the AWS CLI installed.
   LinuxInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LinuxAMIID
+      SubnetId: !Ref SubnetId
       InstanceType: !Ref InstanceType
       AvailabilityZone: !Ref InstanceAZ
       IamInstanceProfile: !Ref InstanceProfile
@@ -134,7 +122,6 @@ Resources:
             DeleteOnTermination: "true"
             VolumeSize: "10"
 
-  #AMI role given to the instances, the instances need the describe and create tags to complete the UserData
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:

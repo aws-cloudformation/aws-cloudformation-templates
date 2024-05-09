@@ -5,6 +5,7 @@ This AWS Content is provided subject to the terms of the AWS Customer Agreement 
 http://aws.amazon.com/agreement or other written agreement between Customer and either
 Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
 """
+
 import json
 import logging
 import os
@@ -37,7 +38,9 @@ def get_adconnector_parameters(params: dict) -> dict:
         ADConnector Parameters
     """
     # Get AD Domain Join Credentials from Secrets Manager
-    response = secretsmanager_client.get_secret_value(SecretId=params["DOMAIN_JOIN_SECRET_ID"])
+    response = secretsmanager_client.get_secret_value(
+        SecretId=params["DOMAIN_JOIN_SECRET_ID"]
+    )
     secret = json.loads(response["SecretString"])
     # Create DNS Servers List
 
@@ -49,7 +52,10 @@ def get_adconnector_parameters(params: dict) -> dict:
         "Size": params["ADCONNECTOR_SIZE"],
         "ConnectSettings": {
             "VpcId": params["ADCONNECTOR_VPCID"],
-            "SubnetIds": [params["ADCONNECTOR_SUBNET_ID1"], params["ADCONNECTOR_SUBNET_ID2"]],
+            "SubnetIds": [
+                params["ADCONNECTOR_SUBNET_ID1"],
+                params["ADCONNECTOR_SUBNET_ID2"],
+            ],
             "CustomerDnsIps": params["DOMAIN_DNS_SERVERS"].split(", "),
             "CustomerUserName": secret.get("username"),
         },
@@ -57,7 +63,7 @@ def get_adconnector_parameters(params: dict) -> dict:
 
 
 @helper.create
-def create(event, context) -> str:
+def create(event, _) -> str:
     """Create Event from AWS CloudFormation.
 
     Args:
@@ -77,7 +83,7 @@ def create(event, context) -> str:
 
 
 @helper.update
-def update(event, context):
+def update(event, _):
     """Update Event from AWS CloudFormation.
 
     Args:
@@ -90,7 +96,7 @@ def update(event, context):
 
 
 @helper.delete
-def delete(event, context):
+def delete(event, _):
     """Delete Event from AWS CloudFormation. Deletes the ADConnector Directory.
 
     Args:
