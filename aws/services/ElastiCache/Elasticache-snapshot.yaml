@@ -134,6 +134,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: "6379"
           ToPort: "6379"
+          CidrIp: 192.168.1.0/32
 
   RedisReplicationGroup:
     Type: AWS::ElastiCache::ReplicationGroup
