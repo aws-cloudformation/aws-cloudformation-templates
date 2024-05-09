@@ -1,0 +1,32 @@
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ResourceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.11
+      CodeUri: lambda
+      Handler: resource.handler
+      Policies: AmazonS3FullAccess
+
+  MacroFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+          - LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED
+    Properties:
+      Runtime: python3.11
+      CodeUri: lambda
+      Handler: macro.handler
+      Policies: AmazonS3FullAccess
+      Environment:
+        Variables:
+          LAMBDA_ARN: !GetAtt ResourceFunction.Arn
+
+  Macro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: S3Objects
+      FunctionName: !GetAtt MacroFunction.Arn

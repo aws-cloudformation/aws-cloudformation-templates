@@ -1,0 +1,70 @@
+{
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Resources": {
+        "ResourceFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Runtime": "python3.12",
+                "CodeUri": "lambda",
+                "Handler": "resource.handler",
+                "Policies": "CloudWatchFullAccess"
+            }
+        },
+        "MacroFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Runtime": "python3.12",
+                "CodeUri": "lambda",
+                "Handler": "index.handler"
+            }
+        },
+        "Macro": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": "StackMetrics",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "MacroFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "Dashboard": {
+            "Type": "AWS::CloudWatch::Dashboard",
+            "Properties": {
+                "DashboardName": "CloudFormation-Stacks",
+                "DashboardBody": "{\n    \"widgets\": [\n        {\n            \"type\": \"metric\",\n            \"x\": 0,\n            \"y\": 0,\n            \"width\": 12,\n            \"height\": 12,\n            \"properties\": {\n                \"view\": \"timeSeries\",\n                \"stacked\": false,\n                \"metrics\": [\n                    [ \"CloudFormation\", \"ResourceCount\" ]\n                ],\n                \"region\": \"eu-west-1\",\n                \"title\": \"Resources created\",\n                \"period\": 300,\n                \"stat\": \"Sum\"\n            }\n        },\n        {\n            \"type\": \"metric\",\n            \"x\": 12,\n            \"y\": 0,\n            \"width\": 12,\n            \"height\": 12,\n            \"properties\": {\n                \"view\": \"timeSeries\",\n                \"stacked\": true,\n                \"title\": \"Stack operations\",\n                \"metrics\": [\n                    [ \"CloudFormation\", \"Create\" ],\n                    [ \".\", \"Delete\" ],\n                    [ \".\", \"Update\" ]\n                ],\n                \"region\": \"eu-west-1\",\n                \"period\": 300,\n                \"stat\": \"Sum\"\n            }\n        }\n    ]\n}\n"
+            }
+        }
+    },
+    "Outputs": {
+        "ResourceFunction": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "ResourceFunction",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": "StackMetricsMacroFunction"
+            }
+        }
+    }
+}

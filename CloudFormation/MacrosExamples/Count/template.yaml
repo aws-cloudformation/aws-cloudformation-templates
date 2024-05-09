@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  The Count macro is an iterator for creating multiple resources
+
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  Macro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: Count
+      FunctionName: !GetAtt CountMacroFunction.Arn
+
+  CountMacroFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+          - LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED
+    Properties:
+      CodeUri: src
+      Handler: index.handler
+      Runtime: python3.11
+      Timeout: 5

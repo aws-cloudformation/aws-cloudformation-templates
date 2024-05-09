@@ -1,0 +1,617 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Multi-AZ EFS with automount EFS.",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "regions": [
+                    "ap-northeast-1",
+                    "ap-northeast-2",
+                    "ap-south-1",
+                    "ap-southeast-1",
+                    "ap-southeast-2",
+                    "ca-central-1",
+                    "eu-central-1",
+                    "eu-west-1",
+                    "eu-west-2",
+                    "sa-east-1",
+                    "us-east-1",
+                    "us-east-2",
+                    "us-west-1",
+                    "us-west-2"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "g2.8xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge"
+            ],
+            "Default": "t2.micro",
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "KeyName": {
+            "Description": "The EC2 Key Pair to allow SSH access to the instances",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "Subnets": {
+            "Description": "The list of SubnetIds, for at least two Availability Zones in the region in your Virtual Private Cloud (VPC) Defaults: ",
+            "Type": "CommaDelimitedList"
+        },
+        "VPC": {
+            "Description": "VPC ID for EC2 and Elastic Load Balancer",
+            "Type": "AWS::EC2::VPC::Id"
+        }
+    },
+    "Mappings": {
+        "EC2RegionMap": {
+            "ap-northeast-1": {
+                "64": "ami-d85e7fbf"
+            },
+            "ap-northeast-2": {
+                "64": "ami-15d5077b"
+            },
+            "ap-south-1": {
+                "64": "ami-83a8dbec"
+            },
+            "ap-southeast-1": {
+                "64": "ami-0a19a669"
+            },
+            "ap-southeast-2": {
+                "64": "ami-807876e3"
+            },
+            "ca-central-1": {
+                "64": "ami-beea56da"
+            },
+            "eu-central-1": {
+                "64": "ami-25a97a4a"
+            },
+            "eu-west-1": {
+                "64": "ami-09447c6f"
+            },
+            "eu-west-2": {
+                "64": "ami-63342007"
+            },
+            "sa-east-1": {
+                "64": "ami-8df695e1"
+            },
+            "us-east-1": {
+                "64": "ami-772aa961"
+            },
+            "us-east-2": {
+                "64": "ami-8fab8fea"
+            },
+            "us-west-1": {
+                "64": "ami-1da8f27d"
+            },
+            "us-west-2": {
+                "64": "ami-7c22b41c"
+            }
+        }
+    },
+    "Resources": {
+        "EFSFileSystem": {
+            "Type": "AWS::EFS::FileSystem",
+            "Properties": {
+                "Encrypted": true,
+                "PerformanceMode": "generalPurpose"
+            }
+        },
+        "EFSMountTarget1": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget2": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget3": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "EFSMountTarget4": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "EFSFileSystem"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "EFSSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Ref": "Subnets"
+                        }
+                    ]
+                }
+            }
+        },
+        "CPUAlarmHigh": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmActions": [
+                    {
+                        "Ref": "ScaleUpPolicy"
+                    }
+                ],
+                "AlarmDescription": "Scale-up if CPU > 90% for 10 minutes",
+                "ComparisonOperator": "GreaterThanThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "AutoScalingGroupName",
+                        "Value": {
+                            "Ref": "AutoScalingGroup"
+                        }
+                    }
+                ],
+                "EvaluationPeriods": "2",
+                "MetricName": "CPUUtilization",
+                "Namespace": "AWS/EC2",
+                "Period": "300",
+                "Statistic": "Average",
+                "Threshold": "90"
+            }
+        },
+        "CPUAlarmLow": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmActions": [
+                    {
+                        "Ref": "ScaleDownPolicy"
+                    }
+                ],
+                "AlarmDescription": "Scale-down if CPU < 70% for 10 minutes",
+                "ComparisonOperator": "LessThanThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "AutoScalingGroupName",
+                        "Value": {
+                            "Ref": "AutoScalingGroup"
+                        }
+                    }
+                ],
+                "EvaluationPeriods": "2",
+                "MetricName": "CPUUtilization",
+                "Namespace": "AWS/EC2",
+                "Period": "300",
+                "Statistic": "Average",
+                "Threshold": "70"
+            }
+        },
+        "AutoScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "LaunchConfigurationName": {
+                    "Ref": "LaunchConfig"
+                },
+                "LoadBalancerNames": [
+                    {
+                        "Ref": "ElasticLoadBalancer"
+                    }
+                ],
+                "MaxSize": "3",
+                "MinSize": "1",
+                "VPCZoneIdentifier": {
+                    "Ref": "Subnets"
+                }
+            }
+        },
+        "InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "InstanceProfileName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IAM",
+                            "InstanceProfile"
+                        ]
+                    ]
+                },
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "IAMAssumeInstanceRole"
+                    }
+                ]
+            }
+        },
+        "ScaleDownPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "AdjustmentType": "ChangeInCapacity",
+                "AutoScalingGroupName": {
+                    "Ref": "AutoScalingGroup"
+                },
+                "Cooldown": "60",
+                "ScalingAdjustment": "-1"
+            }
+        },
+        "ScaleUpPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "AdjustmentType": "ChangeInCapacity",
+                "AutoScalingGroupName": {
+                    "Ref": "AutoScalingGroup"
+                },
+                "Cooldown": "60",
+                "ScalingAdjustment": "1"
+            }
+        },
+        "ElasticLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties": {
+                "SecurityGroups": [
+                    {
+                        "Ref": "ELBSecurityGroup"
+                    }
+                ],
+                "Subnets": {
+                    "Ref": "Subnets"
+                },
+                "CrossZone": "true",
+                "HealthCheck": {
+                    "HealthyThreshold": "3",
+                    "Interval": "30",
+                    "Target": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "HTTP:",
+                                "80",
+                                "/"
+                            ]
+                        ]
+                    },
+                    "Timeout": "5",
+                    "UnhealthyThreshold": "5"
+                },
+                "Listeners": [
+                    {
+                        "InstancePort": "80",
+                        "LoadBalancerPort": "80",
+                        "Protocol": "HTTP"
+                    }
+                ]
+            }
+        },
+        "IAMAssumeInstanceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "ec2:DescribeTags"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "s3:Get*",
+                                        "s3:List*"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": "logs:*",
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    "IAM",
+                                    "EC2",
+                                    "Policy"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "RoleName": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            "IAM",
+                            "EC2",
+                            "Role"
+                        ]
+                    ]
+                }
+            }
+        },
+        "InstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable SSH public access and HTTP from the load balancer only",
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": "22",
+                        "IpProtocol": "tcp",
+                        "ToPort": "22"
+                    },
+                    {
+                        "FromPort": "80",
+                        "IpProtocol": "tcp",
+                        "SourceSecurityGroupId": {
+                            "Fn::GetAtt": [
+                                "ELBSecurityGroup",
+                                "GroupId"
+                            ]
+                        },
+                        "ToPort": "80"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "ELBSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable public access HTTP and HTTPS",
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": "80",
+                        "IpProtocol": "tcp",
+                        "ToPort": "80"
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": "443",
+                        "IpProtocol": "tcp",
+                        "ToPort": "443"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "EFSSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable NFS access from EC2",
+                "SecurityGroupIngress": [
+                    {
+                        "FromPort": "2049",
+                        "IpProtocol": "tcp",
+                        "ToPort": "2049",
+                        "SourceSecurityGroupId": {
+                            "Fn::GetAtt": [
+                                "InstanceSecurityGroup",
+                                "GroupId"
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Properties": {
+                "IamInstanceProfile": {
+                    "Ref": "InstanceProfile"
+                },
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "EC2RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "64"
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroups": [
+                    {
+                        "Fn::GetAtt": [
+                            "InstanceSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Sub": "\"#!/bin/bash -x\\n\",\n\"export LC_CTYPE=en_US.UTF-8\\n\",\n\"export LC_ALL=en_US.UTF-8\\n\",\n\"apt-get update\\n\",\n\"apt-get install -y curl nfs-common\\n\",\n\"EC2_REGION=${AWS::Region}\\n\",\n\"DIR_TGT=/mnt/efs/\\n\",\n\"EFS_FILE_SYSTEM_ID=${EFSFileSystem}\\n\"\n\"mkdir -p $DIR_TGT\\n\",\n\"DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com\\n\",\n\"mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 $DIR_SRC:/ $DIR_TGT\\n\""
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "AutoScalingGroup": {
+            "Description": "AutoScaling Group Name",
+            "Value": {
+                "Ref": "AutoScalingGroup"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-AutoScalingGroup"
+                }
+            }
+        },
+        "StackName": {
+            "Description": "Stack Name",
+            "Value": {
+                "Ref": "AWS::StackName"
+            }
+        },
+        "URL": {
+            "Description": "The URL of the website",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "ElasticLoadBalancer",
+                                "DNSName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}

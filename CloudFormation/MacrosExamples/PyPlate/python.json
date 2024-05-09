@@ -1,0 +1,148 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Macro allowing you to run arbitrary Python code in your CloudFormation templates",
+    "Parameters": {
+        "AdditionalExecutionPolicy": {
+            "Description": "An optional IAM Policy ARN to add to the Lambda's execution role so that \nthe template's Python code can call AWS services.\n",
+            "Type": "String"
+        },
+        "LambdaTimeout": {
+            "Description": "Optional setting of the Lambda's execution timeout (in seconds). \nThe default of 3 seconds won't be enough if you call AWS services; \nthen at least 10 seconds is recommended, more depending on complexity.\n",
+            "Type": "Number",
+            "Default": 3,
+            "MinValue": 3
+        }
+    },
+    "Conditions": {
+        "AdditionalPolicyProvided": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AdditionalExecutionPolicy"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "TransformExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::If": [
+                            "AdditionalPolicyProvided",
+                            {
+                                "Ref": "AdditionalExecutionPolicy"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "TransformFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "Support for the PyPlate CloudFormation macro",
+                "Code": {
+                    "ZipFile": {
+                        "Rain::Embed": "handler.py"
+                    }
+                },
+                "Handler": "index.handler",
+                "Runtime": "python3.11",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "TransformExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": {
+                    "Ref": "LambdaTimeout"
+                }
+            }
+        },
+        "TransformFunctionPermissions": {
+            "Type": "AWS::Lambda::Permission",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "cloudformation.amazonaws.com"
+            }
+        },
+        "Transform": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "PyPlate"
+                },
+                "Description": "Processes inline python in templates",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

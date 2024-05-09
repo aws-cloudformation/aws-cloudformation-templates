@@ -1,0 +1,37 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Resources": {
+        "TransformFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Runtime": "python3.11",
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Timeout": 3,
+                "InlineCode": "import datetime\ndef handler(event, context):\n    response = {\n        'requestId': event['requestId'],\n        'status': 'success'\n    }\n    try:\n        format = event['params']['format']\n        response['fragment'] = datetime.datetime.now().strftime(format)\n    except Exception as e:\n        response['status'] = 'failure'\n        response['errorMessage'] = str(e)\n    return response\n"
+            }
+        },
+        "Transform": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": "DatetimeNow",
+                "Description": "Provides the current datetime as string in the format requested.",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

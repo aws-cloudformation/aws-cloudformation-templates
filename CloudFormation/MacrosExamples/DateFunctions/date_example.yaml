@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: tests String macro functions
+
+Parameters:
+  Date:
+    Description: Date for this test (ISO 8601 format)
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^\d{4}(-\d\d(-\d\d(T\d\d:\d\d(:\d\d)?(\.\d+)?(([+-]\d\d:\d\d)|Z)?)?)?)?$
+
+  Date2:
+    Description: Second date for test to use (ISO 8601 format)
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^\d{4}(-\d\d(-\d\d(T\d\d:\d\d(:\d\d)?(\.\d+)?(([+-]\d\d:\d\d)|Z)?)?)?)?$
+
+  Days:
+    Description: Days
+    Type: Number
+    Default: 1
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      Comment: Suppressing typical rules for sample purposes only
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_LOGGING_ENABLED
+          - S3_BUCKET_PUBLIC_READ_PROHIBITED
+          - S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+    Properties:
+      Tags:
+        - Key: Current
+          Value:
+            Fn::Transform:
+              - Name: Date
+                Parameters:
+                  Date: !Ref Date
+                  Operation: Current
+        - Key: Add
+          Value:
+            Fn::Transform:
+              - Name: Date
+                Parameters:
+                  Date: !Ref Date
+                  Days: !Ref Days
+                  Operation: Add
+        - Key: Subtract
+          Value:
+            Fn::Transform:
+              - Name: Date
+                Parameters:
+                  Date: !Ref Date
+                  Days: !Ref Days
+                  Operation: Subtract
+        - Key: Days
+          Value:
+            Fn::Transform:
+              - Name: Date
+                Parameters:
+                  Date: !Ref Date
+                  Date2: !Ref Date2
+                  Operation: Days

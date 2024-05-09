@@ -1,0 +1,104 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Template for date macro for Cloudformation. Provides functions for date manipulation in your CloudFormation templates including getting the current date, and doing date math. Written in Python.",
+    "Resources": {
+        "TransformExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "TransformFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "ZipFile": {
+                        "Rain::Embed": "handler.py"
+                    }
+                },
+                "Handler": "index.handler",
+                "Runtime": "python3.11",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "TransformExecutionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "TransformFunctionPermissions": {
+            "Type": "AWS::Lambda::Permission",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "cloudformation.amazonaws.com"
+            }
+        },
+        "Transform": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": "Date",
+                "Description": "Provides date processing functions",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TransformFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

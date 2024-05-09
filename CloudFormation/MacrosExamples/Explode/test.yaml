@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Mappings:
+  BucketMap:
+    Monthly:
+      ResourceName: MyThirtyDayBucket
+      Retention: 30
+    Yearly:
+      Retention: 365
+
+Transform: Explode
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      Comment: Suppressing typical rules for sample purposes only
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_LOGGING_ENABLED
+          - S3_BUCKET_PUBLIC_READ_PROHIBITED
+          - S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: '!Explode Retention'
+            Status: Enabled
+    ExplodeMap: BucketMap
+
+  NonExplodingBucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      Comment: Suppressing typical rules for sample purposes only
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_LOGGING_ENABLED
+          - S3_BUCKET_PUBLIC_READ_PROHIBITED
+          - S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_VERSIONING_ENABLED
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED

@@ -1,0 +1,33 @@
+{
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Resources": {
+        "Function": {
+            "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Runtime": "python3.11",
+                "CodeUri": "lambda",
+                "Handler": "index.handler"
+            }
+        },
+        "Macro": {
+            "Type": "AWS::CloudFormation::Macro",
+            "Properties": {
+                "Name": "ExecutionRoleBuilder",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Function",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

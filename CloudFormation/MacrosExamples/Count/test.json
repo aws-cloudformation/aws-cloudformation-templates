@@ -1,0 +1,127 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "TestCount": {
+            "Type": "Number",
+            "Default": 3
+        },
+        "TestList": {
+            "Type": "CommaDelimitedList",
+            "Default": "foo,bar"
+        }
+    },
+    "Transform": "Count",
+    "Resources": {
+        "BucketToCopyA": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "Suppressing typical rules for sample purposes only",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_PUBLIC_READ_PROHIBITED",
+                        "S3_BUCKET_PUBLIC_WRITE_PROHIBITED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "TestKey",
+                        "Value": "my bucket %d"
+                    }
+                ]
+            },
+            "Count": 3
+        },
+        "BucketToCopyB": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "Suppressing typical rules for sample purposes only",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_PUBLIC_READ_PROHIBITED",
+                        "S3_BUCKET_PUBLIC_WRITE_PROHIBITED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "TestKey",
+                        "Value": "my %s bucket %d"
+                    }
+                ]
+            },
+            "Count": [
+                "foo",
+                "bar"
+            ]
+        },
+        "BucketToCopyC": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "Suppressing typical rules for sample purposes only",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_PUBLIC_READ_PROHIBITED",
+                        "S3_BUCKET_PUBLIC_WRITE_PROHIBITED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "TestKey",
+                        "Value": "my bucket %d"
+                    }
+                ]
+            },
+            "Count": {
+                "Ref": "TestCount"
+            }
+        },
+        "BucketToCopyD": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "Suppressing typical rules for sample purposes only",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_PUBLIC_READ_PROHIBITED",
+                        "S3_BUCKET_PUBLIC_WRITE_PROHIBITED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_VERSIONING_ENABLED",
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "TestKey",
+                        "Value": "my %s bucket %d"
+                    }
+                ]
+            },
+            "Count": {
+                "Ref": "TestList"
+            }
+        }
+    }
+}
