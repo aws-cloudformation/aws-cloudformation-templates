@@ -20,10 +20,11 @@ echo "Linting with config file ${CONFIG_FILE}"
 find . -name "*.yaml" | grep -v "\.env" | xargs -n 1 ${SCRIPT_DIR}/lint-single.sh
 
 echo "Guarding..."
-cfn-guard validate --data . \
-    --rules ${SCRIPT_DIR}/rules.guard \
-    --show-summary fail \
-    --type CFNTemplate
+${SCRIPT_DIR}/guard-all.sh
+#cfn-guard validate --data **/*.yaml \
+#    --rules ${SCRIPT_DIR}/rules.guard \
+#    --show-summary fail \
+#    --type CFNTemplate
 
 # Don't run this from sub directories
 p=$(pwd)

@@ -14,7 +14,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 session = boto3.session.Session()
-region = os.env["AWS_REGION"]
+region = os.environ["AWS_REGION"]
 partition = session.get_partition_for_region(region)
 c = session.client("greengrass")
 iam = session.client("iam")

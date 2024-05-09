@@ -33,8 +33,11 @@ Before you submit a template, we suggest that you follow these guidelines:
   git push -u origin
   ```
 - Write the template in YAML, with a `.yaml` suffix (not `.yml` or
-  `.template`). Our build scripts will auto-generate a JSON file based on the
+  `.template`). Our test scripts will auto-generate a JSON file based on the
   YAML. YAML is the source of truth for all templates in this repository.
+- If your solution needs any other type of YAML file, like a K8s manifest 
+  or a build spec, give it a `.yml` extension. This will cause it to be skipped
+  by the test scripts.
 - Test your template. Can you successfully create a stack with it?  When you
   delete a stack, is the stack (and all of its resources) successfully deleted?
   Make sure users aren't left with stray resources or stacks that have deletion

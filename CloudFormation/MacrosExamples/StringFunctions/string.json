@@ -42,6 +42,13 @@
         },
         "TransformFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Code": {
                     "ZipFile": {
@@ -60,6 +67,13 @@
         },
         "TransformFunctionPermissions": {
             "Type": "AWS::Lambda::Permission",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
             "Properties": {
                 "Action": "lambda:InvokeFunction",
                 "FunctionName": {

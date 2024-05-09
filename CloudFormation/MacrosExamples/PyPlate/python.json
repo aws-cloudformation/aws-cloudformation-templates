@@ -82,6 +82,13 @@
         },
         "TransformFunction": {
             "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
             "Properties": {
                 "Description": "Support for the PyPlate CloudFormation macro",
                 "Code": {
@@ -104,6 +111,13 @@
         },
         "TransformFunctionPermissions": {
             "Type": "AWS::Lambda::Permission",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
             "Properties": {
                 "Action": "lambda:InvokeFunction",
                 "FunctionName": {

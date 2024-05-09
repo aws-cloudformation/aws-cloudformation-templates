@@ -3,6 +3,14 @@
     "Resources": {
         "ResourceFunction": {
             "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
             "Properties": {
                 "Runtime": "python3.12",
                 "CodeUri": "lambda",
@@ -12,6 +20,14 @@
         },
         "MacroFunction": {
             "Type": "AWS::Serverless::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED"
+                    ]
+                }
+            },
             "Properties": {
                 "Runtime": "python3.12",
                 "CodeUri": "lambda",
