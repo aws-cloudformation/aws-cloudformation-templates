@@ -159,11 +159,14 @@ Resources:
         rules_to_suppress:
           - id: W58
             reason: Permissions to write to CloudWatch Logs provided by the attached IAM role.
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
     Properties:
       FunctionName: !Ref LambdaFunctionName
       Handler: index.handler
       Role: !GetAtt TagVpcPeeringConnectionsLambdaRole.Arn
-      Runtime: python3.8
+      Runtime: python3.12
       MemorySize: 128
       Timeout: 120
       Environment:
