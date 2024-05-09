@@ -1,14 +1,5 @@
 # VPCFlowLogs
 
-- [VPCFlowLogs](#vpcflowlogs)
-  - [Description](#description)
-  - [Notes](#notes)
-  - [Resources](#resources)
-  - [Instructions (Individual Stacks)](#instructions-individual-stacks)
-  - [Instructions (Nested Stacks)](#instructions-nested-stacks)
-
-## Description
-
 This solution lets you enable Flow Logs for a VPC, and publish the flow log data to either Amazon CloudWatch Logs, Amazon S3, or both.
 
 This solution can be implemented as individual templates accordingly, or leveraging the nested stacks `main` templates.
