@@ -1,21 +1,6 @@
----
-AWSTemplateFormatVersion: 2010-09-09
-Description: AWS CloudFormation Sample Template EKS Cluster on EC2
+AWSTemplateFormatVersion: "2010-09-09"
 
-Mappings:
-  ServicePrincipalPartitionMap:
-    aws:
-      EC2: ec2.amazonaws.com
-      EKS: eks.amazonaws.com
-      EKSFargatePods: eks-fargate-pods.amazonaws.com
-    aws-cn:
-      EC2: ec2.amazonaws.com.cn
-      EKS: eks.amazonaws.com
-      EKSFargatePods: eks-fargate-pods.amazonaws.com
-    aws-us-gov:
-      EC2: ec2.amazonaws.com
-      EKS: eks.amazonaws.com
-      EKSFargatePods: eks-fargate-pods.amazonaws.com
+Description: AWS CloudFormation Sample Template EKS Cluster on EC2
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -36,30 +21,53 @@ Metadata:
 Parameters:
   VPCCidrBlock:
     Type: String
-    Default: "10.0.0.0/16"
+    Default: 10.0.0.0/16
+
   PublicCidrBlock1:
     Type: String
-    Default: "10.0.1.0/24"
+    Default: 10.0.1.0/24
+
   PublicCidrBlock2:
     Type: String
-    Default: "10.0.2.0/24"
+    Default: 10.0.2.0/24
+
   PublicCidrBlock3:
     Type: String
-    Default: "10.0.3.0/24"
+    Default: 10.0.3.0/24
+
   PrivateCidrBlock1:
     Type: String
-    Default: "10.0.4.0/24"
+    Default: 10.0.4.0/24
+
   PrivateCidrBlock2:
     Type: String
-    Default: "10.0.5.0/24"
+    Default: 10.0.5.0/24
+
   PrivateCidrBlock3:
     Type: String
-    Default: "10.0.6.0/24"
+    Default: 10.0.6.0/24
+
   EKSClusterVersion:
     Type: String
+
   NodeGroupInstanceTypes:
     Type: String
-    Default: "t3.medium"
+    Default: t3.medium
+
+Mappings:
+  ServicePrincipalPartitionMap:
+    aws:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-cn:
+      EC2: ec2.amazonaws.com.cn
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-us-gov:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
 
 Resources:
   VPC:
@@ -79,6 +87,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-ig
+
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -92,6 +101,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-public-route-table
+
   RouteInternetGateway:
     Type: AWS::EC2::Route
     Properties:
@@ -103,13 +113,17 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [0, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PublicCidrBlock1
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-public-subnet1
         - Key: kubernetes.io/role/elb
           Value: 1
+
   PublicRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -120,13 +134,17 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [1, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PublicCidrBlock2
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-public-subnet2
         - Key: kubernetes.io/role/elb
           Value: 1
+
   PublicRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -137,13 +155,17 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [2, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PublicCidrBlock3
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-public-subnet3
         - Key: kubernetes.io/role/elb
           Value: 1
+
   PublicRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -154,6 +176,7 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+
   NATGateway1:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -162,10 +185,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-nat-gw1
+
   EIP2:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+
   NATGateway2:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -174,10 +199,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-nat-gw2
+
   EIP3:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+
   NATGateway3:
     Type: AWS::EC2::NatGateway
     Properties:
@@ -191,12 +218,16 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [0, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PrivateCidrBlock1
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-subnet1
+
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -204,11 +235,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-route-table1
+
   PrivateRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet1
+
   PrivateRoute1:
     Type: AWS::EC2::Route
     Properties:
@@ -220,12 +253,16 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [1, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PrivateCidrBlock2
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-subnet2
+
   PrivateRouteTable2:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -233,11 +270,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-route-table2
+
   PrivateRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PrivateSubnet2
+
   PrivateRoute2:
     Type: AWS::EC2::Route
     Properties:
@@ -249,12 +288,16 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [2, Fn::GetAZs: !Ref AWS::Region]
+      AvailabilityZone: !Select
+        - 2
+        - !GetAZs
+          Ref: AWS::Region
       CidrBlock: !Ref PrivateCidrBlock3
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-subnet3
+
   PrivateRouteTable3:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -262,11 +305,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-private-route-table3
+
   PrivateRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable3
       SubnetId: !Ref PrivateSubnet3
+
   PrivateRoute3:
     Type: AWS::EC2::Route
     Properties:
@@ -290,6 +335,7 @@ Resources:
           - !Ref PrivateSubnet3
       RoleArn: !GetAtt EKSClusterRole.Arn
       Version: !Ref EKSClusterVersion
+
   EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
@@ -299,17 +345,22 @@ Resources:
               - sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !FindInMap [ ServicePrincipalPartitionMap, !Ref AWS::Partition, EKS ]
-        Version: 2012-10-17
+              Service: !FindInMap
+                - ServicePrincipalPartitionMap
+                - !Ref AWS::Partition
+                - EKS
+        Version: "2012-10-17"
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSClusterPolicy
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSVPCResourceController
+
   ControlPlaneSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Communication between the control plane and worker nodegroups
       VpcId: !Ref VPC
       GroupName: !Sub ${AWS::StackName}-eks-control-plane-sg
+
   ControlPlaneSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -360,6 +411,7 @@ Resources:
               - Key: alpha.eksctl.io/nodegroup-type
                 Value: managed
       LaunchTemplateName: !Sub ${AWS::StackName}-LaunchTemplate
+
   ManagedNodeGroup:
     Type: AWS::EKS::Nodegroup
     Properties:
@@ -385,6 +437,7 @@ Resources:
       Tags:
         alpha.eksctl.io/nodegroup-name: !Sub ng-${AWS::StackName}
         alpha.eksctl.io/nodegroup-type: managed
+
   NodeInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -395,8 +448,11 @@ Resources:
               - sts:AssumeRole
             Effect: Allow
             Principal:
-              Service: !FindInMap [ ServicePrincipalPartitionMap, !Ref AWS::Partition, EC2 ]
-        Version: 2012-10-17
+              Service: !FindInMap
+                - ServicePrincipalPartitionMap
+                - !Ref AWS::Partition
+                - EC2
+        Version: "2012-10-17"
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy

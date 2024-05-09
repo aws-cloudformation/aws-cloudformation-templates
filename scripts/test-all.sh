@@ -31,7 +31,7 @@ b=$(basename $p)
 if [ "$b" == "aws-cloudformation-templates" ]
 then
     echo "Running pylint on Python lambda functions..."
-    MACROS="${SCRIPT_DIR}/../aws/services/CloudFormation/MacrosExamples"
+    MACROS="${SCRIPT_DIR}/../CloudFormation/MacrosExamples"
     RCFILE="--rcfile ${SCRIPT_DIR}/../.pylintrc"
     pylint $RCFILE $MACROS/Boto3/lambda/*.py
     pylint $RCFILE $MACROS/Count/src/*.py
@@ -43,10 +43,10 @@ then
     pylint $RCFILE $MACROS/StackMetrics/lambda/*.py
     pylint $RCFILE $MACROS/StringFunctions/*.py
 
-    pylint $RCFILE aws/services/IoT/reset_function.py
+    pylint $RCFILE IoT/reset_function.py
 
-    pylint $RCFILE aws/solutions/ADConnector/src/adconnector_custom_resource.py
-    pylint $RCFILE aws/solutions/DirectoryServiceSettings/src/directory_settings_custom_resource.py
+    pylint $RCFILE Solutions/ADConnector/src/adconnector_custom_resource.py
+    pylint $RCFILE Solutions/DirectoryServiceSettings/src/directory_settings_custom_resource.py
 fi
 
 echo "Success"
