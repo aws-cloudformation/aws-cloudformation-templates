@@ -48,6 +48,5 @@ then
 
     pylint $RCFILE Solutions/ADConnector/src/adconnector_custom_resource.py
     pylint $RCFILE Solutions/DirectoryServiceSettings/src/directory_settings_custom_resource.py
+    pylint $RCFILE APIGateway/handler.py
 fi
-
-echo "Success"

@@ -1693,3 +1693,33 @@ rule IAM_USER_NO_POLICIES_CHECK when %aws_iam_users_no_policies !empty {
   	Fix: Remove the Policies list property from any IAM Users. 
   >>
 }
+
+let lambda_functions = Resources.*[
+    Type == "AWS::Lambda::Function"
+]
+
+rule LAMBDA_DEPRECATED_RUNTIME when %lambda_functions !empty {
+    %lambda_functions {
+        Properties {
+            when Runtime exists {
+                Runtime !in ["dotnetcore3.1", "nodejs12.x", "python3.6", "python2.7", "dotnet5.0", "dotnetcore2.1", "ruby2.5", "nodejs10.x", "nodejs8.10", "nodejs4.3", "nodejs6.10", "dotnetcore1.0", "dotnetcore2.0", "nodejs4.3-edge", "nodejs"]
+                <<
+                    Lambda function is using a deprecated runtime.
+                >>
+            }
+        }
+    }
+}
+
+rule LAMBDA_DEPRECATED_SOON_RUNTIME when %lambda_functions !empty {
+    %lambda_functions {
+        Properties {
+            when Runtime exists {
+                Runtime !in ["nodejs16.x", "nodejs14.x", "python3.7", "java8", "dotnet7", "go1.x", "ruby2.7", "provided"]
+                <<
+                    Lambda function is using a runtime that is targeted for deprecation.
+                >>
+            }
+        }
+    }
+}
