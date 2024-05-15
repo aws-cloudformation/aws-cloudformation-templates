@@ -3,4 +3,5 @@
 .vscode/
 .env
 .venv
+params.yml
 

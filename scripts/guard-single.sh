@@ -13,4 +13,3 @@ cfn-guard validate --data $1 \
     --show-summary fail \
     --type CFNTemplate
 
-echo "Success"

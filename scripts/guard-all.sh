@@ -13,5 +13,3 @@ SCRIPT_DIR=$(dirname "$0")
 
 find . -name "*.yaml" | grep -v "\.env" | xargs -n 1 ${SCRIPT_DIR}/guard-single.sh
 
-
-echo "Success"
