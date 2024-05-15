@@ -1,17 +1,15 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Sample Template AutoScalingMultiAZWithNotifications: Create a multi-az, load balanced and Auto Scaled sample web site running on an Apache Web Server. The application is configured to span all Availability Zones in the region and is Auto-Scaled based on the CPU utilization of the web servers. Notifications will be sent to the operator email address on scaling events. The instances are load balanced with a simple health check against the default web page. **WARNING** This template creates one or more Amazon EC2 instances and an Elastic Load Balancer. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Description": "Create a multi-az, load balanced and Auto Scaled sample web site running on\nan Apache Web Server. The application is configured to span all\nAvailability Zones in the region and is Auto-Scaled based on the CPU\nutilization of the web servers. Notifications will be sent to the operator\nemail address on scaling events. The instances are load balanced with a\nsimple health check against the default web page. **WARNING** This template\ncreates one or more Amazon EC2 instances and an Elastic Load Balancer. You\nwill be billed for the AWS resources used if you create a stack from this\ntemplate.\n",
     "Parameters": {
         "InstanceType": {
             "Description": "WebServer EC2 instance type",
             "Type": "String",
-            "Default": "t2.micro"
+            "Default": "t4g.micro"
         },
         "OperatorEMail": {
-            "Description": "EMail address to notify if there are any scaling operations",
-            "Type": "String",
-            "AllowedPattern": "([a-zA-Z0-9_\\-\\.]+)@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\\]?)",
-            "ConstraintDescription": "must be a valid email address."
+            "Description": "Email address to notify if there are any scaling operations",
+            "Type": "String"
         },
         "KeyName": {
             "Description": "The EC2 Key Pair to allow SSH access to the instances",
@@ -46,6 +44,14 @@
         "Subnets": {
             "Description": "Subnets to be used",
             "Type": "List<AWS::EC2::Subnet::Id>"
+        },
+        "AZs": {
+            "Description": "Availability Zones to be used",
+            "Type": "List<AWS::EC2::AvailabilityZone::Name>"
+        },
+        "VPC": {
+            "Description": "VPC to be used",
+            "Type": "AWS::EC2::VPC::Id"
         }
     },
     "Mappings": {
@@ -156,7 +162,7 @@
                             },
                             "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
                                 "content": {
-                                    "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\naction=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --region ${AWS::Region}\nrunas=root\n"
+                                    "Fn::Sub": "[cfn-auto-reloader-hook]\ntriggers=post.update\npath=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init\naction=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --region ${AWS::Region}\nrunas=root\n"
                                 }
                             }
                         },
@@ -206,7 +212,7 @@
                     ],
                     "UserData": {
                         "Fn::Base64": {
-                            "Fn::Sub": "#!/bin/bash\n/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfig --region ${AWS::Region}\n/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region ${AWS::Region}\n"
+                            "Fn::Sub": "#!/bin/bash\n/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --region ${AWS::Region}\n/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region ${AWS::Region}\n"
                         }
                     },
                     "TagSpecifications": [
@@ -252,7 +258,7 @@
             },
             "Properties": {
                 "AvailabilityZones": {
-                    "Fn::GetAZs": null
+                    "Ref": "AZs"
                 },
                 "LaunchTemplate": {
                     "LaunchTemplateId": {
@@ -267,9 +273,9 @@
                 },
                 "MinSize": "1",
                 "MaxSize": "3",
-                "LoadBalancerNames": [
+                "TargetGroupARNs": [
                     {
-                        "Ref": "ElasticLoadBalancer"
+                        "Ref": "TargetGroup"
                     }
                 ],
                 "NotificationConfigurations": [
@@ -366,28 +372,73 @@
             }
         },
         "ElasticLoadBalancer": {
-            "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
             "Properties": {
-                "AvailabilityZones": {
-                    "Fn::GetAZs": null
-                },
-                "CrossZone": true,
-                "Listeners": [
+                "Scheme": "internet-facing",
+                "SecurityGroups": [
                     {
-                        "LoadBalancerPort": "80",
-                        "InstancePort": "80",
-                        "Protocol": "HTTP",
-                        "SSLCertificateId": {
-                            "Ref": "CertificateArn"
+                        "Ref": "LoadBalancerSecurityGroup"
+                    }
+                ],
+                "Subnets": {
+                    "Ref": "Subnets"
+                },
+                "Type": "application"
+            }
+        },
+        "LoadBalancerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Allows inbound traffic on port 443",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "LoadBalancerListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "Type": "forward",
+                        "TargetGroupArn": {
+                            "Ref": "TargetGroup"
                         }
                     }
                 ],
-                "HealthCheck": {
-                    "Target": "HTTP:80/",
-                    "HealthyThreshold": "3",
-                    "UnhealthyThreshold": "5",
-                    "Interval": "30",
-                    "Timeout": "5"
+                "LoadBalancerArn": {
+                    "Ref": "ElasticLoadBalancer"
+                },
+                "Port": 443,
+                "Protocol": "HTTPS",
+                "SslPolicy": "ELBSecurityPolicy-2016-08",
+                "Certificates": [
+                    {
+                        "CertificateArn": {
+                            "Ref": "CertificateArn"
+                        }
+                    }
+                ]
+            }
+        },
+        "TargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "HealthCheckPath": "/",
+                "Name": "MyTargetGroup",
+                "Port": 80,
+                "Protocol": "HTTP",
+                "TargetType": "instance",
+                "VpcId": {
+                    "Ref": "VPC"
                 }
             }
         },
@@ -415,17 +466,8 @@
                         "IpProtocol": "tcp",
                         "FromPort": 80,
                         "ToPort": 80,
-                        "SourceSecurityGroupOwnerId": {
-                            "Fn::GetAtt": [
-                                "ElasticLoadBalancer",
-                                "SourceSecurityGroup.OwnerAlias"
-                            ]
-                        },
-                        "SourceSecurityGroupName": {
-                            "Fn::GetAtt": [
-                                "ElasticLoadBalancer",
-                                "SourceSecurityGroup.GroupName"
-                            ]
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
                         }
                     }
                 ]
