@@ -9,7 +9,11 @@ Parameters:
   ECRURL:
     Description: URL of the ECR Repository.
     Type: String
-    Default: 123456789012.dkr.ecr.us-east-1.amazonaws.com/ecr-name:latest
+    Default: 123456789012.dkr.ecr.us-east-2.amazonaws.com/cfntest:apache
+  TCPPORT:
+    Description: Port on which the container is listening.
+    Type: Number
+    Default: 80
 
 Resources:
   AppRunnerRole:
@@ -41,7 +45,6 @@ Resources:
 
   AppRunner:
     Type: AWS::AppRunner::Service
-    DependsOn: AppRunnerRole
     Properties:
       ServiceName: !Join
         - ""
@@ -55,8 +58,7 @@ Resources:
           ImageRepositoryType: ECR
           ImageIdentifier: !Ref ECRURL
           ImageConfiguration:
-            Port: 8080
-
+            Port: !Ref TCPPORT
             # Default Configurations
             # InstanceConfiguration:
             #   Cpu: 1024
