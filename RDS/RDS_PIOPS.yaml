@@ -16,8 +16,17 @@ Parameters:
     ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
 
 Resources:
+  DBCredential:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+        RequireEachIncludedType: true
+
   myDB:
     Type: AWS::RDS::DBInstance
+    DependsOn: DBCredential
     Properties:
       AllocatedStorage: "100"
       DBInstanceClass: db.t3.small
@@ -25,6 +34,6 @@ Resources:
       Engine: MySQL
       Iops: "1000"
       MasterUsername: !Ref DBUser
-      MasterUserPassword: '{{resolve:secretsmanager:my-db-password}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBCredential}}}'
       PubliclyAccessible: false
       StorageEncrypted: true
