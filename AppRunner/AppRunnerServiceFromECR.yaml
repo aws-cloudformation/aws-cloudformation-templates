@@ -10,6 +10,7 @@ Parameters:
     Description: URL of the ECR Repository.
     Type: String
     Default: 123456789012.dkr.ecr.us-east-2.amazonaws.com/cfntest:apache
+
   TCPPORT:
     Description: Port on which the container is listening.
     Type: Number
@@ -59,6 +60,7 @@ Resources:
           ImageIdentifier: !Ref ECRURL
           ImageConfiguration:
             Port: !Ref TCPPORT
+
             # Default Configurations
             # InstanceConfiguration:
             #   Cpu: 1024

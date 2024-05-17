@@ -13,7 +13,7 @@
         "TCPPORT": {
             "Description": "Port on which the container is listening.",
             "Type": "Number",
-            "Default": "80"
+            "Default": 80
         }
     },
     "Resources": {
