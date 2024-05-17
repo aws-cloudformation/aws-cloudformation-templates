@@ -62,7 +62,7 @@
                 "Description": "LambdaFunction using python3.12.",
                 "Runtime": "python3.12",
                 "Code": {
-                    "ZipFile": "import json\n\ndef lambda_handler(event, context):\n    print(\"Received event: \" + json.dumps(event, indent=2))\n    return \"\"\n"
+                    "ZipFile": "import json\n\ndef lambda_handler(event, context):\n    print(json.dumps(event))\n    return {\n        'statusCode': 200,\n        'body': json.dumps('Hello from Lambda!')\n    }\n"
                 },
                 "Handler": {
                     "Fn::Sub": "${LambdaHandlerPath}"
