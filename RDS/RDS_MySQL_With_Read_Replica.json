@@ -113,10 +113,21 @@
             },
             "Condition": "IsEC2VPC"
         },
+        "DBCredential": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "GenerateSecretString": {
+                    "PasswordLength": 16,
+                    "ExcludeCharacters": "\"@/\\",
+                    "RequireEachIncludedType": true
+                }
+            }
+        },
         "MainDB": {
             "DeletionPolicy": "Snapshot",
             "UpdateReplacePolicy": "Snapshot",
             "Type": "AWS::RDS::DBInstance",
+            "DependsOn": "DBCredential",
             "Properties": {
                 "DBName": {
                     "Ref": "DBName"
@@ -132,7 +143,9 @@
                 "MasterUsername": {
                     "Ref": "DBUser"
                 },
-                "MasterUserPassword": "{{resolve:secretsmanager:my-db-password}}",
+                "MasterUserPassword": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${DBCredential}}}"
+                },
                 "MultiAZ": {
                     "Ref": "MultiAZ"
                 },
@@ -194,6 +207,12 @@
         }
     },
     "Outputs": {
+        "DBCredentialSecretNameArn": {
+            "Description": "Name of the secret containing the database credential",
+            "Value": {
+                "Ref": "DBCredential"
+            }
+        },
         "EC2Platform": {
             "Description": "Platform in which this stack is deployed",
             "Value": {

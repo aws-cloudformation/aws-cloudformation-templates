@@ -16,8 +16,19 @@
         }
     },
     "Resources": {
+        "DBCredential": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "GenerateSecretString": {
+                    "PasswordLength": 16,
+                    "ExcludeCharacters": "\"@/\\",
+                    "RequireEachIncludedType": true
+                }
+            }
+        },
         "myDB": {
             "Type": "AWS::RDS::DBInstance",
+            "DependsOn": "DBCredential",
             "Properties": {
                 "AllocatedStorage": "100",
                 "DBInstanceClass": "db.t3.small",
@@ -27,7 +38,9 @@
                 "MasterUsername": {
                     "Ref": "DBUser"
                 },
-                "MasterUserPassword": "{{resolve:secretsmanager:my-db-password}}",
+                "MasterUserPassword": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${DBCredential}}}"
+                },
                 "PubliclyAccessible": false,
                 "StorageEncrypted": true
             }
