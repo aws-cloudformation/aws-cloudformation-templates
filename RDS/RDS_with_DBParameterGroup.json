@@ -60,12 +60,11 @@
         "MyRDSParamGroup": {
             "Type": "AWS::RDS::DBParameterGroup",
             "Properties": {
-                "Family": "MySQL5.6",
+                "Family": "MySQL8.0",
                 "Description": "CloudFormation Sample Database Parameter Group",
                 "Parameters": {
                     "autocommit": "1",
-                    "general_log": "1",
-                    "old_passwords": "0"
+                    "general_log": "1"
                 }
             }
         }
