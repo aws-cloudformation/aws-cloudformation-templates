@@ -244,14 +244,14 @@ Resources:
               - Effect: Allow
                 Action: s3:GetObject
                 Resource:
-                  - !Sub arn${AWS::Partition}s3:::aws-ssm-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::aws-windows-downloads-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::amazon-ssm-packages-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::${AWS::Region}-birdwatcher-prod/*
-                  - !Sub arn${AWS::Partition}s3:::patch-baseline-snapshot-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::aws-ssm-distributor-file-${AWS::Region}/*
-                  - !Sub arn${AWS::Partition}s3:::aws-ssm-document-attachments-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::aws-ssm-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::aws-windows-downloads-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::amazon-ssm-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::amazon-ssm-packages-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::${AWS::Region}-birdwatcher-prod/*
+                  - !Sub arn:${AWS::Partition}:s3:::patch-baseline-snapshot-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::aws-ssm-distributor-file-${AWS::Region}/*
+                  - !Sub arn:${AWS::Partition}:s3:::aws-ssm-document-attachments-${AWS::Region}/*
         - !If
           - SSMLogsBucketNameCondition
           - PolicyName: SsmLogs
@@ -265,8 +265,8 @@ Resources:
                     - s3:PutObjectAcl
                     - s3:GetEncryptionConfiguration
                   Resource:
-                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}
-                    - !Sub arn${AWS::Partition}s3:::${SSMLogsBucketName}/*
+                    - !Sub arn:${AWS::Partition}:s3:::${SSMLogsBucketName}
+                    - !Sub arn:${AWS::Partition}:s3:::${SSMLogsBucketName}/*
           - !Ref AWS::NoValue
         - PolicyName: AWSManagedADLinuxEC2SeamlessDomainJoinSecret
           PolicyDocument:
