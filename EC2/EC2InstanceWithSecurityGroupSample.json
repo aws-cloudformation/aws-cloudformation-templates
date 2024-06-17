@@ -81,7 +81,7 @@
             "Type": "AWS::EC2::Instance",
             "Properties": {
                 "InstanceType": {
-                    "Ref": "InstanceType"
+                    "Ref": "t2.micro"
                 },
                 "SubnetId": {
                     "Fn::Select": [
@@ -93,14 +93,14 @@
                 },
                 "SecurityGroups": [
                     {
-                        "Ref": "InstanceSecurityGroup"
+                        "Ref": "Green-SGW"
                     }
                 ],
                 "KeyName": {
-                    "Ref": "KeyName"
+                    "Ref": "ramu"
                 },
                 "ImageId": {
-                    "Ref": "LatestAmiId"
+                    "Ref": "ami-08a0d1e16fc3f61ea"
                 }
             }
         },
