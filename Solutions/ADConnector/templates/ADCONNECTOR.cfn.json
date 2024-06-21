@@ -763,28 +763,28 @@
                                     "Action": "s3:GetObject",
                                     "Resource": [
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-windows-downloads-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-windows-downloads-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::amazon-ssm-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::amazon-ssm-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::amazon-ssm-packages-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::amazon-ssm-packages-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::${AWS::Region}-birdwatcher-prod/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-birdwatcher-prod/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::patch-baseline-snapshot-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::patch-baseline-snapshot-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-distributor-file-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-distributor-file-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-document-attachments-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-document-attachments-${AWS::Region}/*"
                                         }
                                     ]
                                 }
@@ -809,10 +809,10 @@
                                             ],
                                             "Resource": [
                                                 {
-                                                    "Fn::Sub": "arn${AWS::Partition}s3:::${SSMLogsBucketName}"
+                                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${SSMLogsBucketName}"
                                                 },
                                                 {
-                                                    "Fn::Sub": "arn${AWS::Partition}s3:::${SSMLogsBucketName}/*"
+                                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${SSMLogsBucketName}/*"
                                                 }
                                             ]
                                         }
@@ -1039,28 +1039,28 @@
                                     "Action": "s3:GetObject",
                                     "Resource": [
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-windows-downloads-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-windows-downloads-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::amazon-ssm-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::amazon-ssm-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::amazon-ssm-packages-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::amazon-ssm-packages-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::${AWS::Region}-birdwatcher-prod/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-birdwatcher-prod/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::patch-baseline-snapshot-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::patch-baseline-snapshot-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-distributor-file-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-distributor-file-${AWS::Region}/*"
                                         },
                                         {
-                                            "Fn::Sub": "arn${AWS::Partition}s3:::aws-ssm-document-attachments-${AWS::Region}/*"
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::aws-ssm-document-attachments-${AWS::Region}/*"
                                         }
                                     ]
                                 }
@@ -1085,10 +1085,10 @@
                                             ],
                                             "Resource": [
                                                 {
-                                                    "Fn::Sub": "arn${AWS::Partition}s3:::${SSMLogsBucketName}"
+                                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${SSMLogsBucketName}"
                                                 },
                                                 {
-                                                    "Fn::Sub": "arn${AWS::Partition}s3:::${SSMLogsBucketName}/*"
+                                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${SSMLogsBucketName}/*"
                                                 }
                                             ]
                                         }

@@ -56,7 +56,7 @@ Parameters:
   EC2ImageId:
     Description: EC2 AMI Id
     Type: AWS::EC2::Image::Id
-    Default: ami-xxx
+    Default: ami-0d85a662720db9789 
 
   EC2InstanceType:
     Description: Amazon EC2 instance type.
