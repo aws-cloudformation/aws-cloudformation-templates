@@ -9,7 +9,7 @@ are limited to the CloudFormation stack events associated with StackSets operati
 ## Prerequisites
 
 You should have an AWS Organization structure set up with a primary management
-account and several accounts under management. (ALthough not necessary for this
+account and several accounts under management. (Although not necessary for this
 solutions, in general it is highly recommended to set up your organization with
 [AWS Control Tower](https://aws.amazon.com/controltower/), or to migrate to
 Control Tower if you set up your landing zone manually.)
