@@ -6,11 +6,17 @@ Description: |
   exists. This template uses a Rain module, which can be packaged with `rain
   pkg -x common-resources.yaml`.
 
+Parameters:
+  AppName:
+    Type: String
+    Description: This name will be used as part of resource names
+    Default: stacksets-sample
+
 Resources:
 
   Storage:
     Type: !Rain::Module "../../RainModules/bucket.yml"
     Properties:
-      AppName: stacksets-sample
+      AppName: !Ref AppName 
 
 

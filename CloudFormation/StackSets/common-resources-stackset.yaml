@@ -12,9 +12,10 @@ Resources:
     Type: AWS::CloudFormation::StackSet
     Properties:
       TemplateBody: !Rain::Embed common-resources-pkg.yaml
+      Capabilities:
+        - CAPABILITY_IAM
       StackInstancesGroup:
-        - 
-          DeploymentTargets:
+        - DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref OUID 
           Regions:
