@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: This template describes a Lambda function for a CloudFormation custom resource to consume and get a given value out of an input JSON data structure and an input search argument.
+
+Parameters:
+  TagName:
+    Description: Value for the Name tag.
+    Type: String
+    Default: GetFromJson
+
+Resources:
+  GetFromJsonLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: GetFromJsonLogGroup
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3012 # Used for the `!Rain::Embed` directive below, whose `getfromjson.py` argument is deemed by cfn-lint not to be a string type.
+    Properties:
+      Code:
+        ZipFile: !Rain::Embed getfromjson.py
+      Description: Lambda function for a CloudFormation custom resource to consume and get a given value out of an input JSON data structure and an input search argument.
+      FunctionName: GetFromJson
+      Handler: index.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt GetFromJsonLambdaFunctionExecutionRole.Arn
+      Runtime: python3.12
+      Tags:
+        - Key: Name
+          Value: !Ref TagName
+      Timeout: 10
+
+  GetFromJsonLambdaFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/GetFromJson*
+            Version: "2012-10-17"
+          PolicyName: GetFromJsonLambdaFunctionExecutionRole
+      RoleName: !Sub GetFromJson-${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: !Ref TagName
+
+  GetFromJsonLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/GetFromJson
+      RetentionInDays: 3653
+      Tags:
+        - Key: Name
+          Value: !Ref TagName
+
+Outputs:
+  GetFromJsonLambdaFunctionArn:
+    Value: !GetAtt GetFromJsonLambdaFunction.Arn
+    Export:
+      Name: Custom-GetFromJson

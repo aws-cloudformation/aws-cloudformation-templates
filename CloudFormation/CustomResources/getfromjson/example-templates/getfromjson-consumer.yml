@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: This AWS CloudFormation template describes a sample CloudFormation custom resource consumer for the GetFromJson Lambda-backed custom resource provider.
+
+Parameters:
+  GetFromListJsonData:
+    Description: Example JSON data representing a list of values.
+    Type: String
+    Default: '["test0", "test1", "test2"]'
+
+  GetFromListJsonDataQuery:
+    Description: Example query for JSON data representing a list of values.
+    Type: String
+    Default: '[2]'
+
+  GetFromMapJsonData:
+    Description: Example JSON data representing a map data structure.
+    Type: String
+    Default: '{"test": {"test1": ["x", "y"]}}'
+
+  GetFromMapJsonDataQuery:
+    Description: Example query for JSON data representing a map data structure.
+    Type: String
+    Default: '["test"]["test1"][1]'
+
+Resources:
+  GetFromJsonCustomResourceSampleGetFromList:
+    Type: Custom::GetFromJson
+    Properties:
+      ServiceTimeout: 1
+      ServiceToken: !ImportValue Custom-GetFromJson
+      json_data: !Ref GetFromListJsonData
+      search: !Ref GetFromListJsonDataQuery
+
+  GetFromJsonCustomResourceSampleGetFromMap:
+    Type: Custom::GetFromJson
+    Properties:
+      ServiceTimeout: 1
+      ServiceToken: !ImportValue Custom-GetFromJson
+      json_data: !Ref GetFromMapJsonData
+      search: !Ref GetFromMapJsonDataQuery
+
+Outputs:
+  GetFromJsonCustomResourceSampleGetFromListValue:
+    Value: !GetAtt GetFromJsonCustomResourceSampleGetFromList.Data
+
+  GetFromJsonCustomResourceSampleGetFromMapValue:
+    Value: !GetAtt GetFromJsonCustomResourceSampleGetFromMap.Data

@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: AWS SAM template for testing the getfromjson module on your machine.
+
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    MemorySize: 128
+    Timeout: 10
+
+Resources:
+  GetFromJsonLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: getfromjson.lambda_handler
+      Runtime: python3.12
