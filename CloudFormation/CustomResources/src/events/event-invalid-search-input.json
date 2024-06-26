@@ -1,0 +1,12 @@
+{
+    "RequestType": "Create",
+    "ResponseURL": "https://test-only-pre-signed-S3-response-URL",
+    "StackId": "arn:aws:cloudformation:us-east-1:111122223333:stack/test-only-stack/test-only-id",
+    "RequestId": "test_only_unique_id",
+    "ResourceType": "Custom::GetFromJson",
+    "LogicalResourceId": "TestOnly",
+    "ResourceProperties": {
+        "json_data": "{\"test\": {\"test-1\": [\"x\", \"y\"]}}",
+        "search": "invalid"
+    }
+}
