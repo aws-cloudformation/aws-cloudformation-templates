@@ -7,6 +7,7 @@ Parameters:
   OUID:
     Type: String
     Description: The Id of the Organization Unit. All accounts in this OU will be granted permissions to put events onto the default event bus in this account
+    Default: ou-qxtx-vv0thlla
 
   CentralEventBusName:
     Type: String
@@ -20,15 +21,20 @@ Resources:
       Description: A custom event bus in the central account to be used as a destination for events from a rule in target accounts
       Name: !Ref CentralEventBusName
       KmsKeyIdentifier: !Ref CentralEventBusKey
-      Policy:
-        Statement:
-          - Effect: Allow
-            Principal: "*"
-            Action: 'events:PutEvents'
-            Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
-            Condition: 
-              StringEquals:
-                "aws:PrincipalOrgID": !Ref OUID
+
+  CentralEventBusPolicy:
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      EventBusName: !Ref CentralEventBus
+      StatementId: CentralEventBusPolicyStatement
+      Statement:
+        Effect: Allow
+        Principal: "*"
+        Action: 'events:PutEvents'
+        Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
+        Condition: 
+          StringEquals:
+            "aws:PrincipalOrgID": !Ref OUID
 
   CentralEventBusKey:
     Type: AWS::KMS::Key
@@ -57,7 +63,7 @@ Resources:
             Principal:
               AWS:
                 - !Sub "arn:aws:iam::${AWS::AccountId}:role/Admin"
-            Resource: "*"
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
           - Action:
               - kms:Encrypt
               - kms:Decrypt
@@ -66,13 +72,34 @@ Resources:
               - kms:DescribeKey
             Effect: Allow
             Principal: "*"
-            Resource: "*"
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
             Condition: 
               StringEquals:
                 "aws:PrincipalOrgID": !Ref OUID
+          - Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Effect: Allow
+            Principal: 
+              Service: events.amazonaws.com
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+          - Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Effect: Allow
+            Principal: 
+              Service: logs.amazonaws.com
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
       MultiRegion: true
 
   CentralEventLog:
+    DependsOn: CentralEventBus
     Type: AWS::Logs::LogGroup
     Properties:
       KmsKeyId: !GetAtt CentralEventBusKey.Arn
@@ -106,10 +133,15 @@ Resources:
     
   CentralEventRule:
     Type: AWS::Events::Rule
+    Metadata:
+      Comment: We use an empty prefix here to capture all events forwarded from target accounts
     Properties:
       Name: CloudFormationLogs
+      EventBusName: !Ref CentralEventBus
       State: ENABLED
-      EventPattern: "*"
+      EventPattern:
+        source:
+          - prefix: ""
       Targets:
         - Arn: !Ref CentralEventLog
           RoleArn: !Ref CentralEventLogRole
