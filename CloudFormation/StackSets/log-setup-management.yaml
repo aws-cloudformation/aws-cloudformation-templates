@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: A central event bus rule and log group to collect CloudFormation logs from all target accounts
+
+Parameters:
+
+  OUID:
+    Type: String
+    Description: The Id of the Organization Unit. All accounts in this OU will be granted permissions to put events onto the default event bus in this account
+
+  CentralEventBusName:
+    Type: String
+    Default: central-cloudformation
+
+Resources:
+
+  CentralEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Description: A custom event bus in the central account to be used as a destination for events from a rule in target accounts
+      Name: !Ref CentralEventBusName
+      KmsKeyIdentifier: !Ref CentralEventBusKey
+      Policy:
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: 'events:PutEvents'
+            Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
+            Condition: 
+              StringEquals:
+                "aws:PrincipalOrgID": !Ref OUID
+
+  CentralEventBusKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:GenerateDataKey
+              - kms:TagResource
+              - kms:UntagResource
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/Admin"
+            Resource: "*"
+          - Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Effect: Allow
+            Principal: "*"
+            Resource: "*"
+            Condition: 
+              StringEquals:
+                "aws:PrincipalOrgID": !Ref OUID
+      MultiRegion: true
+
+  CentralEventLog:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId: !GetAtt CentralEventBusKey.Arn
+      LogGroupClass: STANDARD
+      LogGroupName: central-cloudformation-logs
+
+  CentralEventLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sts:AssumeRole'
+
+  CentralEventLogPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: CentralLogGroupRolePolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:PutLogEvents'
+              - 'logs:CreateLogStream'
+            Resource: !GetAtt CentralEventLog.Arn
+      RoleName: !Ref CentralEventLogRole
+    
+  CentralEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: CloudFormationLogs
+      State: ENABLED
+      EventPattern: "*"
+      Targets:
+        - Arn: !Ref CentralEventLog
+          RoleArn: !Ref CentralEventLogRole
+          Id: CloudFormationLogsToCentralGroup
+
+
+  TargetAccountLogging:
+    Type: AWS::CloudFormation::StackSet
+    Properties:
+      TemplateBody: !Rain::Embed log-setup-target-accounts.yaml
+      Capabilities:
+        - CAPABILITY_IAM
+      StackInstancesGroup:
+        - DeploymentTargets:
+            OrganizationalUnitIds:
+              - !Ref OUID 
+          Regions:
+            - us-east-1
+            - us-west-2
+      Parameters:
+        - ParameterKey: CentralEventBusArn
+          ParameterValue: !GetAtt CentralEventBus.Arn
+      PermissionModel: SERVICE_MANAGED
+      Description: This stack set is part of a sample that demonstrates how to set up cross account logging. It configures logging resources in target accounts.
+      OperationPreferences:
+        FailureToleranceCount: 0
+        MaxConcurrentCount: 2
+        RegionConcurrencyType: PARALLEL
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: true
+      StackSetName: log-setup
+
+
+
