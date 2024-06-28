@@ -1,0 +1,27 @@
+Description: |
+  This template has resources that will be installed into all managed accounts
+  in the OU. For the purposes of the sample it's not important what exactly we
+  are creating here. To demonstrate the consolidated logging, errors can be
+  introduced into this template, such as choosing a bucket name that already
+  exists. This template uses a Rain module, which can be packaged with `rain
+  pkg -x common-resources.yaml`.
+
+Parameters:
+  AppName:
+    Type: String
+    Description: This name will be used as part of resource names
+    Default: stacksets-sample
+
+Resources:
+
+  Storage:
+    Type: !Rain::Module "../../RainModules/bucket.yml"
+    Properties:
+      AppName: !Ref AppName 
+
+  TestQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: test-events9
+
+

@@ -1,0 +1,32 @@
+Parameters:
+  PolicyBucketName:
+    Type: String
+Resources:
+  Policy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PolicyBucketName
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+            Effect: Deny
+            Principal:
+              AWS: '*'
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}"
+              - !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}/*"
+          - Action: s3:PutObject
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}"
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}/*"
+        Version: "2012-10-17"
