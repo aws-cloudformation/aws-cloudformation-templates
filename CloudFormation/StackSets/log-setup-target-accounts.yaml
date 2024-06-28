@@ -35,8 +35,6 @@ Resources:
             Principal:
               Service: events.amazonaws.com
             Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonEventBridgeServiceRolePolicy
 
   EventBridgeRolePolicy:
     Type: AWS::IAM::RolePolicy

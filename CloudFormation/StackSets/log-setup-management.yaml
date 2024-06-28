@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
+Transform: AWS::LanguageExtensions
+
 Description: A central event bus rule and log group to collect CloudFormation logs from all target accounts
 
 Parameters:
@@ -106,50 +108,92 @@ Resources:
       LogGroupClass: STANDARD
       LogGroupName: central-cloudformation-logs
 
-  CentralEventLogRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: 'sts:AssumeRole'
+        #  CentralEventLogRole:
+        #    Type: AWS::IAM::Role
+        #    Properties:
+        #      AssumeRolePolicyDocument:
+        #        Version: '2012-10-17'
+        #        Statement:
+        #          - Effect: Allow
+        #            Principal:
+        #              Service: events.amazonaws.com
+        #            Action: 'sts:AssumeRole'
+        #
+        #  CentralEventLogPolicy:
+        #    Type: AWS::IAM::RolePolicy
+        #    Properties:
+        #      PolicyName: CentralLogGroupRolePolicy
+        #      PolicyDocument:
+        #        Version: '2012-10-17'
+        #        Statement:
+        #          - Effect: Allow
+        #            Action:
+        #              - 'logs:PutLogEvents'
+        #              - 'logs:CreateLogStream'
+        #            Resource: !GetAtt CentralEventLog.Arn
+        #      RoleName: !Ref CentralEventLogRole
+        #
 
   CentralEventLogPolicy:
-    Type: AWS::IAM::RolePolicy
+    Type: AWS::Logs::ResourcePolicy
+    Metadata:
+      Comment: The PolicyDocument in this resource *must* be JSON, unlike the standard IAM resources that allow YAML. Also note that you have to put the policy here and not in a role referenced by AWS::Events::Rule.RoleArn, which is meant for cross-account scenarios.
     Properties:
-      PolicyName: CentralLogGroupRolePolicy
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'logs:PutLogEvents'
-              - 'logs:CreateLogStream'
-            Resource: !GetAtt CentralEventLog.Arn
-      RoleName: !Ref CentralEventLogRole
-    
+      PolicyName: CentralEventLogResourcePolicy
+      PolicyDocument: 
+          !Sub |
+            {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": [
+                      "delivery.logs.amazonaws.com",
+                      "events.amazonaws.com"
+                    ]
+                  },
+                  "Action": [
+                    "logs:PutLogEvents",
+                    "logs:CreateLogStream"
+                  ],
+                  "Resource": "${CentralEventLog.Arn}",
+                  "Condition": {
+                    "ArnEquals": {
+                      "aws:SourceArn": "${CentralEventRule.Arn}"
+                    }
+                  }
+                }
+              ]
+            }
+   
   CentralEventRule:
     Type: AWS::Events::Rule
+    DependsOn: 
+      - CentralEventLog
     Metadata:
       Comment: We use an empty prefix here to capture all events forwarded from target accounts
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W3005
     Properties:
       Name: CloudFormationLogs
-      EventBusName: !Ref CentralEventBus
+      EventBusName: !Ref CentralEventBusName
       State: ENABLED
       EventPattern:
         source:
           - prefix: ""
       Targets:
-        - Arn: !Ref CentralEventLog
-          RoleArn: !Ref CentralEventLogRole
+        - Arn: !GetAtt CentralEventLog.Arn
+          #RoleArn: !GetAtt CentralEventLogRole.Arn
           Id: CloudFormationLogsToCentralGroup
-
 
   TargetAccountLogging:
     Type: AWS::CloudFormation::StackSet
+    DependsOn:
+      - CentralEventRule
+      - CentralEventLog
+      - CentralEventLogPolicy
     Properties:
       TemplateBody: !Rain::Embed log-setup-target-accounts.yaml
       Capabilities:
