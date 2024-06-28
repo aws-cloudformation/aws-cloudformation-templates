@@ -36,9 +36,9 @@ Resources:
         Principal: "*"
         Action: 'events:PutEvents'
         Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
-        Condition: 
-          StringEquals:
-            "aws:PrincipalOrgID": !Ref OUID
+          #Condition: 
+          #StringEquals:
+          #  "aws:PrincipalOrgID": !Ref OUID
 
               #  CentralEventBusKey:
               #    Type: AWS::KMS::Key
@@ -157,15 +157,11 @@ Resources:
                     "logs:PutLogEvents",
                     "logs:CreateLogStream"
                   ],
-                  "Resource": "${CentralEventLog.Arn}",
-                  "Condition": {
-                    "ArnEquals": {
-                      "aws:SourceArn": "${CentralEventRule.Arn}"
-                    }
-                  }
+                  "Resource": "${CentralEventLog.Arn}"
                 }
               ]
             }
+
    
   CentralEventRule:
     Type: AWS::Events::Rule
