@@ -22,7 +22,9 @@ Resources:
     Properties:
       Description: A custom event bus in the central account to be used as a destination for events from a rule in target accounts
       Name: !Ref CentralEventBusName
-      KmsKeyIdentifier: !Ref CentralEventBusKey
+      #KmsKeyIdentifier: !Ref CentralEventBusKey
+      DeadLetterConfig:
+        Arn: !GetAtt DeadLetterQueue.Arn
 
   CentralEventBusPolicy:
     Type: AWS::Events::EventBusPolicy
@@ -38,73 +40,72 @@ Resources:
           StringEquals:
             "aws:PrincipalOrgID": !Ref OUID
 
-  CentralEventBusKey:
-    Type: AWS::KMS::Key
-    DeletionPolicy: Delete
-    UpdateReplacePolicy: Delete
-    Properties:
-      KeyPolicy:
-        Statement:
-          - Action:
-              - kms:Create*
-              - kms:Describe*
-              - kms:Enable*
-              - kms:List*
-              - kms:Put*
-              - kms:Update*
-              - kms:Revoke*
-              - kms:Disable*
-              - kms:Get*
-              - kms:Delete*
-              - kms:ScheduleKeyDeletion
-              - kms:CancelKeyDeletion
-              - kms:GenerateDataKey
-              - kms:TagResource
-              - kms:UntagResource
-            Effect: Allow
-            Principal:
-              AWS:
-                - !Sub "arn:aws:iam::${AWS::AccountId}:role/Admin"
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
-          - Action:
-              - kms:Encrypt
-              - kms:Decrypt
-              - kms:ReEncrypt
-              - kms:GenerateDataKey*
-              - kms:DescribeKey
-            Effect: Allow
-            Principal: "*"
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
-            Condition: 
-              StringEquals:
-                "aws:PrincipalOrgID": !Ref OUID
-          - Action:
-              - kms:Encrypt
-              - kms:Decrypt
-              - kms:ReEncrypt
-              - kms:GenerateDataKey*
-              - kms:DescribeKey
-            Effect: Allow
-            Principal: 
-              Service: events.amazonaws.com
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
-          - Action:
-              - kms:Encrypt
-              - kms:Decrypt
-              - kms:ReEncrypt
-              - kms:GenerateDataKey*
-              - kms:DescribeKey
-            Effect: Allow
-            Principal: 
-              Service: logs.amazonaws.com
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
-      MultiRegion: true
+              #  CentralEventBusKey:
+              #    Type: AWS::KMS::Key
+              #    DeletionPolicy: Delete
+              #    UpdateReplacePolicy: Delete
+              #    Properties:
+              #      KeyPolicy:
+              #        Statement:
+              #          - Action:
+              #              - kms:Create*
+              #              - kms:Describe*
+              #              - kms:Enable*
+              #              - kms:List*
+              #              - kms:Put*
+              #              - kms:Update*
+              #              - kms:Revoke*
+              #              - kms:Disable*
+              #              - kms:Get*
+              #              - kms:Delete*
+              #              - kms:ScheduleKeyDeletion
+              #              - kms:CancelKeyDeletion
+              #              - kms:GenerateDataKey
+              #              - kms:TagResource
+              #              - kms:UntagResource
+              #            Effect: Allow
+              #            Principal:
+              #              AWS:
+              #                - !Sub "arn:aws:iam::${AWS::AccountId}:role/Admin"
+              #            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+              #          - Action:
+              #              - kms:Encrypt
+              #              - kms:Decrypt
+              #              - kms:ReEncrypt
+              #              - kms:GenerateDataKey*
+              #              - kms:DescribeKey
+              #            Effect: Allow
+              #            Principal: "*"
+              #            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+              #            Condition: 
+              #              StringEquals:
+              #                "aws:PrincipalOrgID": !Ref OUID
+              #          - Action:
+              #              - kms:Encrypt
+              #              - kms:Decrypt
+              #              - kms:ReEncrypt
+              #              - kms:GenerateDataKey*
+              #              - kms:DescribeKey
+              #            Effect: Allow
+              #            Principal: 
+              #              Service: events.amazonaws.com
+              #            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+              #          - Action:
+              #              - kms:Encrypt
+              #              - kms:Decrypt
+              #              - kms:ReEncrypt
+              #              - kms:GenerateDataKey*
+              #              - kms:DescribeKey
+              #            Effect: Allow
+              #            Principal: 
+              #              Service: logs.amazonaws.com
+              #            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+              #      MultiRegion: true
 
   CentralEventLog:
     DependsOn: CentralEventBus
     Type: AWS::Logs::LogGroup
     Properties:
-      KmsKeyId: !GetAtt CentralEventBusKey.Arn
       LogGroupClass: STANDARD
       LogGroupName: central-cloudformation-logs
 
@@ -187,6 +188,13 @@ Resources:
         - Arn: !GetAtt CentralEventLog.Arn
           #RoleArn: !GetAtt CentralEventLogRole.Arn
           Id: CloudFormationLogsToCentralGroup
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${CentralEventBusName}-DLQ
 
   TargetAccountLogging:
     Type: AWS::CloudFormation::StackSet

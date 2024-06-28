@@ -24,6 +24,13 @@ Resources:
         - Arn: !Ref CentralEventBusArn 
           RoleArn: !GetAtt EventBridgeRole.Arn
           Id: CentralEventBus
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: CloudFormation-Logs-DLQ
 
   EventBridgeRole:
     Type: AWS::IAM::Role
