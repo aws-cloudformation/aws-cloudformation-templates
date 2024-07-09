@@ -15,6 +15,10 @@ Parameters:
     Type: String
     Default: central-cloudformation
 
+  CentralEventLogName:
+    Type: String
+    Default: central-cloudformation-logs
+
 Resources:
 
   CentralEventBus:
@@ -107,33 +111,15 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupClass: STANDARD
-      LogGroupName: central-cloudformation-logs
+      LogGroupName: !Ref CentralEventLogName 
 
-        #  CentralEventLogRole:
-        #    Type: AWS::IAM::Role
-        #    Properties:
-        #      AssumeRolePolicyDocument:
-        #        Version: '2012-10-17'
-        #        Statement:
-        #          - Effect: Allow
-        #            Principal:
-        #              Service: events.amazonaws.com
-        #            Action: 'sts:AssumeRole'
-        #
-        #  CentralEventLogPolicy:
-        #    Type: AWS::IAM::RolePolicy
-        #    Properties:
-        #      PolicyName: CentralLogGroupRolePolicy
-        #      PolicyDocument:
-        #        Version: '2012-10-17'
-        #        Statement:
-        #          - Effect: Allow
-        #            Action:
-        #              - 'logs:PutLogEvents'
-        #              - 'logs:CreateLogStream'
-        #            Resource: !GetAtt CentralEventLog.Arn
-        #      RoleName: !Ref CentralEventLogRole
-        #
+  CentralEventLogQuery:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: CentralCloudFormationEventLogs
+      QueryString: "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` | sort @timestamp desc"
+      LogGroupNames:
+        - !Ref CentralEventLogName 
 
   CentralEventLogPolicy:
     Type: AWS::Logs::ResourcePolicy

@@ -10,7 +10,7 @@ are limited to the CloudFormation stack events associated with StackSets operati
 
 You should have an AWS Organization structure set up with a primary management
 account and several accounts under management. (Although not necessary for this
-solutions, in general it is highly recommended to set up your organization with
+solution, in general it is highly recommended to set up your organization with
 [AWS Control Tower](https://aws.amazon.com/controltower/), or to migrate to
 Control Tower if you set up your landing zone manually.)
 
@@ -37,10 +37,6 @@ Make sure that you have enabled trusted access from the management account.
 <img src="activate-trusted.png" />
 
 ## Templates/Stacks
-
-Note that each template has a packaged version with the `-pkg.yaml` suffix, 
-since the base templates use [Rain](https://github.com/aws-cloudformation/rain) 
-directives.
 
 ### `common-resources.yaml`
 
@@ -72,7 +68,25 @@ events to the management account.
 Set up the logging infrastructure in the management account. This template also 
 contains a stack set resource, to deploy the logging setup to target accounts.
 
+## Deployment
+
+In order to deploy this sample, you will need to first install
+[Rain](https://github.com/aws-cloudformation/rain), which is necessary to
+process the `!Rain` directives in the templates.
+
+First deploy the logging resources to the management account and to the target accounts.
+
+`rain --profile [org-management-account-admin] --experimental log-setup-management.yaml`
+
+Then deploy the sample resources that are common to each account, to cause the
+CloudWatch log group in the management account to receive events.
+
+`rain --profile [org-management-account-admin] --experimental common-resources-stackset.yaml`
+
 ## Build and Test
+
+If you are doing development on this sample, you will need a Python environment
+and cfn-lint installed.
 
 Create a Python virtual environment.
 

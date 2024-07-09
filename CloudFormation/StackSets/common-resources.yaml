@@ -22,6 +22,14 @@ Resources:
   TestQ:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: test-events9
+      QueueName: test-events10
+
+#  BadBucket:
+#    Type: AWS::S3::Bucket
+#    Metadata:
+#      Comment:
+#        This bucket is purposefully using an existing name, to cause a deployment failure
+#    Properties:
+#      BucketName: rain-artifacts-646934191481-us-east-1
 
 
