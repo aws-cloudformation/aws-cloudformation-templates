@@ -40,9 +40,9 @@ Resources:
         Principal: "*"
         Action: 'events:PutEvents'
         Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
-        Condition: 
-          StringEquals:
-            "aws:PrincipalOrgID": !Ref OUID
+          #        Condition: 
+          #          StringEquals:
+          #            "aws:PrincipalOrgID": !Ref OUID
 
 
 # The Condition above causes events to fail to propagate from member accounts due to insufficient permissions.
@@ -53,6 +53,48 @@ Resources:
     Properties:
       LogGroupClass: STANDARD
       LogGroupName: !Ref CentralEventLogName 
+      KmsKeyId: !GetAtt CentralEventLogKey.Arn
+
+  CentralEventLogKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for log group
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-policy
+        Statement:
+          - Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:GenerateDataKey
+              - kms:TagResource
+              - kms:UntagResource
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/Admin
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+          - Sid: Allow CloudWatch Logs to use the key
+            Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action:
+              - 'kms:Encrypt*'
+              - 'kms:Decrypt*'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:Describe*'
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
 
   CentralEventLogQuery:
     Type: AWS::Logs::QueryDefinition

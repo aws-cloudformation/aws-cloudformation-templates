@@ -22,7 +22,7 @@ Resources:
   TestQ:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: test-events11
+      QueueName: test-events15
 
 #  BadBucket:
 #    Type: AWS::S3::Bucket

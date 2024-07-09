@@ -32,6 +32,25 @@ Resources:
     Properties:
       QueueName: CloudFormation-Logs-DLQ
 
+  DeadLetterQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: AllowEventBridgeToWriteLogs
+        Statement:
+          - Sid: AllowEventBridgeToWriteLogs
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt DeadLetterQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/CloudFormationEventRule"
+      Queues:
+        - !Ref DeadLetterQueue
+
   EventBridgeRole:
     Type: AWS::IAM::Role
     Properties:
