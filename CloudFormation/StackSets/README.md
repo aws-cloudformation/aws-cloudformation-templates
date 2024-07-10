@@ -2,7 +2,8 @@
 
 This sample configures a service-managed stack set in an organization and pipes
 all log events from the target accounts into the management account. The events 
-are limited to the CloudFormation stack events associated with StackSets operations.
+are limited to the CloudFormation stack events, which helps to consolidate logs 
+from stacks that are being deployed as part of a stack set to many environments.
 
 <img src="stacksetslogging.png" />
 
@@ -74,14 +75,19 @@ In order to deploy this sample, you will need to first install
 [Rain](https://github.com/aws-cloudformation/rain), which is necessary to
 process the `!Rain` directives in the templates.
 
-First deploy the logging resources to the management account and to the target accounts.
+Deploy the logging resources to the management account and to the target accounts.
 
-`rain --profile [org-management-account-admin] --experimental log-setup-management.yaml`
+`rain --profile [org-management-account-admin] deploy log-setup-management.yaml`
+
+Package the common resources template.
+
+`rain pkg -x common-resources.yaml > common-resources-pkg.yaml`
 
 Then deploy the sample resources that are common to each account, to cause the
-CloudWatch log group in the management account to receive events.
+CloudWatch log group in the management account to receive events. This template 
+creates a stack set to manage the deployment of the packaged common resources template.
 
-`rain --profile [org-management-account-admin] --experimental common-resources-stackset.yaml`
+`rain --profile [org-management-account-admin] --experimentaldeploy common-resources-stackset.yaml`
 
 ## Build and Test
 
@@ -99,6 +105,12 @@ Install cfn-lint
 
 ```sh
 pip install cfn-lint
+```
+
+Build and validate
+
+```sh
+./build.sh
 ```
 
 

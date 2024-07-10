@@ -159,7 +159,6 @@ Resources:
           - prefix: ""
       Targets:
         - Arn: !GetAtt CentralEventLog.Arn
-          #RoleArn: !GetAtt CentralEventLogRole.Arn
           Id: CloudFormationLogsToCentralGroup
           DeadLetterConfig:
             Arn: !GetAtt DeadLetterQueue.Arn
