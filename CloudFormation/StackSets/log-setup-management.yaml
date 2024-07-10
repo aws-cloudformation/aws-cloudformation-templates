@@ -104,6 +104,14 @@ Resources:
       LogGroupNames:
         - !Ref CentralEventLogName 
 
+  CentralEventLogQueryReason:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: CentralCloudFormationFailures
+      QueryString: "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` as status, `detail.status-details.status-reason` as reason | sort @timestamp desc | filter status like \"FAILED\" | filter reason not like \"canceled\" | filter resource not like \"AWS::CloudFormation::Stack\" "
+      LogGroupNames:
+        - !Ref CentralEventLogName 
+
   CentralEventLogPolicy:
     Type: AWS::Logs::ResourcePolicy
     Metadata:
