@@ -8,8 +8,13 @@ Parameters:
 
   OUID:
     Type: String
-    Description: The Id of the Organization Unit. All accounts in this OU will be granted permissions to put events onto the default event bus in this account
+    Description: The Id of the Organization Unit to deploy the stack set to.
     Default: ou-qxtx-vv0thlla
+
+  OrgID:
+    Type: String
+    Description: The Id of the Organization to verify the cross account API call. All accounts in this org will be granted permissions to put events onto the default event bus in this account. Note that this is not the OUID, it's the org itself and should start with o-
+    Default: o-jhfo4fcm1s
 
   CentralEventBusName:
     Type: String
@@ -32,6 +37,8 @@ Resources:
 
   CentralEventBusPolicy:
     Type: AWS::Events::EventBusPolicy
+    Metadata:
+      Comment: Note that the condition requires the Organization ID, not the Organizational Unit ID. If you want to refine the access down to an OU, you could use aws:PrincipalOrgPaths in the condition instead.
     Properties:
       EventBusName: !Ref CentralEventBus
       StatementId: CentralEventBusPolicyStatement
@@ -40,12 +47,10 @@ Resources:
         Principal: "*"
         Action: 'events:PutEvents'
         Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
-          #        Condition: 
-          #          StringEquals:
-          #            "aws:PrincipalOrgID": !Ref OUID
+        Condition: 
+          StringEquals:
+            "aws:PrincipalOrgID": !Ref OrgID
 
-
-# The Condition above causes events to fail to propagate from member accounts due to insufficient permissions.
 
   CentralEventLog:
     DependsOn: CentralEventBus
