@@ -31,7 +31,6 @@ Resources:
     Properties:
       Description: A custom event bus in the central account to be used as a destination for events from a rule in target accounts
       Name: !Ref CentralEventBusName
-      #KmsKeyIdentifier: !Ref CentralEventBusKey
       DeadLetterConfig:
         Arn: !GetAtt DeadLetterQueue.Arn
 
