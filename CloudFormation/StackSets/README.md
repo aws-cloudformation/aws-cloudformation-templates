@@ -87,7 +87,7 @@ Then deploy the sample resources that are common to each account, to cause the
 CloudWatch log group in the management account to receive events. This template 
 creates a stack set to manage the deployment of the packaged common resources template.
 
-`rain --profile [org-management-account-admin] --experimentaldeploy common-resources-stackset.yaml`
+`rain --profile [org-management-account-admin] --experimental deploy common-resources-stackset.yaml`
 
 ## Build and Test
 
