@@ -1,0 +1,43 @@
+Description: |
+  This template has resources that will be installed into all managed accounts
+  in the OU. For the purposes of the sample it's not important what exactly we
+  are creating here. To demonstrate the consolidated logging, errors can be
+  introduced into this template, such as choosing a bucket name that already
+  exists. This template uses a Rain module, which can be packaged with `rain
+  pkg -x common-resources.yaml`.
+
+Parameters:
+  AppName:
+    Type: String
+    Description: This name will be used as part of resource names
+    Default: stacksets-sample
+
+Resources:
+
+  Storage:
+    Type: !Rain::Module "../../RainModules/bucket.yml"
+    Properties:
+      AppName: !Ref AppName 
+
+  TestQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: test-events17
+
+#  BadBucket:
+#    Type: AWS::S3::Bucket
+#    Metadata:
+#      guard:
+#        SuppressedRules:
+#          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+#          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+#          - S3_BUCKET_VERSIONING_ENABLED
+#          - S3_BUCKET_REPLICATION_ENABLED
+#          - S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+#          - S3_BUCKET_PUBLIC_READ_PROHIBITED
+#          - S3_BUCKET_LOGGING_ENABLED
+#      Comment:
+#        This bucket is purposefully using an existing name, to cause a deployment failure
+#    Properties:
+#      BucketName: rain-artifacts-646934191481-us-east-1
+
