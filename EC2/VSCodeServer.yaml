@@ -1,0 +1,100 @@
+Parameters:
+
+  LatestAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+
+  InstanceType:
+    Type: String
+    Default: t3.medium
+
+Resources:
+
+  Network:
+    Type: !Rain::Module "../RainModules/vpc.yml"
+    Properties:
+      Name: vscode-server
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: vscode-server-isg
+      # TODO: Ingress
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      Tags:
+        - Key: Name
+          Value: vscode-server-isg 
+      VpcId: !Ref NetworkVPC
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      Tags:
+        - Key: Name
+          Value: vscode-server-instance
+
+  InstanceRolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - ec2messages:*
+              - ssm:UpdateInstanceInformation
+              - ssmmessages:*
+            Effect: Allow
+            Resource: '*'
+        Version: "2012-10-17"
+      PolicyName: InstanceRolePolicy
+      RoleName: !Ref InstanceRole
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  Server:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - InstanceRolePolicy
+      - InstanceRole
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 128
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: !Ref LatestAMI
+      InstanceType: !Ref InstanceType 
+      SecurityGroupIds:
+        - !GetAtt InstanceSecurityGroup.GroupId
+      SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
+      Tags:
+        - Key: Name
+          Value: vscode-server 
+      UserData: 
+        Fn::Base64: !Rain::Embed VSCodeServer.sh
+
+Outputs:
+
+  Id:
+    Description: Instance ID of the server. Use this to connect via SSM Session Manager
+    Value: !Ref Server 
+
+  PrivateIP:
+    Value: !GetAtt Server.PrivateIp
+
