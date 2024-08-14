@@ -1,9 +1,8 @@
 #!/bin/bash
 
-set -eoux pipefail
+set -eou pipefail
 
 local_ip=$(ec2-metadata | grep "^local-ipv4: " | cut -d " " -f 2)
-echo "local_ip:$local_ip"
 
 # Install the latest code-server from coder.com (not from yum)
 export HOME=/root 
@@ -26,15 +25,11 @@ EOF
 
 # Get the password from secrets manager
 secret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r ".SecretString")
-echo "secret_string: $secret_string"
 
 # Hash the password
 hashed_password=$(echo -n $secret_string | argon2 saltiness -e)
-echo "hashed_password: $hashed_password"
 
-#TODO: Stop echoing the password
-
-# Install Node.js and save the code-server config file
+# Install Node.js
 sudo -u ec2-user -i <<EOF
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source .bashrc
@@ -42,6 +37,7 @@ nvm install 20.11.0
 nvm use 20.11.0
 EOF
 
+# Save the config file
 mkdir -p /home/ec2-user/.config/code-server
 sudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG
 cert: false
