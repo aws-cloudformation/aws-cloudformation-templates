@@ -129,7 +129,7 @@ Resources:
         - Key: Name
           Value: vscode-server
       UserData: !Base64
-        Fn::Sub: "#!/bin/bash\n\nset -eoux pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\necho \"local_ip:$local_ip\"\n\n# Install the latest code-server from coder.com (not from yum)\nexport HOME=/root \ncurl -fsSL https://code-server.dev/install.sh | bash\n\nyum install -y argon2\ntee /etc/systemd/system/code-server.service <<EOF\n[Unit]\nDescription=Start code server\n\n[Service]\nExecStart=/usr/bin/code-server --port 8080 --host $local_ip\nRestart=always\nType=simple\nUser=ec2-user\n\n[Install]\nWantedBy = multi-user.target\nEOF\n\n# Get the password from secrets manager\nsecret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r \".SecretString\")\necho \"secret_string: $secret_string\"\n\n# Hash the password\nhashed_password=$(echo -n $secret_string | argon2 saltiness -e)\necho \"hashed_password: $hashed_password\"\n\n#TODO: Stop echoing the password\n\n# Install Node.js and save the code-server config file\nsudo -u ec2-user -i <<EOF\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\nsource .bashrc\nnvm install 20.11.0\nnvm use 20.11.0\nmkdir -p /home/ec2-user/.config/code-server\nsudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG\ncert: false\nauth: password\nhashed-password: ${hashed_password}\nuser-data-dir: /home/ec2-user\nENDCONFIG\nEOF\n\nsystemctl daemon-reload\nsystemctl enable --now code-server"
+        Fn::Sub: "#!/bin/bash\n\nset -eoux pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\necho \"local_ip:$local_ip\"\n\n# Install the latest code-server from coder.com (not from yum)\nexport HOME=/root \ncurl -fsSL https://code-server.dev/install.sh | bash\n\nyum install -y argon2\ntee /etc/systemd/system/code-server.service <<EOF\n[Unit]\nDescription=Start code server\n\n[Service]\nExecStart=/usr/bin/code-server --port 8080 --host $local_ip\nRestart=always\nType=simple\nUser=ec2-user\n\n[Install]\nWantedBy = multi-user.target\nEOF\n\n# Get the password from secrets manager\nsecret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r \".SecretString\")\necho \"secret_string: $secret_string\"\n\n# Hash the password\nhashed_password=$(echo -n $secret_string | argon2 saltiness -e)\necho \"hashed_password: $hashed_password\"\n\n#TODO: Stop echoing the password\n\n# Install Node.js and save the code-server config file\nsudo -u ec2-user -i <<EOF\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\nsource .bashrc\nnvm install 20.11.0\nnvm use 20.11.0\nEOF\n\nmkdir -p /home/ec2-user/.config/code-server\nsudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG\ncert: false\nauth: password\nhashed-password: \"$hashed_password\"\nuser-data-dir: /home/ec2-user\nENDCONFIG\n\nchown -R ec2-user /home/ec2-user/.config\n\nsystemctl daemon-reload\nsystemctl enable --now code-server"
 
   CachePolicy:
     Type: AWS::CloudFront::CachePolicy
@@ -201,7 +201,7 @@ Resources:
           - DomainName: !GetAtt Server.PublicDnsName
             Id: !Sub CloudFront-${AWS::StackName}
             CustomOriginConfig:
-              HttpPort: 8080
+              HTTPPort: 8080
               OriginProtocolPolicy: http-only
 
   NetworkVPC:

@@ -207,7 +207,7 @@ Resources:
           - DomainName: !GetAtt Server.PublicDnsName
             Id: !Sub CloudFront-${AWS::StackName}
             CustomOriginConfig:
-              HttpPort: 8080
+              HTTPPort: 8080
               OriginProtocolPolicy: http-only
 
 

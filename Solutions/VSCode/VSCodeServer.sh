@@ -40,14 +40,17 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source .bashrc
 nvm install 20.11.0
 nvm use 20.11.0
+EOF
+
 mkdir -p /home/ec2-user/.config/code-server
 sudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG
 cert: false
 auth: password
-hashed-password: ${hashed_password}
+hashed-password: "$hashed_password"
 user-data-dir: /home/ec2-user
 ENDCONFIG
-EOF
+
+chown -R ec2-user /home/ec2-user/.config
 
 systemctl daemon-reload
 systemctl enable --now code-server
