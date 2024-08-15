@@ -2,7 +2,7 @@
 
 Create an EC2 instance with the code server from Coder.com and a CloudFront
 distribution for encrypted access to the web ui from the browser. The output
-from the template provides the CloudFront URL. There is no need to conigure SSH
+from the template provides the CloudFront URL. There is no need to configure SSH
 for this solution, it is purely browser based.
 
 As a prerequisite, you need to create a plaintext secret in Secrets Manager to
@@ -13,7 +13,8 @@ configuration file for code server on the instance.
 
 ### `VSCodeServer.yaml`
 
-This is the raw template, which includes [Rain](https://github.com/aws-cloudformation/rain) directives to import a VPC module and embed the user data script.
+This is the raw template, which includes [Rain](https://github.com/aws-cloudformation/rain) 
+directives to import a VPC module and embed the user data script.
 
 ### `VSCodeServer-pkg.yaml`
 
