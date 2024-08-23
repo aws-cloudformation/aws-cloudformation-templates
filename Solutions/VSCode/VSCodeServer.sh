@@ -8,7 +8,13 @@ local_ip=$(ec2-metadata | grep "^local-ipv4: " | cut -d " " -f 2)
 export HOME=/root 
 curl -fsSL https://code-server.dev/install.sh | bash
 
+# Install cfn-signal
+yum install -y aws-cfn-bootstrap
+
+#Install argon2 for hashing the vscode server password
 yum install -y argon2
+
+# Configure the service
 tee /etc/systemd/system/code-server.service <<EOF
 [Unit]
 Description=Start code server
@@ -50,5 +56,9 @@ chown -R ec2-user /home/ec2-user/.config
 
 systemctl daemon-reload
 systemctl enable --now code-server
+
+# Tell CloudFormation we're ready to go
+# This is a variable for the Sub intrisic function, not a bash variable
+cfn-signal -s true --stack ${AWS::StackName} --resource Server --region ${AWS::Region}
 
 

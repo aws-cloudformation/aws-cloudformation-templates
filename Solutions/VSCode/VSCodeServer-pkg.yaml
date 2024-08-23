@@ -111,6 +111,9 @@ Resources:
     DependsOn:
       - InstanceRolePolicy
       - InstanceRole
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -129,80 +132,7 @@ Resources:
         - Key: Name
           Value: vscode-server
       UserData: !Base64
-        Fn::Sub: "#!/bin/bash\n\nset -eou pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\n\n# Install the latest code-server from coder.com (not from yum)\nexport HOME=/root \ncurl -fsSL https://code-server.dev/install.sh | bash\n\nyum install -y argon2\ntee /etc/systemd/system/code-server.service <<EOF\n[Unit]\nDescription=Start code server\n\n[Service]\nExecStart=/usr/bin/code-server --port 8080 --host $local_ip\nRestart=always\nType=simple\nUser=ec2-user\n\n[Install]\nWantedBy = multi-user.target\nEOF\n\n# Get the password from secrets manager\nsecret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r \".SecretString\")\n\n# Hash the password\nhashed_password=$(echo -n $secret_string | argon2 saltiness -e)\n\n# Install Node.js\nsudo -u ec2-user -i <<EOF\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\nsource .bashrc\nnvm install 20.11.0\nnvm use 20.11.0\nEOF\n\n# Save the config file\nmkdir -p /home/ec2-user/.config/code-server\nsudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG\ncert: false\nauth: password\nhashed-password: \"$hashed_password\"\nuser-data-dir: /home/ec2-user\nENDCONFIG\n\nchown -R ec2-user /home/ec2-user/.config\n\nsystemctl daemon-reload\nsystemctl enable --now code-server"
-
-  CachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        DefaultTTL: 86400
-        MaxTTL: 31536000
-        MinTTL: 1
-        Name: vscode-server
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: all
-          EnableAcceptEncodingGzip: False
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Accept-Charset
-              - Authorization
-              - Origin
-              - Accept
-              - Referer
-              - Host
-              - Accept-Language
-              - Accept-Encoding
-              - Accept-Datetime
-          QueryStringsConfig:
-            QueryStringBehavior: all
-
-  Distribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      Tags:
-        - Key: Name
-          Value: vscode-server
-        - Key: Description
-          Value: Distribution for EC2 VSCode Server
-      DistributionConfig:
-        Enabled: True
-        HttpVersion: http2
-        CacheBehaviors:
-          - AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - PATCH
-              - POST
-              - DELETE
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            Compress: False
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-            TargetOriginId: !Sub CloudFront-${AWS::StackName}
-            ViewerProtocolPolicy: allow-all
-            PathPattern: /proxy/*
-        DefaultCacheBehavior:
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - PATCH
-            - POST
-            - DELETE
-          CachePolicyId: !Ref CachePolicy
-          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-          TargetOriginId: !Sub CloudFront-${AWS::StackName}
-          ViewerProtocolPolicy: allow-all
-        Origins:
-          - DomainName: !GetAtt Server.PublicDnsName
-            Id: !Sub CloudFront-${AWS::StackName}
-            CustomOriginConfig:
-              HTTPPort: 8080
-              OriginProtocolPolicy: http-only
+        Fn::Sub: "#!/bin/bash\n\nset -eou pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\n\n# Install the latest code-server from coder.com (not from yum)\nexport HOME=/root \ncurl -fsSL https://code-server.dev/install.sh | bash\n\n# Install cfn-signal\nyum install -y aws-cfn-bootstrap\n\n#Install argon2 for hashing the vscode server password\nyum install -y argon2\n\n# Configure the service\ntee /etc/systemd/system/code-server.service <<EOF\n[Unit]\nDescription=Start code server\n\n[Service]\nExecStart=/usr/bin/code-server --port 8080 --host $local_ip\nRestart=always\nType=simple\nUser=ec2-user\n\n[Install]\nWantedBy = multi-user.target\nEOF\n\n# Get the password from secrets manager\nsecret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r \".SecretString\")\n\n# Hash the password\nhashed_password=$(echo -n $secret_string | argon2 saltiness -e)\n\n# Install Node.js\nsudo -u ec2-user -i <<EOF\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\nsource .bashrc\nnvm install 20.11.0\nnvm use 20.11.0\nEOF\n\n# Save the config file\nmkdir -p /home/ec2-user/.config/code-server\nsudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG\ncert: false\nauth: password\nhashed-password: \"$hashed_password\"\nuser-data-dir: /home/ec2-user\nENDCONFIG\n\nchown -R ec2-user /home/ec2-user/.config\n\nsystemctl daemon-reload\nsystemctl enable --now code-server\n\n# Tell CloudFormation we're ready to go\n# This is a variable for the Sub intrisic function, not a bash variable\ncfn-signal -s true --stack ${AWS::StackName} --resource Server --region ${AWS::Region}"
 
   NetworkVPC:
     Type: AWS::EC2::VPC
@@ -428,7 +358,82 @@ Resources:
       InternetGatewayId: !Ref NetworkInternetGateway
       VpcId: !Ref NetworkVPC
 
+  CloudFrontCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 1
+        Name: vscode-server
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: all
+          EnableAcceptEncodingGzip: False
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - Accept-Charset
+              - Authorization
+              - Origin
+              - Accept
+              - Referer
+              - Host
+              - Accept-Language
+              - Accept-Encoding
+              - Accept-Datetime
+          QueryStringsConfig:
+            QueryStringBehavior: all
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      Tags:
+        - Key: Name
+          Value: vscode-server
+        - Key: Description
+          Value: vscode-server
+      DistributionConfig:
+        Enabled: True
+        HttpVersion: http2
+        CacheBehaviors:
+          - AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            Compress: False
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+            TargetOriginId: !Sub CloudFront-${AWS::StackName}
+            ViewerProtocolPolicy: allow-all
+            PathPattern: /proxy/*
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: !Ref CloudFrontCachePolicy
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
+          TargetOriginId: !Sub CloudFront-${AWS::StackName}
+          ViewerProtocolPolicy: allow-all
+        Origins:
+          - DomainName: !GetAtt Server.PublicDnsName
+            Id: !Sub CloudFront-${AWS::StackName}
+            CustomOriginConfig:
+              HTTPPort: 8080
+              OriginProtocolPolicy: http-only
+    DependsOn:
+      - Server
+
 Outputs:
   URL:
-    Value: !Sub https://${Distribution.DomainName}/?folder=/home/ec2-user
+    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
 

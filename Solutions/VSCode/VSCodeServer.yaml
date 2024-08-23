@@ -116,6 +116,9 @@ Resources:
     DependsOn:
       - InstanceRolePolicy
       - InstanceRole
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -137,82 +140,17 @@ Resources:
         Fn::Base64: 
           Fn::Sub: !Rain::Embed VSCodeServer.sh
 
-  CachePolicy:
-    Type: AWS::CloudFront::CachePolicy
+  CloudFront:
+    Type: !Rain::Module "../../RainModules/cloudfront-nocache.yml"
     Properties:
-      CachePolicyConfig:
-        DefaultTTL: 86400
-        MaxTTL: 31536000
-        MinTTL: 1
-        Name: vscode-server
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: all
-          EnableAcceptEncodingGzip: False
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Accept-Charset
-              - Authorization
-              - Origin
-              - Accept
-              - Referer
-              - Host
-              - Accept-Language
-              - Accept-Encoding
-              - Accept-Datetime
-          QueryStringsConfig:
-            QueryStringBehavior: all
-
-  Distribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      Tags:
-        - Key: Name
-          Value: vscode-server
-        - Key: Description
-          Value: Distribution for EC2 VSCode Server
-      DistributionConfig:
-        Enabled: True
-        HttpVersion: http2
-        CacheBehaviors:
-          - AllowedMethods:
-              - GET
-              - HEAD
-              - OPTIONS
-              - PUT
-              - PATCH
-              - POST
-              - DELETE
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            Compress: False
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3
-            TargetOriginId: !Sub CloudFront-${AWS::StackName}
-            ViewerProtocolPolicy: allow-all
-            PathPattern: '/proxy/*'
-        DefaultCacheBehavior:
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - PATCH
-            - POST
-            - DELETE
-          CachePolicyId: !Ref CachePolicy
-          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 
-          TargetOriginId: !Sub CloudFront-${AWS::StackName}
-          ViewerProtocolPolicy: allow-all
-        Origins:
-          - DomainName: !GetAtt Server.PublicDnsName
-            Id: !Sub CloudFront-${AWS::StackName}
-            CustomOriginConfig:
-              HTTPPort: 8080
-              OriginProtocolPolicy: http-only
-
+      Name: vscode-server
+      DomainName: !GetAtt Server.PublicDnsName
+    Overrides:
+      Distribution:
+        DependsOn: Server
 
 Outputs:
 
   URL:
-    Value: !Sub https://${Distribution.DomainName}/?folder=/home/ec2-user
+    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
 
