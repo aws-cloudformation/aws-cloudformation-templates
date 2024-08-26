@@ -6,6 +6,10 @@ Parameters:
   DomainName:
     Type: String
 
+  Port:
+    Type: String
+    Default: 80
+
 Resources:
 
   CachePolicy:
@@ -78,5 +82,5 @@ Resources:
           - DomainName: !Ref DomainName 
             Id: !Sub CloudFront-${AWS::StackName}
             CustomOriginConfig:
-              HTTPPort: 8080
+              HTTPPort: !Ref Port
               OriginProtocolPolicy: http-only
