@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates a CloudWatch Dashboard with four CloudWatch Logs Insights log widgets that query VPC flow logs for NAT Gateway, related to https://repost.aws/knowledge-center/vpc-find-traffic-sources-nat-gateway'
+
+Resources:
+  CloudWatchDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub '${NatGatewayID}-Traffic-Dashboard'
+      DashboardBody: 
+        Fn::Sub: |
+          {
+            "widgets": [
+              {
+                "type": "log",
+                "x": 0,
+                "y": 0,
+                "width": 12,
+                "height": 9,
+                "properties": {
+                  "query": "SOURCE '${LogGroupName}' | fields @timestamp, @message | filter (dstAddr like '${NatGatewayPrivateIP}' and isIpv4InSubnet(srcAddr, '${VpcCidr}')) | stats sum(bytes) as bytesTransferred by srcAddr, dstAddr | sort bytesTransferred desc | limit 10",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "title": "Top 10 - Instances sending most traffic through NAT gateway ${NatGatewayID}", 
+                  "view": "table"
+                }
+              },
+              {
+                "type": "log",
+                "x": 12,
+                "y": 0,
+                "width": 12,
+                "height": 9,
+                "properties": {
+                  "query": "SOURCE '${LogGroupName}' | fields @timestamp, @message | filter (dstAddr like '${NatGatewayPrivateIP}' and isIpv4InSubnet(srcAddr, '${VpcCidr}')) or (srcAddr like '${NatGatewayPrivateIP}' and isIpv4InSubnet(dstAddr, '${VpcCidr}'))| stats sum(bytes) as bytesTransferred by srcAddr, dstAddr | sort bytesTransferred desc | limit 10",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "title": "Top 10 - Traffic To and from NAT gateway ${NatGatewayID}",
+                  "view": "table"
+                }
+              },
+              {
+                "type": "log",
+                "x": 0,
+                "y": 9,
+                "width": 12,
+                "height": 9,
+                "properties": {
+                  "query": "SOURCE '${LogGroupName}' | fields @timestamp, @message | filter (srcAddr like '${NatGatewayPrivateIP}' and not isIpv4InSubnet(dstAddr, '${VpcCidr}')) | stats sum(bytes) as bytesTransferred by srcAddr, dstAddr | sort bytesTransferred desc | limit 10",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "title": "Top 10 - Most often upload communication destinations through NAT Gateway ${NatGatewayID}",
+                  "view": "table"
+                }
+              },
+              {
+                "type": "log",
+                "x": 12,
+                "y": 9,
+                "width": 12,
+                "height": 9,
+                "properties": {
+                  "query": "SOURCE '${LogGroupName}' | fields @timestamp, @message | filter (dstAddr like '${NatGatewayPrivateIP}' and not isIpv4InSubnet(srcAddr, '${VpcCidr}')) | stats sum(bytes) as bytesTransferred by srcAddr, dstAddr | sort bytesTransferred desc | limit 10",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "title": "Top 10 - Most often download communication destinations through NAT Gateway ${NatGatewayID}",
+                  "view": "table"
+                }
+              }
+            ]
+          }
+
+Parameters:
+  NatGatewayPrivateIP:
+    Type: String
+    Description: The private IP address of the NAT Gateway
+  NatGatewayID:
+    Type: String
+    Description: The ID of the NAT Gateway
+  VpcCidr:
+    Type: String
+    Description: The CIDR block of the VPC
+  LogGroupName:
+    Type: String
+    Description: The ARN of the log group to query
+
+Outputs:
+  DashboardArn:
+    Description: ARN of the created CloudWatch Dashboard
+    Value: !Ref CloudWatchDashboard
