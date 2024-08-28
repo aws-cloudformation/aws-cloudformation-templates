@@ -1,21 +1,18 @@
 Parameters:
-
   LatestAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 
   InstanceType:
     Type: String
-    Default: m5.large 
+    Default: m5.large
 
   SecretName:
     Type: String
     Default: vscode-password
     Description: The name of the secrets manager secret that stores the password to be used for the VSCode Server. The password must be a simple plaintext string with no JSON.
 
-
 Mappings:
-
   Prefixes:
     ap-northeast-1:
       PrefixList: pl-58a04531
@@ -51,9 +48,8 @@ Mappings:
       PrefixList: pl-82a045eb
 
 Resources:
-
   Network:
-    Type: !Rain::Module "../../RainModules/vpc.yml"
+    Type: !Rain::Module ../../RainModules/vpc.yml
     Properties:
       Name: gitlab-server
 
@@ -66,14 +62,17 @@ Resources:
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourcePrefixListId: !FindInMap [Prefixes, !Ref 'AWS::Region', PrefixList]
+          SourcePrefixListId: !FindInMap
+            - Prefixes
+            - !Ref AWS::Region
+            - PrefixList
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: gitlab-server-isg 
+          Value: gitlab-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -130,16 +129,15 @@ Resources:
             VolumeSize: 128
       IamInstanceProfile: !Ref InstanceProfile
       ImageId: !Ref LatestAMI
-      InstanceType: !Ref InstanceType 
+      InstanceType: !Ref InstanceType
       SecurityGroupIds:
         - !GetAtt InstanceSecurityGroup.GroupId
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: gitlab-server 
-      UserData: 
-        Fn::Base64: 
-          Fn::Sub: !Rain::Embed GitLabServer.sh
+          Value: gitlab-server
+      UserData: !Base64
+        Fn::Sub: !Rain::Embed GitLabServer.sh
 
   VSCodeServer:
     Type: AWS::EC2::Instance
@@ -159,39 +157,38 @@ Resources:
             VolumeSize: 128
       IamInstanceProfile: !Ref InstanceProfile
       ImageId: !Ref LatestAMI
-      InstanceType: !Ref InstanceType 
+      InstanceType: !Ref InstanceType
       SecurityGroupIds:
         - !GetAtt InstanceSecurityGroup.GroupId
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: vscode-server 
-      UserData: 
-        Fn::Base64: 
-          Fn::Sub: !Rain::Embed VSCodeServer.sh
+          Value: vscode-server
+      UserData: !Base64
+        Fn::Sub: !Rain::Embed VSCodeServer.sh
 
   GitLabCloudFront:
-    Type: !Rain::Module "../../RainModules/cloudfront-nocache.yml"
+    Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
       Name: gitlab-server
-      DomainName: !GetAtt Server.PublicDnsName
+      DomainName: !GetAtt GitLabServer.PublicDnsName
       Port: 80
     Overrides:
       Distribution:
         DependsOn: GitLabServer
 
   VSCodeCloudFront:
-    Type: !Rain::Module "../../RainModules/cloudfront-nocache.yml"
+    Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
       Name: vscode-server
-      DomainName: !GetAtt Server.PublicDnsName
+      DomainName: !GetAtt VSCodeServer.PublicDnsName
       Port: 8080
     Overrides:
-      Distribution:
-        DependsOn:VSCodeServer
+      Distribution: DependsOn:VSCodeServer
 
 Outputs:
+  VSCodeURL:
+    Value: !Sub https://${VSCodeCloudFrontDistribution.DomainName}/?folder=/home/ec2-user
 
-  URL:
-    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
-
+  GitLabURL:
+    Value: !Sub https://${GitLabCloudFrontDistribution.DomainName}/?folder=/home/ec2-user

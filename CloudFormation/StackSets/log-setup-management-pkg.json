@@ -1,0 +1,291 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "A central event bus rule and log group to collect CloudFormation logs from all target accounts",
+    "Parameters": {
+        "OUID": {
+            "Description": "The Id of the Organization Unit to deploy the stack set to.",
+            "Type": "String",
+            "Default": "ou-qxtx-vv0thlla"
+        },
+        "OrgID": {
+            "Description": "The Id of the Organization to verify the cross account API call. All accounts in this org will be granted permissions to put events onto the default event bus in this account. Note that this is not the OUID, it's the org itself and should start with o-",
+            "Type": "String",
+            "Default": "o-jhfo4fcm1s"
+        },
+        "CentralEventBusName": {
+            "Type": "String",
+            "Default": "central-cloudformation"
+        },
+        "CentralEventLogName": {
+            "Type": "String",
+            "Default": "central-cloudformation-logs"
+        }
+    },
+    "Transform": "AWS::LanguageExtensions",
+    "Resources": {
+        "CentralEventBus": {
+            "Type": "AWS::Events::EventBus",
+            "Properties": {
+                "Description": "A custom event bus in the central account to be used as a destination for events from a rule in target accounts",
+                "Name": {
+                    "Ref": "CentralEventBusName"
+                },
+                "DeadLetterConfig": {
+                    "Arn": {
+                        "Fn::GetAtt": [
+                            "DeadLetterQueue",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "CentralEventBusPolicy": {
+            "Type": "AWS::Events::EventBusPolicy",
+            "Metadata": {
+                "Comment": "Note that the condition requires the Organization ID, not the Organizational Unit ID. If you want to refine the access down to an OU, you could use aws:PrincipalOrgPaths in the condition instead."
+            },
+            "Properties": {
+                "EventBusName": {
+                    "Ref": "CentralEventBus"
+                },
+                "StatementId": "CentralEventBusPolicyStatement",
+                "Statement": {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "events:PutEvents",
+                    "Resource": {
+                        "Fn::Sub": "arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}"
+                    },
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:PrincipalOrgID": {
+                                "Ref": "OrgID"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "CentralEventLog": {
+            "Type": "AWS::Logs::LogGroup",
+            "DependsOn": "CentralEventBus",
+            "Properties": {
+                "LogGroupClass": "STANDARD",
+                "LogGroupName": {
+                    "Ref": "CentralEventLogName"
+                },
+                "KmsKeyId": {
+                    "Fn::GetAtt": [
+                        "CentralEventLogKey",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "CentralEventLogKey": {
+            "Type": "AWS::KMS::Key",
+            "Properties": {
+                "Description": "KMS key for log group",
+                "KeyPolicy": {
+                    "Version": "2012-10-17",
+                    "Id": "key-policy",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "kms:Create*",
+                                "kms:Describe*",
+                                "kms:Enable*",
+                                "kms:List*",
+                                "kms:Put*",
+                                "kms:Update*",
+                                "kms:Revoke*",
+                                "kms:Disable*",
+                                "kms:Get*",
+                                "kms:Delete*",
+                                "kms:ScheduleKeyDeletion",
+                                "kms:CancelKeyDeletion",
+                                "kms:GenerateDataKey",
+                                "kms:TagResource",
+                                "kms:UntagResource"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/Admin"
+                                    }
+                                ]
+                            },
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
+                            }
+                        },
+                        {
+                            "Sid": "Allow CloudWatch Logs to use the key",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logs.amazonaws.com"
+                            },
+                            "Action": [
+                                "kms:Encrypt*",
+                                "kms:Decrypt*",
+                                "kms:ReEncrypt*",
+                                "kms:GenerateDataKey*",
+                                "kms:Describe*"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CentralEventLogQuery": {
+            "Type": "AWS::Logs::QueryDefinition",
+            "Properties": {
+                "Name": "CentralCloudFormationEventLogs",
+                "QueryString": "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` | sort @timestamp desc",
+                "LogGroupNames": [
+                    {
+                        "Ref": "CentralEventLogName"
+                    }
+                ]
+            }
+        },
+        "CentralEventLogQueryReason": {
+            "Type": "AWS::Logs::QueryDefinition",
+            "Properties": {
+                "Name": "CentralCloudFormationFailures",
+                "QueryString": "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` as status, `detail.status-details.status-reason` as reason | sort @timestamp desc | filter status like \"FAILED\" | filter reason not like \"canceled\" | filter resource not like \"AWS::CloudFormation::Stack\" ",
+                "LogGroupNames": [
+                    {
+                        "Ref": "CentralEventLogName"
+                    }
+                ]
+            }
+        },
+        "CentralEventLogPolicy": {
+            "Type": "AWS::Logs::ResourcePolicy",
+            "Metadata": {
+                "Comment": "The PolicyDocument in this resource *must* be JSON, unlike the standard IAM resources that allow YAML. Also note that you have to put the policy here and not in a role referenced by AWS::Events::Rule.RoleArn, which is meant for cross-account scenarios."
+            },
+            "Properties": {
+                "PolicyName": "CentralEventLogResourcePolicy",
+                "PolicyDocument": {
+                    "Fn::Sub": "{\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\n          \"delivery.logs.amazonaws.com\",\n          \"events.amazonaws.com\"\n        ]\n      },\n      \"Action\": [\n        \"logs:PutLogEvents\",\n        \"logs:CreateLogStream\"\n      ],\n      \"Resource\": \"${CentralEventLog.Arn}\"\n    }\n  ]\n}\n"
+                }
+            }
+        },
+        "CentralEventRule": {
+            "Type": "AWS::Events::Rule",
+            "DependsOn": [
+                "CentralEventLog"
+            ],
+            "Metadata": {
+                "Comment": "We use an empty prefix here to capture all events forwarded from target accounts",
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "W3005"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "Name": "CloudFormationLogs",
+                "EventBusName": {
+                    "Ref": "CentralEventBusName"
+                },
+                "State": "ENABLED",
+                "EventPattern": {
+                    "source": [
+                        {
+                            "prefix": ""
+                        }
+                    ]
+                },
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "CentralEventLog",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "CloudFormationLogsToCentralGroup",
+                        "DeadLetterConfig": {
+                            "Arn": {
+                                "Fn::GetAtt": [
+                                    "DeadLetterQueue",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "DeadLetterQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "QueueName": {
+                    "Fn::Sub": "${CentralEventBusName}-DLQ"
+                }
+            }
+        },
+        "TargetAccountLogging": {
+            "Type": "AWS::CloudFormation::StackSet",
+            "DependsOn": [
+                "CentralEventRule",
+                "CentralEventLog",
+                "CentralEventLogPolicy"
+            ],
+            "Properties": {
+                "TemplateBody": "AWSTemplateFormatVersion: '2010-09-09'\n\nDescription: EventBridge Rule to send CloudFormation events to a central EventBus\n\nParameters:\n\n  CentralEventBusArn:\n    Type: String\n\nResources:\n\n  CloudFormationEventRule:\n    Type: AWS::Events::Rule\n    Metadata:\n      Comment: Send all cloudformation events to the central event bus\n    Properties:\n      Name: CloudFormationEventRule\n      EventBusName: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default\n      EventPattern:\n        source:\n          - aws.cloudformation\n      State: ENABLED\n      Targets:\n        - Arn: !Ref CentralEventBusArn \n          RoleArn: !GetAtt EventBridgeRole.Arn\n          Id: CentralEventBus\n          DeadLetterConfig:\n            Arn: !GetAtt DeadLetterQueue.Arn\n\n  DeadLetterQueue:\n    Type: AWS::SQS::Queue\n    Properties:\n      QueueName: CloudFormation-Logs-DLQ\n\n  DeadLetterQueuePolicy:\n    Type: AWS::SQS::QueuePolicy\n    Properties:\n      PolicyDocument:\n        Version: \"2012-10-17\"\n        Id: AllowEventBridgeToWriteLogs\n        Statement:\n          - Sid: AllowEventBridgeToWriteLogs\n            Effect: Allow\n            Principal:\n              Service: events.amazonaws.com\n            Action: sqs:SendMessage\n            Resource: !GetAtt DeadLetterQueue.Arn\n            Condition:\n              ArnLike:\n                aws:SourceArn: !Sub \"arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/CloudFormationEventRule\"\n      Queues:\n        - !Ref DeadLetterQueue\n\n  EventBridgeRole:\n    Type: AWS::IAM::Role\n    Properties:\n      AssumeRolePolicyDocument:\n        Version: '2012-10-17'\n        Statement:\n          - Effect: Allow\n            Principal:\n              Service: events.amazonaws.com\n            Action: 'sts:AssumeRole'\n\n  EventBridgeRolePolicy:\n    Type: AWS::IAM::RolePolicy\n    Metadata: \n      Comment: Allow CloudFormation events to be written to the default event bus in the target account\n    Properties:\n      PolicyName: EventBridgeRolePolicy\n      PolicyDocument:\n        Version: '2012-10-17'\n        Statement:\n          - Effect: Allow\n            Action: 'events:PutEvents'\n            Resource: !Ref CentralEventBusArn \n      RoleName: !Ref EventBridgeRole",
+                "Capabilities": [
+                    "CAPABILITY_IAM"
+                ],
+                "StackInstancesGroup": [
+                    {
+                        "DeploymentTargets": {
+                            "OrganizationalUnitIds": [
+                                {
+                                    "Ref": "OUID"
+                                }
+                            ]
+                        },
+                        "Regions": [
+                            "us-east-1",
+                            "us-west-2"
+                        ]
+                    }
+                ],
+                "Parameters": [
+                    {
+                        "ParameterKey": "CentralEventBusArn",
+                        "ParameterValue": {
+                            "Fn::GetAtt": [
+                                "CentralEventBus",
+                                "Arn"
+                            ]
+                        }
+                    }
+                ],
+                "PermissionModel": "SERVICE_MANAGED",
+                "Description": "This stack set is part of a sample that demonstrates how to set up cross account logging. It configures logging resources in target accounts.",
+                "OperationPreferences": {
+                    "FailureToleranceCount": 0,
+                    "MaxConcurrentCount": 2,
+                    "RegionConcurrencyType": "PARALLEL"
+                },
+                "AutoDeployment": {
+                    "Enabled": true,
+                    "RetainStacksOnAccountRemoval": true
+                },
+                "StackSetName": "log-setup"
+            }
+        }
+    }
+}

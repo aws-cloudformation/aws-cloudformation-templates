@@ -1,9 +1,9 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: "2010-09-09"
 
 Description: This template contains a stack set that deploys common-resource.yaml to target accounts
 
 Parameters:
-  OUID: 
+  OUID:
     Type: String
     Default: ou-qxtx-vv0thlla
 
@@ -17,7 +17,7 @@ Resources:
       StackInstancesGroup:
         - DeploymentTargets:
             OrganizationalUnitIds:
-              - !Ref OUID 
+              - !Ref OUID
           Regions:
             - us-east-1
             - us-west-2
@@ -34,4 +34,3 @@ Resources:
         Enabled: true
         RetainStacksOnAccountRemoval: true
       StackSetName: common-resources
-

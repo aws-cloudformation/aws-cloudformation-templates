@@ -106,9 +106,10 @@ Resources:
     DependsOn:
       - InstanceRolePolicy
       - InstanceRole
-        #CreationPolicy:
-        #ResourceSignal:
-        #Timeout: PT30M
+
+      #CreationPolicy:
+      #ResourceSignal:
+      #Timeout: PT30M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -431,4 +432,3 @@ Resources:
 Outputs:
   URL:
     Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
-

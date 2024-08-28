@@ -436,4 +436,3 @@ Resources:
 Outputs:
   URL:
     Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
-

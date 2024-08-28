@@ -1,0 +1,28 @@
+{
+    "Description": "This template has resources that will be installed into all managed accounts\nin the OU. For the purposes of the sample it's not important what exactly we\nare creating here. To demonstrate the consolidated logging, errors can be\nintroduced into this template, such as choosing a bucket name that already\nexists. This template uses a Rain module, which can be packaged with `rain\npkg -x common-resources.yaml`.\n",
+    "Parameters": {
+        "AppName": {
+            "Description": "This name will be used as part of resource names",
+            "Type": "String",
+            "Default": "stacksets-sample"
+        }
+    },
+    "Resources": {
+        "Storage": {
+            "Type": {
+                "Rain::Module": "../../RainModules/bucket.yml"
+            },
+            "Properties": {
+                "AppName": {
+                    "Ref": "AppName"
+                }
+            }
+        },
+        "TestQ": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "QueueName": "test-events17"
+            }
+        }
+    }
+}

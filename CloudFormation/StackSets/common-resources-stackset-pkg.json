@@ -1,0 +1,54 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template contains a stack set that deploys common-resource.yaml to target accounts",
+    "Parameters": {
+        "OUID": {
+            "Type": "String",
+            "Default": "ou-qxtx-vv0thlla"
+        }
+    },
+    "Resources": {
+        "StackSet": {
+            "Type": "AWS::CloudFormation::StackSet",
+            "Properties": {
+                "TemplateBody": "Description: |\n  This template has resources that will be installed into all managed accounts\n  in the OU. For the purposes of the sample it's not important what exactly we\n  are creating here. To demonstrate the consolidated logging, errors can be\n  introduced into this template, such as choosing a bucket name that already\n  exists. This template uses a Rain module, which can be packaged with `rain\n  pkg -x common-resources.yaml`.\n\nParameters:\n  AppName:\n    Type: String\n    Description: This name will be used as part of resource names\n    Default: stacksets-sample\n\nResources:\n  TestQ:\n    Type: AWS::SQS::Queue\n    Properties:\n      QueueName: test-events17\n\n  StorageLogBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketEncryption:\n        ServerSideEncryptionConfiguration:\n          - ServerSideEncryptionByDefault:\n              SSEAlgorithm: AES256\n      BucketName: !Sub ${AppName}-logs-${AWS::Region}-${AWS::AccountId}\n      ObjectLockConfiguration:\n        ObjectLockEnabled: Enabled\n        Rule:\n          DefaultRetention:\n            Mode: COMPLIANCE\n            Years: 1\n      ObjectLockEnabled: true\n      PublicAccessBlockConfiguration:\n        BlockPublicAcls: true\n        BlockPublicPolicy: true\n        IgnorePublicAcls: true\n        RestrictPublicBuckets: true\n      VersioningConfiguration:\n        Status: Enabled\n    Metadata:\n      Comment: This bucket records access logs for the main bucket\n      checkov:\n        skip:\n          - comment: This is the log bucket\n            id: CKV_AWS_18\n      guard:\n        SuppressedRules:\n          - S3_BUCKET_LOGGING_ENABLED\n          - S3_BUCKET_REPLICATION_ENABLED\n\n  StorageBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketEncryption:\n        ServerSideEncryptionConfiguration:\n          - ServerSideEncryptionByDefault:\n              SSEAlgorithm: AES256\n      BucketName: !Sub ${AppName}-${AWS::Region}-${AWS::AccountId}\n      LoggingConfiguration:\n        DestinationBucketName: !Ref StorageLogBucket\n      ObjectLockEnabled: false\n      PublicAccessBlockConfiguration:\n        BlockPublicAcls: true\n        BlockPublicPolicy: true\n        IgnorePublicAcls: true\n        RestrictPublicBuckets: true\n      ReplicationConfiguration:\n        Role: !GetAtt StorageReplicationRole.Arn\n        Rules:\n          - Destination:\n              Bucket: !GetAtt StorageReplicaBucket.Arn\n            Status: Enabled\n      VersioningConfiguration:\n        Status: Enabled\n    Metadata:\n      guard:\n        SuppressedRules:\n          - S3_BUCKET_DEFAULT_LOCK_ENABLED\n\n  StorageReplicaBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketEncryption:\n        ServerSideEncryptionConfiguration:\n          - ServerSideEncryptionByDefault:\n              SSEAlgorithm: AES256\n      BucketName: !Sub ${AppName}-replicas-${AWS::Region}-${AWS::AccountId}\n      ObjectLockEnabled: false\n      PublicAccessBlockConfiguration:\n        BlockPublicAcls: true\n        BlockPublicPolicy: true\n        IgnorePublicAcls: true\n        RestrictPublicBuckets: true\n      VersioningConfiguration:\n        Status: Enabled\n    Metadata:\n      Comment: This bucket is used as a target for replicas from the main bucket\n      checkov:\n        skip:\n          - comment: This is the replica bucket\n            id: CKV_AWS_18\n      guard:\n        SuppressedRules:\n          - S3_BUCKET_DEFAULT_LOCK_ENABLED\n          - S3_BUCKET_REPLICATION_ENABLED\n          - S3_BUCKET_LOGGING_ENABLED\n\n  StorageReplicationPolicy:\n    Type: AWS::IAM::RolePolicy\n    Properties:\n      PolicyDocument:\n        Statement:\n          - Action:\n              - s3:GetReplicationConfiguration\n              - s3:ListBucket\n            Effect: Allow\n            Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}\n          - Action:\n              - s3:GetObjectVersionForReplication\n              - s3:GetObjectVersionAcl\n              - s3:GetObjectVersionTagging\n            Effect: Allow\n            Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*\n          - Action:\n              - s3:ReplicateObject\n              - s3:ReplicateDelete\n              - s3:ReplicationTags\n            Effect: Allow\n            Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}/*\n        Version: \"2012-10-17\"\n      PolicyName: bucket-replication-policy\n      RoleName: !Ref StorageReplicationRole\n\n  StorageReplicationRole:\n    Type: AWS::IAM::Role\n    Properties:\n      AssumeRolePolicyDocument:\n        Statement:\n          - Action:\n              - sts:AssumeRole\n            Effect: Allow\n            Principal:\n              Service:\n                - s3.amazonaws.com\n        Version: \"2012-10-17\"\n      Path: /\n\n  StorageLogBucketPolicyPolicy:\n    Type: AWS::S3::BucketPolicy\n    Properties:\n      Bucket: !Sub ${AppName}-logs-${AWS::Region}-${AWS::AccountId}\n      PolicyDocument:\n        Statement:\n          - Action: s3:*\n            Condition:\n              Bool:\n                aws:SecureTransport: false\n            Effect: Deny\n            Principal:\n              AWS: '*'\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-logs-${AWS::Region}-${AWS::AccountId}\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-logs-${AWS::Region}-${AWS::AccountId}/*\n          - Action: s3:PutObject\n            Condition:\n              ArnLike:\n                aws:SourceArn: !Sub arn:${AWS::Partition}:s3:::${AppName}-logs-${AWS::Region}-${AWS::AccountId}\n              StringEquals:\n                aws:SourceAccount: !Ref AWS::AccountId\n            Effect: Allow\n            Principal:\n              Service: logging.s3.amazonaws.com\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-logs-${AWS::Region}-${AWS::AccountId}/*\n        Version: \"2012-10-17\"\n\n  StorageBucketPolicyPolicy:\n    Type: AWS::S3::BucketPolicy\n    Properties:\n      Bucket: !Sub ${AppName}-${AWS::Region}-${AWS::AccountId}\n      PolicyDocument:\n        Statement:\n          - Action: s3:*\n            Condition:\n              Bool:\n                aws:SecureTransport: false\n            Effect: Deny\n            Principal:\n              AWS: '*'\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*\n          - Action: s3:PutObject\n            Condition:\n              ArnLike:\n                aws:SourceArn: !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}\n              StringEquals:\n                aws:SourceAccount: !Ref AWS::AccountId\n            Effect: Allow\n            Principal:\n              Service: logging.s3.amazonaws.com\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*\n        Version: \"2012-10-17\"\n\n  StorageReplicaBucketPolicyPolicy:\n    Type: AWS::S3::BucketPolicy\n    Properties:\n      Bucket: !Sub ${AppName}-replicas-${AWS::Region}-${AWS::AccountId}\n      PolicyDocument:\n        Statement:\n          - Action: s3:*\n            Condition:\n              Bool:\n                aws:SecureTransport: false\n            Effect: Deny\n            Principal:\n              AWS: '*'\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}/*\n          - Action: s3:PutObject\n            Condition:\n              ArnLike:\n                aws:SourceArn: !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}\n              StringEquals:\n                aws:SourceAccount: !Ref AWS::AccountId\n            Effect: Allow\n            Principal:\n              Service: logging.s3.amazonaws.com\n            Resource:\n              - !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}/*\n        Version: \"2012-10-17\"\n\n\n\n#  BadBucket:\n#    Type: AWS::S3::Bucket\n#    Metadata:\n#      guard:\n#        SuppressedRules:\n#          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED\n#          - S3_BUCKET_DEFAULT_LOCK_ENABLED\n#          - S3_BUCKET_VERSIONING_ENABLED\n#          - S3_BUCKET_REPLICATION_ENABLED\n#          - S3_BUCKET_PUBLIC_WRITE_PROHIBITED\n#          - S3_BUCKET_PUBLIC_READ_PROHIBITED\n#          - S3_BUCKET_LOGGING_ENABLED\n#      Comment:\n#        This bucket is purposefully using an existing name, to cause a deployment failure\n#    Properties:\n#      BucketName: rain-artifacts-646934191481-us-east-1",
+                "Capabilities": [
+                    "CAPABILITY_IAM"
+                ],
+                "StackInstancesGroup": [
+                    {
+                        "DeploymentTargets": {
+                            "OrganizationalUnitIds": [
+                                {
+                                    "Ref": "OUID"
+                                }
+                            ]
+                        },
+                        "Regions": [
+                            "us-east-1",
+                            "us-west-2"
+                        ]
+                    }
+                ],
+                "Parameters": [
+                    {
+                        "ParameterKey": "AppName",
+                        "ParameterValue": "stackset-logging-sample"
+                    }
+                ],
+                "PermissionModel": "SERVICE_MANAGED",
+                "Description": "This stack set is part of a sample that demonstrates how to set up cross account logging",
+                "OperationPreferences": {
+                    "FailureToleranceCount": 0,
+                    "MaxConcurrentCount": 2,
+                    "RegionConcurrencyType": "PARALLEL"
+                },
+                "AutoDeployment": {
+                    "Enabled": true,
+                    "RetainStacksOnAccountRemoval": true
+                },
+                "StackSetName": "common-resources"
+            }
+        }
+    }
+}

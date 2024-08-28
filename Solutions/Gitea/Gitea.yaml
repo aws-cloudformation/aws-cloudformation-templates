@@ -1,5 +1,4 @@
 Parameters:
-
   LatestAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
@@ -14,7 +13,6 @@ Parameters:
     Description: The name of the secrets manager secret to be used as the password for the Gitea admin1 user. The password must be a plaintext string, not JSON.
 
 Mappings:
-
   Prefixes:
     ap-northeast-1:
       PrefixList: pl-58a04531
@@ -50,9 +48,8 @@ Mappings:
       PrefixList: pl-82a045eb
 
 Resources:
-
   Network:
-    Type: !Rain::Module "../../RainModules/vpc.yml"
+    Type: !Rain::Module ../../RainModules/vpc.yml
     Properties:
       Name: gitea-server
 
@@ -65,14 +62,17 @@ Resources:
           IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          SourcePrefixListId: !FindInMap [Prefixes, !Ref 'AWS::Region', PrefixList]
+          SourcePrefixListId: !FindInMap
+            - Prefixes
+            - !Ref AWS::Region
+            - PrefixList
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: gitea-server-isg 
+          Value: gitea-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -129,19 +129,18 @@ Resources:
             VolumeSize: 128
       IamInstanceProfile: !Ref InstanceProfile
       ImageId: !Ref LatestAMI
-      InstanceType: !Ref InstanceType 
+      InstanceType: !Ref InstanceType
       SecurityGroupIds:
         - !GetAtt InstanceSecurityGroup.GroupId
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: gitea-server 
-      UserData: 
-        Fn::Base64: 
-          Fn::Sub: !Rain::Embed Gitea.sh
+          Value: gitea-server
+      UserData: !Base64
+        Fn::Sub: !Rain::Embed Gitea.sh
 
   CloudFront:
-    Type: !Rain::Module "../../RainModules/cloudfront-nocache.yml"
+    Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
       Name: gitea-server
       DomainName: !GetAtt Server.PublicDnsName
@@ -151,7 +150,5 @@ Resources:
         DependsOn: Server
 
 Outputs:
-
   URL:
     Value: !Sub https://${CloudFrontDistribution.DomainName}
-
