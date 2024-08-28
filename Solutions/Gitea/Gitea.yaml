@@ -5,12 +5,12 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: t3.medium
+    Default: m7i.xlarge
 
   SecretName:
     Type: String
-    Default: vscode-password
-    Description: The name of the secrets manager secret that stores the password to be used for the VSCode Server. The password must be a simple plaintext string with no JSON.
+    Default: gitea-password
+    Description: The name of the secrets manager secret to be used as the password for the Gitea admin1 user. The password must be a plaintext string, not JSON.
 
 Mappings:
   Prefixes:
@@ -51,12 +51,12 @@ Resources:
   Network:
     Type: !Rain::Module ../../RainModules/vpc.yml
     Properties:
-      Name: vscode-server
+      Name: gitea-server
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: vscode-server-isg
+      GroupDescription: gitea-server-isg
       SecurityGroupIngress:
         - Description: Allow HTTP from com.amazonaws.global.cloudfront.origin-facing
           IpProtocol: tcp
@@ -72,7 +72,7 @@ Resources:
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: vscode-server-isg
+          Value: gitea-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -87,7 +87,7 @@ Resources:
         Version: "2012-10-17"
       Tags:
         - Key: Name
-          Value: vscode-server-instance
+          Value: gitea-server-instance
 
   InstanceRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -118,7 +118,7 @@ Resources:
       - InstanceRole
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT5M
+        Timeout: PT20M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -135,14 +135,14 @@ Resources:
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitea-server
       UserData: !Base64
-        Fn::Sub: !Rain::Embed VSCodeServer.sh
+        Fn::Sub: !Rain::Embed Gitea.sh
 
   CloudFront:
     Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
-      Name: vscode-server
+      Name: gitea-server
       DomainName: !GetAtt Server.PublicDnsName
       Port: 8080
     Overrides:
@@ -151,4 +151,4 @@ Resources:
 
 Outputs:
   URL:
-    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
+    Value: !Sub https://${CloudFrontDistribution.DomainName}

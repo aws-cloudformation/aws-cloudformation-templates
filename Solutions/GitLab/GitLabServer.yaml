@@ -5,12 +5,7 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: t3.medium
-
-  SecretName:
-    Type: String
-    Default: vscode-password
-    Description: The name of the secrets manager secret that stores the password to be used for the VSCode Server. The password must be a simple plaintext string with no JSON.
+    Default: m5.large
 
 Mappings:
   Prefixes:
@@ -51,17 +46,17 @@ Resources:
   Network:
     Type: !Rain::Module ../../RainModules/vpc.yml
     Properties:
-      Name: vscode-server
+      Name: gitlab-server
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: vscode-server-isg
+      GroupDescription: gitlab-server-isg
       SecurityGroupIngress:
         - Description: Allow HTTP from com.amazonaws.global.cloudfront.origin-facing
           IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 80
+          ToPort: 80
           SourcePrefixListId: !FindInMap
             - Prefixes
             - !Ref AWS::Region
@@ -72,7 +67,7 @@ Resources:
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: vscode-server-isg
+          Value: gitlab-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -87,7 +82,7 @@ Resources:
         Version: "2012-10-17"
       Tags:
         - Key: Name
-          Value: vscode-server-instance
+          Value: gitlab-server-instance
 
   InstanceRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -118,7 +113,7 @@ Resources:
       - InstanceRole
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT5M
+        Timeout: PT30M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -135,16 +130,16 @@ Resources:
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitlab-server
       UserData: !Base64
-        Fn::Sub: !Rain::Embed VSCodeServer.sh
+        Fn::Sub: !Rain::Embed GitLabServer.sh
 
   CloudFront:
     Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
-      Name: vscode-server
+      Name: gitlab-server
       DomainName: !GetAtt Server.PublicDnsName
-      Port: 8080
+      Port: 80
     Overrides:
       Distribution:
         DependsOn: Server

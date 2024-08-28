@@ -5,12 +5,7 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: t3.medium
-
-  SecretName:
-    Type: String
-    Default: vscode-password
-    Description: The name of the secrets manager secret that stores the password to be used for the VSCode Server. The password must be a simple plaintext string with no JSON.
+    Default: m5.large
 
 Mappings:
   Prefixes:
@@ -51,12 +46,12 @@ Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: vscode-server-isg
+      GroupDescription: gitlab-server-isg
       SecurityGroupIngress:
         - Description: Allow HTTP from com.amazonaws.global.cloudfront.origin-facing
           IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 80
+          ToPort: 80
           SourcePrefixListId: !FindInMap
             - Prefixes
             - !Ref AWS::Region
@@ -67,7 +62,7 @@ Resources:
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: vscode-server-isg
+          Value: gitlab-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -82,7 +77,7 @@ Resources:
         Version: "2012-10-17"
       Tags:
         - Key: Name
-          Value: vscode-server-instance
+          Value: gitlab-server-instance
 
   InstanceRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -111,9 +106,10 @@ Resources:
     DependsOn:
       - InstanceRolePolicy
       - InstanceRole
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT5M
+
+      #CreationPolicy:
+      #ResourceSignal:
+      #Timeout: PT30M
     Properties:
       AvailabilityZone: !Select
         - 0
@@ -130,9 +126,9 @@ Resources:
       SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitlab-server
       UserData: !Base64
-        Fn::Sub: "#!/bin/bash\n\nset -eou pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\n\n# Install the latest code-server from coder.com (not from yum)\nexport HOME=/root \ncurl -fsSL https://code-server.dev/install.sh | bash\n\n# Install cfn-signal\nyum install -y aws-cfn-bootstrap\n\n#Install argon2 for hashing the vscode server password\nyum install -y argon2\n\n# Configure the service\ntee /etc/systemd/system/code-server.service <<EOF\n[Unit]\nDescription=Start code server\n\n[Service]\nExecStart=/usr/bin/code-server --port 8080 --host $local_ip\nRestart=always\nType=simple\nUser=ec2-user\n\n[Install]\nWantedBy = multi-user.target\nEOF\n\n# Get the password from secrets manager\nsecret_string=$(aws secretsmanager get-secret-value --secret-id ${SecretName} | jq -r \".SecretString\")\n\n# Hash the password\nhashed_password=$(echo -n $secret_string | argon2 saltiness -e)\n\n# Install Node.js\nsudo -u ec2-user -i <<EOF\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\nsource .bashrc\nnvm install 20.11.0\nnvm use 20.11.0\nEOF\n\n# Save the config file\nmkdir -p /home/ec2-user/.config/code-server\nsudo tee /home/ec2-user/.config/code-server/config.yaml <<ENDCONFIG\ncert: false\nauth: password\nhashed-password: \"$hashed_password\"\nuser-data-dir: /home/ec2-user\nENDCONFIG\n\nchown -R ec2-user /home/ec2-user/.config\n\nsystemctl daemon-reload\nsystemctl enable --now code-server\n\n# Tell CloudFormation we're ready to go\n# This is a variable for the Sub intrisic function, not a bash variable\ncfn-signal -s true --stack ${AWS::StackName} --resource Server --region ${AWS::Region}"
+        Fn::Sub: "#!/bin/bash\n\nset -eou pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\n\n# Install cfn-signal\nyum install -y aws-cfn-bootstrap\n\n# Install postfix\nyum install -y postfix\nsystemctl enable postfix\nsystemctl start postfix\n\n# Get the yum repo\ncurl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh | sudo bash\n\n# Install gitlab and run it on the local ip\nexport EXTERNAL_URL=\"http://$local_ip\" \nyum install -y gitlab-ee\n\n# Tell CloudFormation we're ready to go\n# This is a variable for the Sub intrisic function, not a bash variable\ncfn-signal -s true --stack ${AWS::StackName} --resource Server --region ${AWS::Region}"
 
   NetworkVPC:
     Type: AWS::EC2::VPC
@@ -143,7 +139,7 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitlab-server
 
   NetworkPublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -157,7 +153,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-1
+          Value: gitlab-server-public-subnet-1
     Metadata:
       guard:
         SuppressedRules:
@@ -169,7 +165,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-1-rt
+          Value: gitlab-server-public-subnet-1-rt
 
   NetworkPublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -196,7 +192,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-1-eip
+          Value: gitlab-server-public-subnet-1-eip
 
   NetworkPublicSubnet1NATGateway:
     Type: AWS::EC2::NatGateway
@@ -205,7 +201,7 @@ Resources:
       SubnetId: !Ref NetworkPublicSubnet1
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-1-ngw
+          Value: gitlab-server-public-subnet-1-ngw
     DependsOn:
       - NetworkPublicSubnet1DefaultRoute
       - NetworkPublicSubnet1RouteTableAssociation
@@ -222,7 +218,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-2
+          Value: gitlab-server-public-subnet-2
     Metadata:
       guard:
         SuppressedRules:
@@ -234,7 +230,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-2-rt
+          Value: gitlab-server-public-subnet-2-rt
 
   NetworkPublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -261,7 +257,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-eip
+          Value: gitlab-server-public-subnet-eip
 
   NetworkPublicSubnet2NATGateway:
     Type: AWS::EC2::NatGateway
@@ -270,7 +266,7 @@ Resources:
       SubnetId: !Ref NetworkPublicSubnet2
       Tags:
         - Key: Name
-          Value: vscode-server-public-subnet-ngw
+          Value: gitlab-server-public-subnet-ngw
     DependsOn:
       - NetworkPublicSubnet2DefaultRoute
       - NetworkPublicSubnet2RouteTableAssociation
@@ -287,7 +283,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-private-subnet-1
+          Value: gitlab-server-private-subnet-1
 
   NetworkPrivateSubnet1RouteTable:
     Type: AWS::EC2::RouteTable
@@ -295,7 +291,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-private-subnet-1-rt
+          Value: gitlab-server-private-subnet-1-rt
 
   NetworkPrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -322,7 +318,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-private-subnet-2
+          Value: gitlab-server-private-subnet-2
 
   NetworkPrivateSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
@@ -330,7 +326,7 @@ Resources:
       VpcId: !Ref NetworkVPC
       Tags:
         - Key: Name
-          Value: vscode-server-private-subnet-2-rt
+          Value: gitlab-server-private-subnet-2-rt
 
   NetworkPrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -350,7 +346,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitlab-server
 
   NetworkVPCGW:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -365,7 +361,7 @@ Resources:
         DefaultTTL: 86400
         MaxTTL: 31536000
         MinTTL: 1
-        Name: vscode-server
+        Name: gitlab-server
         ParametersInCacheKeyAndForwardedToOrigin:
           CookiesConfig:
             CookieBehavior: all
@@ -390,9 +386,9 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: vscode-server
+          Value: gitlab-server
         - Key: Description
-          Value: vscode-server
+          Value: gitlab-server
       DistributionConfig:
         Enabled: True
         HttpVersion: http2
@@ -428,7 +424,7 @@ Resources:
           - DomainName: !GetAtt Server.PublicDnsName
             Id: !Sub CloudFront-${AWS::StackName}
             CustomOriginConfig:
-              HTTPPort: 8080
+              HTTPPort: 80
               OriginProtocolPolicy: http-only
     DependsOn:
       - Server

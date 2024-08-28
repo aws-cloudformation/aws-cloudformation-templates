@@ -13,16 +13,17 @@ Parameters:
     Default: stacksets-sample
 
 Resources:
-
   Storage:
-    Type: !Rain::Module "../../RainModules/bucket.yml"
+    Type: !Rain::Module ../../RainModules/bucket.yml
     Properties:
-      AppName: !Ref AppName 
+      AppName: !Ref AppName
 
   TestQ:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: test-events17
+
+
 
 #  BadBucket:
 #    Type: AWS::S3::Bucket
@@ -40,4 +41,3 @@ Resources:
 #        This bucket is purposefully using an existing name, to cause a deployment failure
 #    Properties:
 #      BucketName: rain-artifacts-646934191481-us-east-1
-

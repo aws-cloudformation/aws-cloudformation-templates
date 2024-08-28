@@ -1,11 +1,10 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 
 Transform: AWS::LanguageExtensions
 
 Description: A central event bus rule and log group to collect CloudFormation logs from all target accounts
 
 Parameters:
-
   OUID:
     Type: String
     Description: The Id of the Organization Unit to deploy the stack set to.
@@ -25,7 +24,6 @@ Parameters:
     Default: central-cloudformation-logs
 
 Resources:
-
   CentralEventBus:
     Type: AWS::Events::EventBus
     Properties:
@@ -43,20 +41,19 @@ Resources:
       StatementId: CentralEventBusPolicyStatement
       Statement:
         Effect: Allow
-        Principal: "*"
-        Action: 'events:PutEvents'
+        Principal: '*'
+        Action: events:PutEvents
         Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
-        Condition: 
+        Condition:
           StringEquals:
-            "aws:PrincipalOrgID": !Ref OrgID
-
+            aws:PrincipalOrgID: !Ref OrgID
 
   CentralEventLog:
     DependsOn: CentralEventBus
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupClass: STANDARD
-      LogGroupName: !Ref CentralEventLogName 
+      LogGroupName: !Ref CentralEventLogName
       KmsKeyId: !GetAtt CentralEventLogKey.Arn
 
   CentralEventLogKey:
@@ -64,7 +61,7 @@ Resources:
     Properties:
       Description: KMS key for log group
       KeyPolicy:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Id: key-policy
         Statement:
           - Action:
@@ -87,34 +84,34 @@ Resources:
             Principal:
               AWS:
                 - !Sub arn:aws:iam::${AWS::AccountId}:role/Admin
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
           - Sid: Allow CloudWatch Logs to use the key
             Effect: Allow
             Principal:
               Service: logs.amazonaws.com
             Action:
-              - 'kms:Encrypt*'
-              - 'kms:Decrypt*'
-              - 'kms:ReEncrypt*'
-              - 'kms:GenerateDataKey*'
-              - 'kms:Describe*'
-            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/* 
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
 
   CentralEventLogQuery:
     Type: AWS::Logs::QueryDefinition
     Properties:
       Name: CentralCloudFormationEventLogs
-      QueryString: "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` | sort @timestamp desc"
+      QueryString: fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` | sort @timestamp desc
       LogGroupNames:
-        - !Ref CentralEventLogName 
+        - !Ref CentralEventLogName
 
   CentralEventLogQueryReason:
     Type: AWS::Logs::QueryDefinition
     Properties:
       Name: CentralCloudFormationFailures
-      QueryString: "fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` as status, `detail.status-details.status-reason` as reason | sort @timestamp desc | filter status like \"FAILED\" | filter reason not like \"canceled\" | filter resource not like \"AWS::CloudFormation::Stack\" "
+      QueryString: 'fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` as status, `detail.status-details.status-reason` as reason | sort @timestamp desc | filter status like "FAILED" | filter reason not like "canceled" | filter resource not like "AWS::CloudFormation::Stack" '
       LogGroupNames:
-        - !Ref CentralEventLogName 
+        - !Ref CentralEventLogName
 
   CentralEventLogPolicy:
     Type: AWS::Logs::ResourcePolicy
@@ -122,31 +119,29 @@ Resources:
       Comment: The PolicyDocument in this resource *must* be JSON, unlike the standard IAM resources that allow YAML. Also note that you have to put the policy here and not in a role referenced by AWS::Events::Rule.RoleArn, which is meant for cross-account scenarios.
     Properties:
       PolicyName: CentralEventLogResourcePolicy
-      PolicyDocument: 
-          !Sub |
+      PolicyDocument: !Sub |
+        {
+          "Statement": [
             {
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Principal": {
-                    "Service": [
-                      "delivery.logs.amazonaws.com",
-                      "events.amazonaws.com"
-                    ]
-                  },
-                  "Action": [
-                    "logs:PutLogEvents",
-                    "logs:CreateLogStream"
-                  ],
-                  "Resource": "${CentralEventLog.Arn}"
-                }
-              ]
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "delivery.logs.amazonaws.com",
+                  "events.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "logs:PutLogEvents",
+                "logs:CreateLogStream"
+              ],
+              "Resource": "${CentralEventLog.Arn}"
             }
+          ]
+        }
 
-   
   CentralEventRule:
     Type: AWS::Events::Rule
-    DependsOn: 
+    DependsOn:
       - CentralEventLog
     Metadata:
       Comment: We use an empty prefix here to capture all events forwarded from target accounts
@@ -185,7 +180,7 @@ Resources:
       StackInstancesGroup:
         - DeploymentTargets:
             OrganizationalUnitIds:
-              - !Ref OUID 
+              - !Ref OUID
           Regions:
             - us-east-1
             - us-west-2
@@ -202,6 +197,3 @@ Resources:
         Enabled: true
         RetainStacksOnAccountRemoval: true
       StackSetName: log-setup
-
-
-

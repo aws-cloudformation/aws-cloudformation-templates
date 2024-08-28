@@ -1,0 +1,56 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template contains a stack set that deploys common-resource.yaml to target accounts",
+    "Parameters": {
+        "OUID": {
+            "Type": "String",
+            "Default": "ou-qxtx-vv0thlla"
+        }
+    },
+    "Resources": {
+        "StackSet": {
+            "Type": "AWS::CloudFormation::StackSet",
+            "Properties": {
+                "TemplateBody": {
+                    "Rain::Embed": "common-resources-pkg.yaml"
+                },
+                "Capabilities": [
+                    "CAPABILITY_IAM"
+                ],
+                "StackInstancesGroup": [
+                    {
+                        "DeploymentTargets": {
+                            "OrganizationalUnitIds": [
+                                {
+                                    "Ref": "OUID"
+                                }
+                            ]
+                        },
+                        "Regions": [
+                            "us-east-1",
+                            "us-west-2"
+                        ]
+                    }
+                ],
+                "Parameters": [
+                    {
+                        "ParameterKey": "AppName",
+                        "ParameterValue": "stackset-logging-sample"
+                    }
+                ],
+                "PermissionModel": "SERVICE_MANAGED",
+                "Description": "This stack set is part of a sample that demonstrates how to set up cross account logging",
+                "OperationPreferences": {
+                    "FailureToleranceCount": 0,
+                    "MaxConcurrentCount": 2,
+                    "RegionConcurrencyType": "PARALLEL"
+                },
+                "AutoDeployment": {
+                    "Enabled": true,
+                    "RetainStacksOnAccountRemoval": true
+                },
+                "StackSetName": "common-resources"
+            }
+        }
+    }
+}

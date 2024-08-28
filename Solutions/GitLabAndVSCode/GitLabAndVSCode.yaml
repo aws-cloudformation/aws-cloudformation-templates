@@ -5,7 +5,7 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: t3.medium
+    Default: m5.large
 
   SecretName:
     Type: String
@@ -51,17 +51,17 @@ Resources:
   Network:
     Type: !Rain::Module ../../RainModules/vpc.yml
     Properties:
-      Name: vscode-server
+      Name: gitlab-server
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: vscode-server-isg
+      GroupDescription: gitlab-server-isg
       SecurityGroupIngress:
         - Description: Allow HTTP from com.amazonaws.global.cloudfront.origin-facing
           IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 80
+          ToPort: 80
           SourcePrefixListId: !FindInMap
             - Prefixes
             - !Ref AWS::Region
@@ -72,7 +72,7 @@ Resources:
           IpProtocol: "-1"
       Tags:
         - Key: Name
-          Value: vscode-server-isg
+          Value: gitlab-server-isg
       VpcId: !Ref NetworkVPC
 
   InstanceRole:
@@ -87,7 +87,7 @@ Resources:
         Version: "2012-10-17"
       Tags:
         - Key: Name
-          Value: vscode-server-instance
+          Value: gitlab-server-instance
 
   InstanceRolePolicy:
     Type: AWS::IAM::RolePolicy
@@ -111,7 +111,35 @@ Resources:
       Roles:
         - !Ref InstanceRole
 
-  Server:
+  GitLabServer:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - InstanceRolePolicy
+      - InstanceRole
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 128
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: !Ref LatestAMI
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !GetAtt InstanceSecurityGroup.GroupId
+      SubnetId: !GetAtt NetworkPublicSubnet1.SubnetId
+      Tags:
+        - Key: Name
+          Value: gitlab-server
+      UserData: !Base64
+        Fn::Sub: !Rain::Embed GitLabServer.sh
+
+  VSCodeServer:
     Type: AWS::EC2::Instance
     DependsOn:
       - InstanceRolePolicy
@@ -139,16 +167,28 @@ Resources:
       UserData: !Base64
         Fn::Sub: !Rain::Embed VSCodeServer.sh
 
-  CloudFront:
+  GitLabCloudFront:
+    Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
+    Properties:
+      Name: gitlab-server
+      DomainName: !GetAtt GitLabServer.PublicDnsName
+      Port: 80
+    Overrides:
+      Distribution:
+        DependsOn: GitLabServer
+
+  VSCodeCloudFront:
     Type: !Rain::Module ../../RainModules/cloudfront-nocache.yml
     Properties:
       Name: vscode-server
-      DomainName: !GetAtt Server.PublicDnsName
+      DomainName: !GetAtt VSCodeServer.PublicDnsName
       Port: 8080
     Overrides:
-      Distribution:
-        DependsOn: Server
+      Distribution: DependsOn:VSCodeServer
 
 Outputs:
-  URL:
-    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user
+  VSCodeURL:
+    Value: !Sub https://${VSCodeCloudFrontDistribution.DomainName}/?folder=/home/ec2-user
+
+  GitLabURL:
+    Value: !Sub https://${GitLabCloudFrontDistribution.DomainName}/?folder=/home/ec2-user
