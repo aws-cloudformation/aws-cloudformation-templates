@@ -21,6 +21,7 @@ sudo -u ec2-user -i <<EOF
 cd /home/ec2-user
 mkdir /home/ec2-user/lib
 touch /home/ec2-user/gitea.ini
+
 git clone https://github.com/go-gitea/gitea
 cd gitea
 git checkout v1.22.1
@@ -54,14 +55,25 @@ EOF
 
 # Configure gitea for headless install using the private IP
 tee /home/ec2-user/gitea.ini << EOF
-[server]
-HTTP_ADDR = $local_ip
+[database]
+DB_TYPE = sqlite3
 
 [security] 
 INSTALL_LOCK = true
 
-[database]
-DB_TYPE = sqlite3
+[server]
+HTTP_ADDR = $local_ip
+
+[service]
+DISABLE_REGISTRATION = true
+
+[service.explore]
+REQUIRE_SIGNIN_VIEW = true
+DISABLE_USERS_PAGE = true
+
+[other]
+ENABLE_SITEMAP = false
+ENABLE_FEED = false
 EOF
 
 chown ec2-user /home/ec2-user/gitea.ini
