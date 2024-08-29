@@ -99,6 +99,7 @@ Resources:
               - ssm:UpdateInstanceInformation
               - ssmmessages:*
               - secretsmanager:GetSecretValue
+              - kms:Decrypt
             Effect: Allow
             Resource: '*'
         Version: "2012-10-17"
