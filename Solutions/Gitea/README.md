@@ -6,7 +6,8 @@ provides the CloudFront URL.
 
 As a prerequisite, you need to create a plaintext secret in Secrets Manager to
 store your password for a Gitea user called 'admin1' that will be created by the
-user data script. The default name for the secret is 'gitea-password'.
+user data script. The default name for the secret is 'gitea-password'. Do not create 
+a "Key/value" secret, choose "Plaintext".
 
 ## Files
 
