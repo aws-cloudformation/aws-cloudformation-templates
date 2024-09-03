@@ -1,3 +1,5 @@
 # For more information, see https://bandit.readthedocs.io/en/latest/config.html
 
-exclude_dirs: ['tests']
+
+exclude_dirs:
+  - tests

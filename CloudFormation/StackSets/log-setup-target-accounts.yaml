@@ -1,14 +1,12 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 
 Description: EventBridge Rule to send CloudFormation events to a central EventBus
 
 Parameters:
-
   CentralEventBusArn:
     Type: String
 
 Resources:
-
   CloudFormationEventRule:
     Type: AWS::Events::Rule
     Metadata:
@@ -21,7 +19,7 @@ Resources:
           - aws.cloudformation
       State: ENABLED
       Targets:
-        - Arn: !Ref CentralEventBusArn 
+        - Arn: !Ref CentralEventBusArn
           RoleArn: !GetAtt EventBridgeRole.Arn
           Id: CentralEventBus
           DeadLetterConfig:
@@ -47,7 +45,7 @@ Resources:
             Resource: !GetAtt DeadLetterQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/CloudFormationEventRule"
+                aws:SourceArn: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/CloudFormationEventRule
       Queues:
         - !Ref DeadLetterQueue
 
@@ -55,24 +53,23 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: events.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: sts:AssumeRole
 
   EventBridgeRolePolicy:
     Type: AWS::IAM::RolePolicy
-    Metadata: 
+    Metadata:
       Comment: Allow CloudFormation events to be written to the default event bus in the target account
     Properties:
       PolicyName: EventBridgeRolePolicy
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
-            Action: 'events:PutEvents'
-            Resource: !Ref CentralEventBusArn 
+            Action: events:PutEvents
+            Resource: !Ref CentralEventBusArn
       RoleName: !Ref EventBridgeRole
-

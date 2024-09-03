@@ -18,6 +18,6 @@ then
     cfn-lint --config-file ${CONFIG_FILE} $1
 else
     echo "$1 has a Rain directive, packaging first, which may break line numbers"
-    rain pkg $1 | cfn-lint --config-file ${CONFIG_FILE}
+    rain pkg -x $1 | cfn-lint --config-file ${CONFIG_FILE}
 fi
 

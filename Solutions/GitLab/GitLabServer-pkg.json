@@ -1,0 +1,736 @@
+{
+    "Parameters": {
+        "LatestAMI": {
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+        },
+        "InstanceType": {
+            "Type": "String",
+            "Default": "m5.large"
+        }
+    },
+    "Mappings": {
+        "Prefixes": {
+            "ap-northeast-1": {
+                "PrefixList": "pl-58a04531"
+            },
+            "ap-northeast-2": {
+                "PrefixList": "pl-22a6434b"
+            },
+            "ap-south-1": {
+                "PrefixList": "pl-9aa247f3"
+            },
+            "ap-southeast-1": {
+                "PrefixList": "pl-31a34658"
+            },
+            "ap-southeast-2": {
+                "PrefixList": "pl-b8a742d1"
+            },
+            "ca-central-1": {
+                "PrefixList": "pl-38a64351"
+            },
+            "eu-central-1": {
+                "PrefixList": "pl-a3a144ca"
+            },
+            "eu-north-1": {
+                "PrefixList": "pl-fab65393"
+            },
+            "eu-west-1": {
+                "PrefixList": "pl-4fa04526"
+            },
+            "eu-west-2": {
+                "PrefixList": "pl-93a247fa"
+            },
+            "eu-west-3": {
+                "PrefixList": "pl-75b1541c"
+            },
+            "sa-east-1": {
+                "PrefixList": "pl-5da64334"
+            },
+            "us-east-1": {
+                "PrefixList": "pl-3b927c52"
+            },
+            "us-east-2": {
+                "PrefixList": "pl-b6a144df"
+            },
+            "us-west-1": {
+                "PrefixList": "pl-4ea04527"
+            },
+            "us-west-2": {
+                "PrefixList": "pl-82a045eb"
+            }
+        }
+    },
+    "Resources": {
+        "InstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "gitlab-server-isg",
+                "SecurityGroupIngress": [
+                    {
+                        "Description": "Allow HTTP from com.amazonaws.global.cloudfront.origin-facing",
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "SourcePrefixListId": {
+                            "Fn::FindInMap": [
+                                "Prefixes",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "PrefixList"
+                            ]
+                        }
+                    }
+                ],
+                "SecurityGroupEgress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "Allow all outbound traffic by default",
+                        "IpProtocol": "-1"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-isg"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                }
+            }
+        },
+        "InstanceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-instance"
+                    }
+                ]
+            }
+        },
+        "InstanceRolePolicy": {
+            "Type": "AWS::IAM::RolePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "ec2messages:*",
+                                "ssm:UpdateInstanceInformation",
+                                "ssmmessages:*",
+                                "secretsmanager:GetSecretValue"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "InstanceRolePolicy",
+                "RoleName": {
+                    "Ref": "InstanceRole"
+                }
+            }
+        },
+        "InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "InstanceRole"
+                    }
+                ]
+            }
+        },
+        "Server": {
+            "Type": "AWS::EC2::Instance",
+            "DependsOn": [
+                "InstanceRolePolicy",
+                "InstanceRole"
+            ],
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": null
+                        }
+                    ]
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 128
+                        }
+                    }
+                ],
+                "IamInstanceProfile": {
+                    "Ref": "InstanceProfile"
+                },
+                "ImageId": {
+                    "Ref": "LatestAMI"
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "InstanceSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ],
+                "SubnetId": {
+                    "Fn::GetAtt": [
+                        "NetworkPublicSubnet1",
+                        "SubnetId"
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Sub": "#!/bin/bash\n\nset -eou pipefail\n\nlocal_ip=$(ec2-metadata | grep \"^local-ipv4: \" | cut -d \" \" -f 2)\n\n# Install cfn-signal\nyum install -y aws-cfn-bootstrap\n\n# Install postfix\nyum install -y postfix\nsystemctl enable postfix\nsystemctl start postfix\n\n# Get the yum repo\ncurl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.rpm.sh | sudo bash\n\n# Install gitlab and run it on the local ip\nexport EXTERNAL_URL=\"http://$local_ip\" \nyum install -y gitlab-ee\n\n# Tell CloudFormation we're ready to go\n# This is a variable for the Sub intrisic function, not a bash variable\ncfn-signal -s true --stack ${AWS::StackName} --resource Server --region ${AWS::Region}"
+                    }
+                }
+            }
+        },
+        "NetworkVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "SUBNET_AUTO_ASSIGN_PUBLIC_IP_DISABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.0/18",
+                "MapPublicIpOnLaunch": true,
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-1"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet1RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-1-rt"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet1RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "NetworkPublicSubnet1RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPublicSubnet1"
+                }
+            }
+        },
+        "NetworkPublicSubnet1DefaultRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": [
+                "NetworkVPCGW"
+            ],
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "NO_UNRESTRICTED_ROUTE_TO_IGW"
+                    ]
+                }
+            },
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "NetworkInternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "NetworkPublicSubnet1RouteTable"
+                }
+            }
+        },
+        "NetworkPublicSubnet1EIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-1-eip"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet1NATGateway": {
+            "Type": "AWS::EC2::NatGateway",
+            "DependsOn": [
+                "NetworkPublicSubnet1DefaultRoute",
+                "NetworkPublicSubnet1RouteTableAssociation"
+            ],
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "NetworkPublicSubnet1EIP",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPublicSubnet1"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-1-ngw"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "SUBNET_AUTO_ASSIGN_PUBLIC_IP_DISABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.64.0/18",
+                "MapPublicIpOnLaunch": true,
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-2"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet2RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-2-rt"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet2RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "NetworkPublicSubnet2RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPublicSubnet2"
+                }
+            }
+        },
+        "NetworkPublicSubnet2DefaultRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": [
+                "NetworkVPCGW"
+            ],
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "NO_UNRESTRICTED_ROUTE_TO_IGW"
+                    ]
+                }
+            },
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "NetworkInternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "NetworkPublicSubnet2RouteTable"
+                }
+            }
+        },
+        "NetworkPublicSubnet2EIP": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-eip"
+                    }
+                ]
+            }
+        },
+        "NetworkPublicSubnet2NATGateway": {
+            "Type": "AWS::EC2::NatGateway",
+            "DependsOn": [
+                "NetworkPublicSubnet2DefaultRoute",
+                "NetworkPublicSubnet2RouteTableAssociation"
+            ],
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "NetworkPublicSubnet2EIP",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPublicSubnet2"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-public-subnet-ngw"
+                    }
+                ]
+            }
+        },
+        "NetworkPrivateSubnet1Subnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.128.0/18",
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-private-subnet-1"
+                    }
+                ]
+            }
+        },
+        "NetworkPrivateSubnet1RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-private-subnet-1-rt"
+                    }
+                ]
+            }
+        },
+        "NetworkPrivateSubnet1RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "NetworkPrivateSubnet1RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPrivateSubnet1Subnet"
+                }
+            }
+        },
+        "NetworkPrivateSubnet1DefaultRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NetworkPublicSubnet1NATGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "NetworkPrivateSubnet1RouteTable"
+                }
+            }
+        },
+        "NetworkPrivateSubnet2Subnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.192.0/18",
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-private-subnet-2"
+                    }
+                ]
+            }
+        },
+        "NetworkPrivateSubnet2RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server-private-subnet-2-rt"
+                    }
+                ]
+            }
+        },
+        "NetworkPrivateSubnet2RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "NetworkPrivateSubnet2RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "NetworkPrivateSubnet2Subnet"
+                }
+            }
+        },
+        "NetworkPrivateSubnet2DefaultRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NetworkPublicSubnet2NATGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "NetworkPrivateSubnet2RouteTable"
+                }
+            }
+        },
+        "NetworkInternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server"
+                    }
+                ]
+            }
+        },
+        "NetworkVPCGW": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "NetworkInternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "NetworkVPC"
+                }
+            }
+        },
+        "CloudFrontCachePolicy": {
+            "Type": "AWS::CloudFront::CachePolicy",
+            "Properties": {
+                "CachePolicyConfig": {
+                    "DefaultTTL": 86400,
+                    "MaxTTL": 31536000,
+                    "MinTTL": 1,
+                    "Name": "gitlab-server",
+                    "ParametersInCacheKeyAndForwardedToOrigin": {
+                        "CookiesConfig": {
+                            "CookieBehavior": "all"
+                        },
+                        "EnableAcceptEncodingGzip": false,
+                        "HeadersConfig": {
+                            "HeaderBehavior": "whitelist",
+                            "Headers": [
+                                "Accept-Charset",
+                                "Authorization",
+                                "Origin",
+                                "Accept",
+                                "Referer",
+                                "Host",
+                                "Accept-Language",
+                                "Accept-Encoding",
+                                "Accept-Datetime"
+                            ]
+                        },
+                        "QueryStringsConfig": {
+                            "QueryStringBehavior": "all"
+                        }
+                    }
+                }
+            }
+        },
+        "CloudFrontDistribution": {
+            "Type": "AWS::CloudFront::Distribution",
+            "DependsOn": [
+                "Server"
+            ],
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "gitlab-server"
+                    },
+                    {
+                        "Key": "Description",
+                        "Value": "gitlab-server"
+                    }
+                ],
+                "DistributionConfig": {
+                    "Enabled": true,
+                    "HttpVersion": "http2",
+                    "CacheBehaviors": [
+                        {
+                            "AllowedMethods": [
+                                "GET",
+                                "HEAD",
+                                "OPTIONS",
+                                "PUT",
+                                "PATCH",
+                                "POST",
+                                "DELETE"
+                            ],
+                            "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+                            "Compress": false,
+                            "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+                            "TargetOriginId": {
+                                "Fn::Sub": "CloudFront-${AWS::StackName}"
+                            },
+                            "ViewerProtocolPolicy": "allow-all",
+                            "PathPattern": "/proxy/*"
+                        }
+                    ],
+                    "DefaultCacheBehavior": {
+                        "AllowedMethods": [
+                            "GET",
+                            "HEAD",
+                            "OPTIONS",
+                            "PUT",
+                            "PATCH",
+                            "POST",
+                            "DELETE"
+                        ],
+                        "CachePolicyId": {
+                            "Ref": "CloudFrontCachePolicy"
+                        },
+                        "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+                        "TargetOriginId": {
+                            "Fn::Sub": "CloudFront-${AWS::StackName}"
+                        },
+                        "ViewerProtocolPolicy": "allow-all"
+                    },
+                    "Origins": [
+                        {
+                            "DomainName": {
+                                "Fn::GetAtt": [
+                                    "Server",
+                                    "PublicDnsName"
+                                ]
+                            },
+                            "Id": {
+                                "Fn::Sub": "CloudFront-${AWS::StackName}"
+                            },
+                            "CustomOriginConfig": {
+                                "HTTPPort": 80,
+                                "OriginProtocolPolicy": "http-only"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "URL": {
+            "Value": {
+                "Fn::Sub": "https://${CloudFrontDistribution.DomainName}/?folder=/home/ec2-user"
+            }
+        }
+    }
+}
