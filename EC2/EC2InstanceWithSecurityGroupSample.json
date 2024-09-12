@@ -91,9 +91,12 @@
                         }
                     ]
                 },
-                "SecurityGroups": [
+                "SecurityGroupIds": [
                     {
-                        "Ref": "InstanceSecurityGroup"
+                        "Fn::GetAtt": [
+                            "InstanceSecurityGroup",
+                            "GroupId"
+                        ]
                     }
                 ],
                 "KeyName": {
