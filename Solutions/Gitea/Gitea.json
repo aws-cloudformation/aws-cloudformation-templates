@@ -147,7 +147,8 @@
                                 "ec2messages:*",
                                 "ssm:UpdateInstanceInformation",
                                 "ssmmessages:*",
-                                "secretsmanager:GetSecretValue"
+                                "secretsmanager:GetSecretValue",
+                                "kms:Decrypt"
                             ],
                             "Effect": "Allow",
                             "Resource": "*"
