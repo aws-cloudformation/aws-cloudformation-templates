@@ -1039,8 +1039,10 @@ rule DB_INSTANCE_BACKUP_ENABLED when %aws_rds_instances_db_instance_backup_enabl
 #
 # Select all DynamoDB Table resources from incoming template (payload)
 #
-let aws_dynamodb_table_resources = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
-
+let aws_dynamodb_table_resources = Resources.*[ Type == 'AWS::DynamoDB::Table' 
+  Metadata.guard.SuppressedRules not exists or
+  Metadata.guard.SuppressedRules.* != "DYNAMODB_PITR_ENABLED"
+]
 
 rule DYNAMODB_PITR_ENABLED when %aws_dynamodb_table_resources !empty {
     # Ensure ALL DynamoDB Tables have Point-In-Time-Recovery enabled
