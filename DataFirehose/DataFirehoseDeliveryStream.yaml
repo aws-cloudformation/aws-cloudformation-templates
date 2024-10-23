@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Create an Amazon Data Firehose stream with server-side encryption set using AWS Managed keys and destination error logging enabled to a created Amazon CloudWatch log group and log stream.
+
+Metadata:
+  License: Apache-2.0
+
+Parameters:
+  DestinationBucketName:
+    Description: Name of an existing Amazon S3 bucket
+    Type: String
+
+  LogStreamName:
+    Description: Name of the Amazon CloudWatch log stream that will be created.
+    Type: String
+
+  LogGroupName:
+    Description: Name of the Amazon CloudWatch log group that will be created.
+    Type: String
+
+  CloudWatchLogsKMSKey:
+    Description: (Optional) KMS Key ARN to use for encrypting the delivery stream destination error log data. If empty, encryption is enabled with CloudWatch Logs managing the server-side encryption keys.
+    Type: String
+    AllowedPattern: ^$|^arn:(aws[a-zA-Z-]*){1}:kms:[a-z0-9-]+:\d{12}:key\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$
+    ConstraintDescription: 'Key ARN example:  arn:aws:kms:us-east-2:012345678901:key/1234abcd-12ab-34cd-56ef-1234567890ab'
+
+  CloudWatchLogGroupRetention:
+    Description: Define the number of days to retain destination error logs.
+    Type: String
+    AllowedValues:
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+      - 60
+      - 90
+      - 120
+      - 150
+      - 180
+      - 365
+      - 400
+      - 545
+      - 731
+      - 1827
+      - 3653
+    Default: 3
+
+  DeliveryStreamName:
+    Description: Name of Amazon Data Firehose delivery stream
+    Type: String
+    Default: my-delivery-stream
+
+Conditions:
+  CloudWatchLogsKMSKeyCondition: !Not
+    - !Equals
+      - !Ref CloudWatchLogsKMSKey
+      - ""
+
+Resources:
+  DeliveryStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Ref DeliveryStreamName
+      DeliveryStreamType: DirectPut
+      DeliveryStreamEncryptionConfigurationInput:
+        KeyType: AWS_OWNED_CMK
+      ExtendedS3DestinationConfiguration:
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: !Ref FirehoseLogGroup
+          LogStreamName: !Ref FirehoseLogStream
+        RoleARN: !GetAtt DeliveryRole.Arn
+        BucketARN: !Join
+          - ""
+          - - 'arn:aws:s3:::'
+            - !Ref DestinationBucketName
+        ErrorOutputPrefix: errors/
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+            - Type: AppendDelimiterToRecord
+              Parameters:
+                - ParameterName: Delimiter
+                  ParameterValue: \n
+
+  FirehoseLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join
+        - ""
+        - - /aws/kinesisfirehose/
+          - !Ref LogGroupName
+      RetentionInDays: !Ref CloudWatchLogGroupRetention
+      KmsKeyId: !If
+        - CloudWatchLogsKMSKeyCondition
+        - !Ref CloudWatchLogsKMSKey
+        - !Ref AWS::NoValue
+
+  FirehoseLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref FirehoseLogGroup
+      LogStreamName: !Ref LogStreamName
+
+  DeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ""
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref AWS::AccountId
+      Path: /
+      Policies:
+        - PolicyName: firehose_delivery_policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Resource:
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - !Ref DestinationBucketName
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - !Ref DestinationBucketName
+                      - /*
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource: !Join
+                  - ""
+                  - - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/kinesisfirehose/
+                    - !Ref LogGroupName
+                    - :*
