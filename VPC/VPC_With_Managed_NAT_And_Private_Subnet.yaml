@@ -43,11 +43,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Sub
-        - ${AWS::Region}${AZ}
-        - AZ: !Select
-            - 0
-            - !GetAZs
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Public0
@@ -71,11 +69,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Sub
-        - ${AWS::Region}${AZ}
-        - AZ: !Select
-            - 1
-            - !GetAZs
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Public1
@@ -99,11 +95,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Sub
-        - ${AWS::Region}${AZ}
-        - AZ: !Select
-            - 0
-            - !GetAZs
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Private0
@@ -126,11 +120,9 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Sub
-        - ${AWS::Region}${AZ}
-        - AZ: !Select
-            - 1
-            - !GetAZs
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs
       CidrBlock: !FindInMap
         - SubnetConfig
         - Private1
