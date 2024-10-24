@@ -67,17 +67,10 @@
                     "Ref": "VPC"
                 },
                 "AvailabilityZone": {
-                    "Fn::Sub": [
-                        "${AWS::Region}${AZ}",
+                    "Fn::Select": [
+                        0,
                         {
-                            "AZ": {
-                                "Fn::Select": [
-                                    0,
-                                    {
-                                        "Fn::GetAZs": null
-                                    }
-                                ]
-                            }
+                            "Fn::GetAZs": null
                         }
                     ]
                 },
@@ -132,17 +125,10 @@
                     "Ref": "VPC"
                 },
                 "AvailabilityZone": {
-                    "Fn::Sub": [
-                        "${AWS::Region}${AZ}",
+                    "Fn::Select": [
+                        1,
                         {
-                            "AZ": {
-                                "Fn::Select": [
-                                    1,
-                                    {
-                                        "Fn::GetAZs": null
-                                    }
-                                ]
-                            }
+                            "Fn::GetAZs": null
                         }
                     ]
                 },
@@ -197,17 +183,10 @@
                     "Ref": "VPC"
                 },
                 "AvailabilityZone": {
-                    "Fn::Sub": [
-                        "${AWS::Region}${AZ}",
+                    "Fn::Select": [
+                        0,
                         {
-                            "AZ": {
-                                "Fn::Select": [
-                                    0,
-                                    {
-                                        "Fn::GetAZs": null
-                                    }
-                                ]
-                            }
+                            "Fn::GetAZs": null
                         }
                     ]
                 },
@@ -261,17 +240,10 @@
                     "Ref": "VPC"
                 },
                 "AvailabilityZone": {
-                    "Fn::Sub": [
-                        "${AWS::Region}${AZ}",
+                    "Fn::Select": [
+                        1,
                         {
-                            "AZ": {
-                                "Fn::Select": [
-                                    1,
-                                    {
-                                        "Fn::GetAZs": null
-                                    }
-                                ]
-                            }
+                            "Fn::GetAZs": null
                         }
                     ]
                 },
