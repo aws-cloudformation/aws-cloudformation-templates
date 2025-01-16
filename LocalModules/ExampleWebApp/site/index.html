@@ -1,0 +1,83 @@
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <link rel="stylesheet" href="css/style.css">
+    <meta name="description" content="">
+
+    <meta property="og:title" content="">
+    <meta property="og:type" content="">
+    <meta property="og:url" content="">
+    <meta property="og:image" content="">
+
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#fafafa">
+
+</head>
+
+<body>
+
+    <div class="topnav">
+        <div class="topnav-left">
+            <a class="active" href="/">Home</a>
+        </div>
+        <div class="topnav-center">
+            Web App Sample
+        </div>
+        <div class="topnav-right">
+            <button type="button" id="login-btn">Log In</button>
+            <button type="button" id="logout-btn">Log Out</button>
+        </div>
+    </div>
+
+    <div id="about">
+
+
+        <p>This app demonstrates the creation of a complete serverless web 
+        application using the AWS ClI and the <code>aws cloudformation</code> 
+        <code>package</code> and <code>deploy</code> commands.
+
+        <p>The CloudFormation template, <code>webapp.yaml</code>, makes use of 
+        the new local modules functionality to break down the template into 
+        re-usable components</p>
+
+    </div>
+
+    <hr />
+
+    <button type="button" id="test-btn">Show some data from a DynamoDB table</button>
+
+    <div id="test-data" style="display:none">
+        <div id="loading-container" style="display: flex">
+            <div id="loading-title">Test Data</div>
+            <div id="loading" style="display:none;">(Calling the API...)</div>
+        </div>
+
+        <div id="test-table-container" role="region" tabindex="0">
+            <table id="test-table">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Foo</th>
+                        <th>Bar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <script type="module" src="js/app.js"></script>
+
+</body>
+
+</html>
