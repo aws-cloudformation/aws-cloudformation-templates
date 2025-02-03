@@ -1,0 +1,71 @@
+Parameters:
+
+  Name:
+    Type: String
+
+  ArtifactBucket:
+    Type: String
+
+Resources:
+
+  Project:
+    Type: AWS::CodeBuild::Project
+    Metadata:
+      Description: Validate the source by running static scanners
+    Properties:
+      Name: !Ref Name 
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        ComputeType: BUILD_GENERAL1_LARGE
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt ProjectRole.Arn
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 480
+
+  ValidateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: '2012-10-17'
+
+  ValidatePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref ValidateRole
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:*
+            Effect: Allow
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Validate}:*
+          - Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+              - codebuild:StopBuild
+              - codebuild:RetryBuild
+              - codebuild:StartBuildBatch
+              - codebuild:RetryBuildBatch
+              - codebuild:StopBuildBatch
+            Effect: Allow
+            Resource:
+              - !GetAtt Project.Arn
+          - Action:
+              - s3:Get*
+              - s3:List*
+            Effect: Allow
+            Resource: 
+              - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+              - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/*"
+        Version: 2012-10-17
+      PolicyName: !Sub "${Name}-policy"
+      Roles:
+        - !Ref ProjectRole
+
