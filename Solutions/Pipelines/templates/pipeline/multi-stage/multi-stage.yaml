@@ -33,12 +33,31 @@ Parameters:
   # Note: For each new parameter added here, also add it to the SelfMutate action
 
 Constants:
-
-  PipelineSourceBucket: ${AppName}-pipeline-source-${AWS::Region}-${AWS::AccountId}
-  AppSourceBucket: ${AppName}-app-source-${AWS::Region}-${AWS::AccountId}
-  ArtifactBucket: ${AppName}-artifacts-${AWS::Region}-${AWS::AccountId}
+  S3Arn: "arn:${AWS::Partition}:s3:::"
+  PipelineSourceArn: ${Constant:S3Arn}${PipelineSource.BucketName}
+  AppSourceArn: ${Constant:S3Arn}${AppSource.BucketName}
+  ArtifactArn: ${Constant:S3Arn}${Artifacts.BucketName}
 
 Resources:
+
+  PipelineSource:
+    Type: LocalModule
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-pipeline-source
+      EnableEventBridge: true
+
+  AppSource:
+    Type: LocalModule
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-app-source
+
+  Artifacts:
+    Type: LocalModule
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-artifacts
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -48,7 +67,7 @@ Resources:
       RestartExecutionOnUpdate: true
       ArtifactStore:
         Type: S3
-        Location: !Sub ${Constant::ArtifactBucket}
+        Location: !Sub ${Artifacts.BucketName}
       Stages:
         - Name: Source
           Actions:
@@ -59,20 +78,20 @@ Resources:
                 Provider: S3
                 Version: 1
               Configuration:
-                S3Bucket: !Sub ${Constant::PipelineSourceBucket}
+                S3Bucket: !Sub ${PipelineSource.BucketName}
                 S3ObjectKey: !Ref PipelineSourceKey
                 PollForSourceChanges: false
               OutputArtifacts:
                 - Name: pipeline-source
-            - Name: ApplicationSource
+            - Name: AppSource
               ActionTypeId:
                 Category: Source
                 Owner: AWS
                 Provider: S3
                 Version: 1
               Configuration:
-                S3Bucket: !Sub ${Constant::ApplicationSourceBucket}
-                S3ObjectKey: !Ref ApplicationSourceKey
+                S3Bucket: !Sub ${AppSource.BucketName}
+                S3ObjectKey: !Ref AppSourceKey
                 PollForSourceChanges: false
               OutputArtifacts:
                 - Name: application-source
@@ -105,6 +124,7 @@ Resources:
             - Name: Validate
               InputArtifacts:
                 - Name: pipeline-source
+                - Name: app-source
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -112,6 +132,7 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName: !Ref Validate
+                PrimarySource: pipeline-source
                 EnvironmentVariables: |-
                   [
                     {
@@ -169,16 +190,24 @@ Resources:
               - s3:Abort*
             Effect: Allow
             Resource:
-              - !Sub "arn:${AWS::Partition}:s3:::${Constant::ArtifactBucket}"
-              - !Sub "arn:${AWS::Partition}:s3:::${Constant::ArtifactBucket}/*"
+              - !Sub ${Constant::ArtifactArn}
+              - !Sub ${Constant::ArtifactArn}/*
           - Action:
               - s3:GetObject*
               - s3:GetBucket*
               - s3:List*
             Effect: Allow
             Resource:
-              - !Sub "arn:${AWS::Partition}:s3:::${Constant::SourceBucket}"
-              - !Sub "arn:${AWS::Partition}:s3:::${Constant::SourceBucket}/*"
+              - !Sub ${Constant::AppSourceArn}
+              - !Sub ${Constant::AppSourceArn}/*
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - !Sub ${Constant::PipelineSourceArn}
+              - !Sub ${Constant::PipelineSourceArn}/*
           - Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
@@ -189,56 +218,42 @@ Resources:
               - codebuild:StopBuildBatch
             Effect: Allow
             Resource:
-              - !GetAtt Project.Arn
+              - !GetAtt ValidateProject.Arn
+              - !GetAtt BuildProject.Arn
 
   Validate:
     Type: LocalModule
-    Source: ../../modules/build-project.yaml
+    Description: Build project to validate compliance
+    Source: ../../../modules/build-project.yaml
     Properties:
       Name: !Sub ${AppName}-validate
-      ArtifactBucket: !Sub ${Constant::ArtifactBucket}
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
 
   Build:
     Type: LocalModule
-    Source: ../../modules/build-project.yaml
+    Description: Build project for the application source
+    Source: ../../../modules/build-project.yaml
     Properties:
       Name: !Sub ${AppName}-build
-      ArtifactBucket: !Sub ${Constant::ArtifactBucket}
+      ArtifactBucket: !Sub ${Artifacts::BucketName}
 
-  EventRole:
-    Type: AWS::IAM::Role
-    Metadata:
-      Description: This role allows event bridge to start the pipeline execution when it sees a notification from S3 indicating a source change.
+  Event:
+    Type: LocalModule
+    Source: ../../../modules/pipeline-events.yaml
     Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - events.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-
-  EventRolePolicy:
-    Type: AWS::IAM::RolePolicy
-    Metadata:
-      Description: This policy allows event bridge to start the pipeline execution when it sees a notification from S3 indicating a source change.
-    Properties:
-      PolicyName: eventbridge-pipeline-execution
-      RoleName: !Ref EventRole
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Action: codepipeline:StartPipelineExecution
-            Resource: !Sub arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}
-
+      PipelineName: !Ref Pipeline
+    Overrides:
+      Rule:
+        Properties:
+          EventPattern:
+            detail:
+              bucket:
+                name:
+                  - !Ref PipelineSource.BucketName
+                  - !Ref AppSource.BucketName
 
 Outputs:
 
   AppSourceBucket:
-    Value: !Sub ${AppSourceBucket}
+    Value: !Sub ${AppSource.BucketName}
 

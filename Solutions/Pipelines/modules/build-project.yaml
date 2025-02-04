@@ -10,8 +10,6 @@ Resources:
 
   Project:
     Type: AWS::CodeBuild::Project
-    Metadata:
-      Description: Validate the source by running static scanners
     Properties:
       Name: !Ref Name 
       Artifacts:
@@ -25,7 +23,7 @@ Resources:
         Type: CODEPIPELINE
       TimeoutInMinutes: 480
 
-  ValidateRole:
+  Role:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -36,16 +34,16 @@ Resources:
               Service: codebuild.amazonaws.com
         Version: '2012-10-17'
 
-  ValidatePolicy:
+  Policy:
     Type: AWS::IAM::RolePolicy
     Properties:
-      RoleName: !Ref ValidateRole
+      RoleName: !Ref Role
       PolicyDocument:
         Statement:
           - Action:
               - logs:*
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Validate}:*
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Name}:*
           - Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds

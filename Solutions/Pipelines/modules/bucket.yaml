@@ -2,9 +2,9 @@ Description: This module creates an S3 bucket that will pass common compliance c
 
 Parameters:
 
-  AppName:
+  Name:
     Type: String
-    Description: This string will serve as a prefix for all resource names, which have the general form of AppName-ResourceName-Region-Account. 
+    Description: This string will serve as a prefix for all resource names, which have the general form of Name-ResourceName-Region-Account. 
 
   CreateLogBucket:
     Type: Boolean
@@ -14,6 +14,11 @@ Parameters:
   CreateReplicaBucket:
     Type: Boolean
     Description: If true, create a bucket for replicas
+    Default: false
+
+  EnableEventBridge:
+    Type: Boolean
+    Description: Set this to true to enable notifications
     Default: false
 
 Conditions:
@@ -28,12 +33,17 @@ Conditions:
       - CreateReplicaBucket
       - true
 
+  IsEventBridgeEnabled:
+    Fn::Equals:
+      - EnableEventBridge
+      - true
+
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
-  BucketName: "${AppName}-${AWS::Region}-${AWS::AccountId}"
-  LogBucketName: "${AppName}-logs-${AWS::Region}-${AWS::AccountId}"
+  BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"
+  LogBucketName: "${Name}-logs-${AWS::Region}-${AWS::AccountId}"
   LogBucketArn: "${Constant::S3Arn}${Constant::LogBucketName}"
-  ReplicaBucketName: "${AppName}-replicas-${AWS::Region}-${AWS::AccountId}"
+  ReplicaBucketName: "${Name}-replicas-${AWS::Region}-${AWS::AccountId}"
 
 Resources:
 
@@ -120,6 +130,13 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       BucketName: !Sub ${Constant::BucketName}
+
+      NotificationConfiguration:
+        Fn::If:
+          - IsEventBridgeEnabled
+          - EventBridgeConfiguration:
+              EventBridgeEnabled: true
+          - !Ref AWS::NoValue
       LoggingConfiguration:
         Fn::If:
           - IsLoggingEnabled
@@ -230,4 +247,6 @@ Resources:
         Version: "2012-10-17"
       Path: /
 
+Outputs:
+  BucketName: !Ref Bucket
 
