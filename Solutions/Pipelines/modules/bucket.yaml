@@ -120,10 +120,6 @@ Resources:
       guard:
         SuppressedRules:
           - S3_BUCKET_DEFAULT_LOCK_ENABLED
-      Rain:
-        Content: !Ref Content
-        EmptyOnDelete: !Ref EmptyOnDelete
-        DistributionLogicalId: NONE
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -149,7 +145,7 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
       ReplicationConfiguration:
-        Fn:If:
+        Fn::If:
           - IsReplicationEnabled
           - Role: !GetAtt ReplicationRole.Arn
             Rules:
@@ -180,9 +176,6 @@ Resources:
           - S3_BUCKET_DEFAULT_LOCK_ENABLED
           - S3_BUCKET_REPLICATION_ENABLED
           - S3_BUCKET_LOGGING_ENABLED
-      Rain:
-        Content: RAIN_NO_CONTENT
-        EmptyOnDelete: !Ref EmptyOnDelete
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:

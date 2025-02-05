@@ -28,15 +28,15 @@ Parameters:
   AppSourceKey:
     Type: String
     Description: The name of the S3 object key for the application source
-    Default: application-source.zip
+    Default: app-source.zip
 
   # Note: For each new parameter added here, also add it to the SelfMutate action
 
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
-  PipelineSourceArn: ${Constant:S3Arn}${PipelineSource.BucketName}
-  AppSourceArn: ${Constant:S3Arn}${AppSource.BucketName}
-  ArtifactArn: ${Constant:S3Arn}${Artifacts.BucketName}
+  PipelineSourceArn: ${Constant::S3Arn}${PipelineSource.BucketName}
+  AppSourceArn: ${Constant::S3Arn}${AppSource.BucketName}
+  ArtifactArn: ${Constant::S3Arn}${Artifacts.BucketName}
 
 Resources:
 
@@ -94,12 +94,13 @@ Resources:
                 S3ObjectKey: !Ref AppSourceKey
                 PollForSourceChanges: false
               OutputArtifacts:
-                - Name: application-source
+                - Name: app-source
         - Name: SelfMutate
           Actions:
             - Name: StackUpdate
               InputArtifacts:
                 - Name: pipeline-source
+                - Name: app-source
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -107,7 +108,7 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CreateUpdate
-                StackName: ${AWS::StackName}
+                StackName: !Sub ${AWS::StackName}
                 Capabilities:
                   - CAPABILITY_IAM
                 TemplatePath: SourceArtifact::multi-stage.yaml
@@ -131,36 +132,20 @@ Resources:
                 Provider: CodeBuild
                 Version: 1
               Configuration:
-                ProjectName: !Ref Validate
+                ProjectName: !GetAtt Validate.ProjectName
                 PrimarySource: pipeline-source
-                EnvironmentVariables: |-
-                  [
-                    {
-                      "name": "MY_VAR",
-                      "type": "PLAINTEXT",
-                      "value": "abc"
-                    }
-                  ]
               RunOrder: 1
             - Name: Build
               InputArtifacts:
-                - Name: application-source
+                - Name: app-source
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Provider: CodeBuild
                 Version: 1
               Configuration:
-                ProjectName: !Ref Build
-                EnvironmentVariables: |-
-                  [
-                    {
-                      "name": "MY_VAR",
-                      "type": "PLAINTEXT",
-                      "value": "abc"
-                    }
-                  ]
-              RunOrder: 2
+                ProjectName: !GetAtt Build.ProjectName
+              RunOrder: 1
 
   PipelineRole:
     Type: AWS::IAM::Role
@@ -235,7 +220,7 @@ Resources:
     Source: ../../../modules/build-project.yaml
     Properties:
       Name: !Sub ${AppName}-build
-      ArtifactBucket: !Sub ${Artifacts::BucketName}
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
 
   Event:
     Type: LocalModule
@@ -249,8 +234,8 @@ Resources:
             detail:
               bucket:
                 name:
-                  - !Ref PipelineSource.BucketName
-                  - !Ref AppSource.BucketName
+                  - !GetAtt PipelineSource.BucketName
+                  - !GetAtt AppSource.BucketName
 
 Outputs:
 
