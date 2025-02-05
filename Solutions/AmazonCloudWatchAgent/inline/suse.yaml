@@ -11,13 +11,16 @@ Parameters:
   InstanceType:
     Description: EC2 instance type
     Type: String
-    Default: m4.2xlarge
+    Default: t3.medium
     ConstraintDescription: must be a valid EC2 instance type.
 
-  InstanceAMI:
-    Description: Managed AMI ID for EC2 Instance
-    Type: AWS::EC2::Image::Id
-    Default: ami-28e07e50
+  SUSEVersion:
+    Type: String
+    AllowedValues: 
+      - SLES15SP5
+    Default: SLES15SP5
+    Description: SUSE Linux Enterprise Server version to deploy
+
 
   IAMRole:
     Description: EC2 attached IAM role
@@ -36,6 +39,29 @@ Parameters:
 
   SubnetId:
     Type: AWS::EC2::Subnet::Id
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      SLES15SP5: ami-0d62a8e6541a2d491
+    us-east-2:
+      SLES15SP5: ami-05d1f1c3db2b2eb0c
+    us-west-1:
+      SLES15SP5: ami-060034d187be82d31
+    us-west-2:
+      SLES15SP5: ami-066c85d277ae33d38
+    eu-west-1:
+      SLES15SP5: ami-028867095499bce4b
+    eu-west-2:
+      SLES15SP5: ami-03d783398e1e54eb1
+    ap-northeast-1:
+      SLES15SP5: ami-05ef8ea5a07946994
+    ap-northeast-2:
+      SLES15SP5: ami-0f8bf550807d8d01a
+    ap-southeast-1:
+      SLES15SP5: ami-0db03992e79210b9f
+    ap-southeast-2:
+      SLES15SP5: ami-084fd76702fabcf2c
 
 Resources:
   EC2Instance:
@@ -133,15 +159,21 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref IAMRole
       KeyName: !Ref KeyName
-      ImageId: !Ref InstanceAMI
+      ImageId: !FindInMap 
+        - RegionMap
+        - !Ref 'AWS::Region'
+        - !Ref SUSEVersion
       SubnetId: !Ref SubnetId
-      SecurityGroups:
-        - !Ref InstanceSecurityGroup
+      SecurityGroupIds:
+        - !GetAtt InstanceSecurityGroup.GroupId
       UserData: !Base64
         Fn::Sub: |
           #!/bin/bash
           rpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/suse/amd64/latest/amazon-cloudwatch-agent.rpm
-          yum update -y
+          curl -O https://bootstrap.pypa.io/pip/3.6/get-pip.py
+          # Install pip using python3
+          python3 get-pip.py
+          export PATH=$PATH:/usr/local/bin
           pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
           cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
           cfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}

@@ -10,13 +10,16 @@
         "InstanceType": {
             "Description": "EC2 instance type",
             "Type": "String",
-            "Default": "m4.2xlarge",
+            "Default": "t3.medium",
             "ConstraintDescription": "must be a valid EC2 instance type."
         },
-        "InstanceAMI": {
-            "Description": "Managed AMI ID for EC2 Instance",
-            "Type": "AWS::EC2::Image::Id",
-            "Default": "ami-28e07e50"
+        "CentOSVersion": {
+            "Type": "String",
+            "AllowedValues": [
+                "CentOS9"
+            ],
+            "Default": "CentOS9",
+            "Description": "CentOS version to deploy"
         },
         "IAMRole": {
             "Description": "EC2 attached IAM role",
@@ -35,6 +38,40 @@
         },
         "SubnetId": {
             "Type": "AWS::EC2::Subnet::Id"
+        }
+    },
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {
+                "CentOS9": "ami-0705f7887207411ca"
+            },
+            "us-east-2": {
+                "CentOS9": "ami-0fe2c46c1dc3889fa"
+            },
+            "us-west-1": {
+                "CentOS9": "ami-0f4f63d1732fd4ef5"
+            },
+            "us-west-2": {
+                "CentOS9": "ami-00b231246df1d28de"
+            },
+            "eu-west-1": {
+                "CentOS9": "ami-05a7b8270231783b2"
+            },
+            "eu-west-2": {
+                "RHEL9": "ami-0086646e63ce5aaf1"
+            },
+            "ap-northeast-1": {
+                "RHEL9": "ami-0d8ee41b4b6f8343b"
+            },
+            "ap-northeast-2": {
+                "RHEL9": "ami-031e0786d2134adf6"
+            },
+            "ap-southeast-1": {
+                "RHEL9": "ami-0a9082a6b182a840b"
+            },
+            "ap-southeast-2": {
+                "RHEL9": "ami-05ffc8a6cb624035b"
+            }
         }
     },
     "Resources": {
@@ -120,19 +157,28 @@
                     "Ref": "KeyName"
                 },
                 "ImageId": {
-                    "Ref": "InstanceAMI"
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        {
+                            "Ref": "CentOSVersion"
+                        }
+                    ]
                 },
                 "SubnetId": {
                     "Ref": "SubnetId"
                 },
-                "SecurityGroups": [
+                "SecurityGroupIds": [
                     {
-                        "Ref": "InstanceSecurityGroup"
-                    }
+                        
+                        "Fn::GetAtt" : [ "InstanceSecurityGroup", "GroupId" ]
+                    } 
                 ],
                 "UserData": {
                     "Fn::Base64": {
-                        "Fn::Sub": "#!/bin/bash\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/centos/amd64/latest/amazon-cloudwatch-agent.rpm\nyum update -y\npip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\ncfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n"
+                        "Fn::Sub": "#!/bin/bash\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/centos/amd64/latest/amazon-cloudwatch-agent.rpm\nyum update -y\nyum install python3 -y\ncurl -O https://bootstrap.pypa.io/get-pip.py\n# Install pip using python3\npython3 get-pip.py\nexport PATH=$PATH:/usr/local/bin\npip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\ncfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n"
                     }
                 }
             }
