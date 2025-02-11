@@ -38,26 +38,53 @@ Constants:
   AppSourceArn: ${Constant::S3Arn}${AppSource.BucketName}
   ArtifactArn: ${Constant::S3Arn}${Artifacts.BucketName}
 
-Resources:
+Modules:
 
   PipelineSource:
-    Type: LocalModule
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-pipeline-source
       EnableEventBridge: true
 
   AppSource:
-    Type: LocalModule
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-app-source
 
   Artifacts:
-    Type: LocalModule
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-artifacts
+
+  Validate:
+    Description: Build project to validate compliance
+    Source: ../../../modules/build-project.yaml
+    Properties:
+      Name: !Sub ${AppName}-validate
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
+
+  Build:
+    Description: Build project for the application source
+    Source: ../../../modules/build-project.yaml
+    Properties:
+      Name: !Sub ${AppName}-build
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
+
+  Event:
+    Source: ../../../modules/pipeline-events.yaml
+    Properties:
+      PipelineName: !Ref Pipeline
+    Overrides:
+      Rule:
+        Properties:
+          EventPattern:
+            detail:
+              bucket:
+                name:
+                  - !GetAtt PipelineSource.BucketName
+                  - !GetAtt AppSource.BucketName
+
+Resources:
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -252,36 +279,6 @@ Resources:
             Resource:
               - !Sub ${AWS::StackId}
 
-  Validate:
-    Type: LocalModule
-    Description: Build project to validate compliance
-    Source: ../../../modules/build-project.yaml
-    Properties:
-      Name: !Sub ${AppName}-validate
-      ArtifactBucket: !Sub ${Artifacts.BucketName}
-
-  Build:
-    Type: LocalModule
-    Description: Build project for the application source
-    Source: ../../../modules/build-project.yaml
-    Properties:
-      Name: !Sub ${AppName}-build
-      ArtifactBucket: !Sub ${Artifacts.BucketName}
-
-  Event:
-    Type: LocalModule
-    Source: ../../../modules/pipeline-events.yaml
-    Properties:
-      PipelineName: !Ref Pipeline
-    Overrides:
-      Rule:
-        Properties:
-          EventPattern:
-            detail:
-              bucket:
-                name:
-                  - !GetAtt PipelineSource.BucketName
-                  - !GetAtt AppSource.BucketName
 
 Outputs:
 
