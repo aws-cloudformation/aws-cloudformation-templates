@@ -1,0 +1,9 @@
+Resources:
+  Source:
+    Type: LocalModule
+    Source: ../../modules/bucket.yaml
+    Properties:
+      Name: !Sub source
+      EnableEventBridge: false
+      CreateLogBucket: true
+      CreateReplicaBucket: true

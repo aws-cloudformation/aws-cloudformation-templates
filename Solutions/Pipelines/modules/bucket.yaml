@@ -7,17 +7,17 @@ Parameters:
     Description: This string will serve as a prefix for all resource names, which have the general form of Name-ResourceName-Region-Account. 
 
   CreateLogBucket:
-    Type: Boolean
+    Type: String
     Description: If true, create a bucket for access logs
     Default: false
 
   CreateReplicaBucket:
-    Type: Boolean
+    Type: String
     Description: If true, create a bucket for replicas
     Default: false
 
   EnableEventBridge:
-    Type: Boolean
+    Type: String
     Description: Set this to true to enable notifications
     Default: false
 
@@ -25,17 +25,17 @@ Conditions:
 
   IsLoggingEnabled:
     Fn::Equals:
-      - CreateLoggingBucket
+      - !Ref CreateLogBucket
       - true
 
   IsReplicationEnabled:
     Fn::Equals:
-      - CreateReplicaBucket
+      - !Ref CreateReplicaBucket
       - true
 
   IsEventBridgeEnabled:
     Fn::Equals:
-      - EnableEventBridge
+      - !Ref EnableEventBridge
       - true
 
 Constants:

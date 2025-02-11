@@ -11,12 +11,12 @@ Parameters:
     Description: The name of the team that owns this application.
   
   StageNames:
-    Type: CommaDelimitedList
+    Type: String
     Description: A list of stage names, for example, "dev,stage,prod"
     Default: prod
 
   Accounts:
-    Type: CommaDelimitedList
+    Type: String
     Description: A list of accounts to match the stage names. If left blank, the assumption is that this is a single-account pipeline that is being deployed to the currently configured AWS account. This template does not bootstrap those accounts. Bootstrapping has to be done prior to deploying this template.
     Default: ""
 
@@ -107,18 +107,20 @@ Resources:
                 Provider: CloudFormation
                 Version: 1
               Configuration:
-                ActionMode: CreateUpdate
+                ActionMode: CREATE_UPDATE
                 StackName: !Sub ${AWS::StackName}
-                Capabilities:
-                  - CAPABILITY_IAM
-                TemplatePath: SourceArtifact::multi-stage.yaml
-                ParameterOverrides:
-                  AppName: !Ref AppName
-                  TeamName: !Ref TeamName
-                  StageNames: !Ref StageNames
-                  Accounts: !Ref Accounts
-                  PipelineSourceKey: !Ref PipelineSourceKey
-                  AppSourceKey: !Ref AppSourceKey
+                Capabilities: CAPABILITY_IAM
+                RoleArn: !GetAtt PipelineMutateRole.Arn
+                TemplatePath: pipeline-source::template.yaml
+                ParameterOverrides: !Sub | 
+                  {
+                    "AppName": "${AppName}",
+                    "TeamName": "${TeamName}",
+                    "StageNames": "${StageNames}",
+                    "Accounts": "${Accounts}",
+                    "PipelineSourceKey": "${PipelineSourceKey}",
+                    "AppSourceKey": "${AppSourceKey}"
+                  }
               RunOrder: 1
         - Name: Build
           Actions:
@@ -159,11 +161,10 @@ Resources:
         Version: '2012-10-17'
 
   PipelinePolicy:
-    Type: AWS::IAM::Policy
+    Type: AWS::IAM::RolePolicy
     Properties:
       PolicyName: !Sub "${AppName}-pipeline-policy"
-      Roles:
-        - !Ref PipelineRole
+      RoleName: !Ref PipelineRole
       PolicyDocument:
         Statement:
           - Action:
@@ -205,6 +206,51 @@ Resources:
             Resource:
               - !GetAtt ValidateProject.Arn
               - !GetAtt BuildProject.Arn
+          - Action:
+              - iam:PassRole
+            Effect: Allow
+            Resource: !GetAtt PipelineMutateRole.Arn
+          - Action:
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+            Effect: Allow
+            Resource:
+              - !Sub ${AWS::StackId}
+
+  PipelineMutateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+        Version: '2012-10-17'
+
+  PipelineMutatePolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Sub "${AppName}-pipeline-mutate-policy"
+      RoleName: !Ref PipelineMutateRole
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:DeleteObject*
+              - s3:PutObject*
+              - s3:Abort*
+            Effect: Allow
+            Resource:
+              - !Sub ${Constant::ArtifactArn}
+              - !Sub ${Constant::ArtifactArn}/*
+          - Action:
+              - cloudformation:DescribeStacks
+            Effect: Allow
+            Resource:
+              - !Sub ${AWS::StackId}
 
   Validate:
     Type: LocalModule
@@ -241,4 +287,7 @@ Outputs:
 
   AppSourceBucket:
     Value: !Sub ${AppSource.BucketName}
+
+  PipelineSourceBucket:
+    Value: !Sub ${PipelineSource.BucketName}
 
