@@ -13,7 +13,7 @@ required menus to deploy the jobs and pipelines through the AWS console.
 
 This example contains two CloudFormation templates.
 
-### codebuild-template.yml
+### codebuild-template.yaml
 
 This template must be deployed first as the cloudformation-codepipeline-template
 has dependencies on the output of this template. This template deploys the
@@ -49,8 +49,8 @@ deployment.
 ```
 codebuild_stackname="cf-sample-codebuild"
 codepipeline_stackName="cf-sample-codepipeline"
-codebuild_template="cloudformation-codebuild-template.yml"
-codepipeline_template="cloudformation-codepipeline-template.yml"
+codebuild_template="cloudformation-codebuild-template.yaml"
+codepipeline_template="cloudformation-codepipeline-template.yaml"
 ```
 
 2. Deploy the CodeBuild cloud formation template
@@ -104,8 +104,8 @@ Application Architect
 ```
 codebuild_stackname="cf-sample-codebuild"
 codepipeline_stackName="cf-sample-codepipeline"
-codebuild_template="cloudformation-codebuild-template.yml"
-codepipeline_template="cloudformation-codepipeline-template.yml"
+codebuild_template="cloudformation-codebuild-template.yaml"
+codepipeline_template="cloudformation-codepipeline-template.yaml"
 ```
 
 #### Creating Deployment Resources
