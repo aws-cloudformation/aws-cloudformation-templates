@@ -1,6 +1,6 @@
 Description: This module creates a static website consisting of an S3 bucket and a CloudFront distribution.
 
-Parameters:
+Inputs:
 
   AppName: 
     Type: String
@@ -89,8 +89,9 @@ Resources:
               ExcludedRules:
                 - Name: NoUserAgent_HEADER
 
+Modules:
+
   Content:
-    Type: LocalModule
     Source: "compliant-bucket.yaml"
     Properties:
       AppName: !Sub ${AppName}-content
@@ -121,7 +122,6 @@ Resources:
             Version: "2012-10-17"
 
   CloudFrontLogs:
-    Type: LocalModule
     Source: "compliant-bucket.yaml"
     Properties:
       AppName: !Sub ${AppName}-cflogs

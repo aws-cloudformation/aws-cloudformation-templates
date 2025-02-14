@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 set -eou pipefail
 
 SCRIPT_DIR=$(dirname "$0")

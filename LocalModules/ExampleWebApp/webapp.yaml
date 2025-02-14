@@ -7,18 +7,14 @@ Parameters:
     Description: This name is used as a prefix for resource names
     Default: awscli-cfn-webapp
 
-Resources:
+Modules:
 
   Site:
-    Type: LocalModule
     Source: "modules/static-site.yaml"
     Properties:
       AppName: !Ref AppName
-    Overrides:
-      ContentBucket:
 
   Cognito:
-    Type: LocalModule
     Source: "modules/cognito.yaml"
     Properties:
       AppName: !Ref AppName
@@ -28,7 +24,6 @@ Resources:
         DependsOn: SiteDistribution
 
   Rest:
-    Type: LocalModule
     Source: "modules/rest-api.yaml"
     Properties:
       AppName: !Ref AppName
@@ -42,7 +37,6 @@ Resources:
           - JwtResourceOptions
 
   TestResource:
-    Type: LocalModule
     Source: "modules/api-resource.yaml"
     Metadata:
       Comment: This module handles all methods on the /test path on the API. The lambda function code is located in api/resources/test.  
@@ -62,14 +56,12 @@ Resources:
               TABLE_NAME: !Ref TestDataTable
 
   TestData:
-    Type: LocalModule
     Source: "modules/simple-table.yaml" 
     Properties:
       TableName: !Sub ${AppName}-test
       LambdaRole: !Ref TestResourceHandlerRole
 
   JwtResource:
-    Type: LocalModule
     Source: "modules/api-resource.yaml"
     Metadata:
       Comment: This module handles all methods on the /jwt path on the API. The lambda function code is located in api/resources/jwt

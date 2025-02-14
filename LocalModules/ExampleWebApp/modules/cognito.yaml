@@ -1,6 +1,6 @@
 Description: This module creates a simple Cognito User Pool, Domain, and App Client.
 
-Parameters:
+Inputs:
 
   AppName:
     Type: String
