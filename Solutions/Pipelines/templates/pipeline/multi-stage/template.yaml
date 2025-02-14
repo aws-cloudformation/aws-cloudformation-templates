@@ -34,9 +34,9 @@ Parameters:
 
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
-  PipelineSourceArn: ${Constant::S3Arn}${PipelineSource.BucketName}
-  AppSourceArn: ${Constant::S3Arn}${AppSource.BucketName}
-  ArtifactArn: ${Constant::S3Arn}${Artifacts.BucketName}
+  PipelineSourceArn: ${Const::S3Arn}${PipelineSource.BucketName}
+  AppSourceArn: ${Const::S3Arn}${AppSource.BucketName}
+  ArtifactArn: ${Const::S3Arn}${Artifacts.BucketName}
 
 Modules:
 
@@ -203,24 +203,24 @@ Resources:
               - s3:Abort*
             Effect: Allow
             Resource:
-              - !Sub ${Constant::ArtifactArn}
-              - !Sub ${Constant::ArtifactArn}/*
+              - !Sub ${Const::ArtifactArn}
+              - !Sub ${Const::ArtifactArn}/*
           - Action:
               - s3:GetObject*
               - s3:GetBucket*
               - s3:List*
             Effect: Allow
             Resource:
-              - !Sub ${Constant::AppSourceArn}
-              - !Sub ${Constant::AppSourceArn}/*
+              - !Sub ${Const::AppSourceArn}
+              - !Sub ${Const::AppSourceArn}/*
           - Action:
               - s3:GetObject*
               - s3:GetBucket*
               - s3:List*
             Effect: Allow
             Resource:
-              - !Sub ${Constant::PipelineSourceArn}
-              - !Sub ${Constant::PipelineSourceArn}/*
+              - !Sub ${Const::PipelineSourceArn}
+              - !Sub ${Const::PipelineSourceArn}/*
           - Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
@@ -271,8 +271,8 @@ Resources:
               - s3:Abort*
             Effect: Allow
             Resource:
-              - !Sub ${Constant::ArtifactArn}
-              - !Sub ${Constant::ArtifactArn}/*
+              - !Sub ${Const::ArtifactArn}
+              - !Sub ${Const::ArtifactArn}/*
           - Action:
               - cloudformation:DescribeStacks
             Effect: Allow

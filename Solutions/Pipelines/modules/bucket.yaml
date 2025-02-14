@@ -1,6 +1,6 @@
 Description: This module creates an S3 bucket that will pass common compliance checks. It can create an associated log bucket and replica bucket, and encrypts the contents of the bucket.
 
-Parameters:
+Inputs:
 
   Name:
     Type: String
@@ -42,8 +42,54 @@ Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
   BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"
   LogBucketName: "${Name}-logs-${AWS::Region}-${AWS::AccountId}"
-  LogBucketArn: "${Constant::S3Arn}${Constant::LogBucketName}"
+  LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
   ReplicaBucketName: "${Name}-replicas-${AWS::Region}-${AWS::AccountId}"
+
+Modules:
+
+  BucketAccess:
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::BucketName}
+
+  LogBucketAccess:
+    Condition: IsLoggingEnabled
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::LogBucketName}
+    Overrides:
+      Policy:
+        Properties:
+          PolicyDocument:
+            Statement:
+              - Action: s3:*
+                Condition:
+                  Bool:
+                    aws:SecureTransport: false
+                Effect: Deny
+                Principal:
+                  AWS: '*'
+                Resource:
+                  - !Sub ${Const::LogBucketArn}
+                  - !Sub ${Const::LogBucketArn}/*
+              - Action: s3:PutObject
+                Condition:
+                  ArnLike:
+                    aws:SourceArn: !Sub ${Const::LogBucketArn}/*
+                  StringEquals:
+                    aws:SourceAccount: !Ref AWS::AccountId
+                Effect: Allow
+                Principal:
+                  Service: logging.s3.amazonaws.com
+                Resource:
+                  - !Sub ${Const::LogBucketArn}/*
+
+  ReplicaBucketAccess:
+    Condition: IsReplicationEnabled
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::ReplicaBucketName}
+
 
 Resources:
 
@@ -65,7 +111,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      BucketName: !Sub ${Constant::LogBucketName}
+      BucketName: !Sub ${Const::LogBucketName}
       ObjectLockConfiguration:
         ObjectLockEnabled: Enabled
         Rule:
@@ -81,39 +127,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  LogBucketAccess:
-    Condition: IsLoggingEnabled
-    Type: LocalModule
-    Source: bucket-policy.yaml
-    Properties:
-      PolicyBucketName: !Sub ${Constant::LogBucketName}
-    Overrides:
-      Policy:
-        Properties:
-          PolicyDocument:
-            Statement:
-              - Action: s3:*
-                Condition:
-                  Bool:
-                    aws:SecureTransport: false
-                Effect: Deny
-                Principal:
-                  AWS: '*'
-                Resource:
-                  - !Sub ${Constant::LogBucketArn}
-                  - !Sub ${Constant::LogBucketArn}/*
-              - Action: s3:PutObject
-                Condition:
-                  ArnLike:
-                    aws:SourceArn: !Sub ${Constant::LogBucketArn}/*
-                  StringEquals:
-                    aws:SourceAccount: !Ref AWS::AccountId
-                Effect: Allow
-                Principal:
-                  Service: logging.s3.amazonaws.com
-                Resource:
-                  - !Sub ${Constant::LogBucketArn}/*
-
   Bucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -125,7 +138,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      BucketName: !Sub ${Constant::BucketName}
+      BucketName: !Sub ${Const::BucketName}
 
       NotificationConfiguration:
         Fn::If:
@@ -156,11 +169,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  BucketAccess:
-    Type: LocalModule 
-    Source: bucket-policy.yaml
-    Properties:
-      PolicyBucketName: !Sub ${Constant::BucketName}
 
   ReplicaBucket:
     Condition: IsReplicationEnabled
@@ -191,13 +199,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  ReplicaBucketAccess:
-    Condition: IsReplicationEnabled
-    Type: LocalModule
-    Source: bucket-policy.yaml
-    Properties:
-      PolicyBucketName: !Sub ${Constant::ReplicaBucketName}
-
   ReplicationPolicy:
     Condition: IsReplicationEnabled
     Type: AWS::IAM::RolePolicy
@@ -208,19 +209,19 @@ Resources:
               - s3:GetReplicationConfiguration
               - s3:ListBucket
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:s3:::${Constant::BucketName}
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::BucketName}
           - Action:
               - s3:GetObjectVersionForReplication
               - s3:GetObjectVersionAcl
               - s3:GetObjectVersionTagging
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:s3:::${Constant::BucketName}/*
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::BucketName}/*
           - Action:
               - s3:ReplicateObject
               - s3:ReplicateDelete
               - s3:ReplicationTags
             Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:s3:::${Constant::ReplicaBucketName}/*
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::ReplicaBucketName}/*
         Version: "2012-10-17"
       PolicyName: bucket-replication-policy
       RoleName: !Ref ReplicationRole
@@ -240,6 +241,6 @@ Resources:
         Version: "2012-10-17"
       Path: /
 
-Outputs:
+References:
   BucketName: !Ref Bucket
 
