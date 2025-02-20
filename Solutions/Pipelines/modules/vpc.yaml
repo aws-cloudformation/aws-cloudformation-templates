@@ -10,22 +10,31 @@ Inputs:
     Type: CommaDelimitedList
 
 Modules:
-
   PublicSubnet:
     Map: !Ref PublicCidrBlocks
-    Source: ./subnet-module.yaml
+    Source: ./subnet.yaml
     Properties:
-      VPC: !Ref VPC
       SubnetCidrBlock: $MapValue
       AZSelection: $MapIndex
+      VPCId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+      IsPublic: true
+    Overrides:
+      DefaultRoute:
+        DependsOn: GatewayAttachment
 
   PrivateSubnet:
     Map: !Ref PrivateCidrBlocks
-    Source: ./subnet-module.yaml
+    Source: ./subnet.yaml
     Properties:
-      VPC: !Ref VPC
       SubnetCidrBlock: $MapValue
       AZSelection: $MapIndex
+      VPCId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+      IsPublic: false
+    Overrides:
+      DefaultRoute:
+        DependsOn: GatewayAttachment
 
 Resources:
 
@@ -36,4 +45,17 @@ Resources:
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+References:
+  VpcId: !Ref VPC
+
 

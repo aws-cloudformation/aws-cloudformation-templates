@@ -40,6 +40,13 @@ Constants:
 
 Modules:
 
+  Network:
+    Source: ../../../modules/vpc.yaml
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      PrivateCidrBlocks: 10.0.0.0/18,10.0.64.0/18
+      PublicCidrBlocks: 10.0.128.0/18,10.0.192.0/18
+
   PipelineSource:
     Source: ../../../modules/bucket.yaml
     Properties:
@@ -62,6 +69,11 @@ Modules:
     Properties:
       Name: !Sub ${AppName}-validate
       ArtifactBucket: !Sub ${Artifacts.BucketName}
+    Overrides:
+      Project:
+        Properties:
+          VpcConfig:
+            VpcId: !GetAtt Network.VpcId
 
   Build:
     Description: Build project for the application source
@@ -69,6 +81,11 @@ Modules:
     Properties:
       Name: !Sub ${AppName}-build
       ArtifactBucket: !Sub ${Artifacts.BucketName}
+    Overrides:
+      Project:
+        Properties:
+          VpcConfig:
+            VpcId: !GetAtt Network.VpcId
 
   Event:
     Source: ../../../modules/pipeline-events.yaml
