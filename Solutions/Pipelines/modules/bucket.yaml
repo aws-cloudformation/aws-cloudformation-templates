@@ -1,6 +1,6 @@
 Description: This module creates an S3 bucket that will pass common compliance checks. It can create an associated log bucket and replica bucket, and encrypts the contents of the bucket.
 
-Inputs:
+Parameters:
 
   Name:
     Type: String
@@ -241,6 +241,6 @@ Resources:
         Version: "2012-10-17"
       Path: /
 
-References:
+Outputs:
   BucketName: !Ref Bucket
 

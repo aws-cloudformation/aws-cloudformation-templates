@@ -1,4 +1,4 @@
-Inputs:
+Parameters:
 
   CidrBlock:
     Type: String
@@ -55,7 +55,7 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
-References:
+Outputs:
   VpcId: !Ref VPC
 
 
