@@ -23,6 +23,21 @@
             ],
             "Default": "dev"
         },
+        "VpcId": {
+            "Description": "Please specify the VPC ID.",
+            "Type": "AWS::EC2::VPC::Id",
+            "ConstraintDescription": "Must be a valid VPC ID"
+        },
+        "PublicSubnetId1": {
+            "Description": "Please specify first public subnet ID.",
+            "Type": "AWS::EC2::Subnet::Id",
+            "ConstraintDescription": "Must be a valid subnet ID in the selected VPC"
+        },
+        "PublicSubnetId2": {
+            "Description": "Please specify second public subnet ID.",
+            "Type": "AWS::EC2::Subnet::Id",
+            "ConstraintDescription": "Must be a valid subnet ID in the selected VPC"
+        },
         "AppName": {
             "Description": "Application environment name.",
             "Type": "String",
@@ -96,7 +111,7 @@
         "KeyPairName": {
             "Description": "EC2 KeyPair.",
             "Type": "AWS::EC2::KeyPair::KeyName",
-            "Default": "keypair"
+            "ConstraintDescription": "Must be the name of an existing EC2 KeyPair"
         },
         "BootVolSize": {
             "Description": "EC2 Instance Boot volume size.",
@@ -303,11 +318,6 @@
             "Type": "String",
             "Default": "/health.html"
         },
-        "LambdaFunctionVersion": {
-            "Description": "AWS Lambda@Edge function version.",
-            "Type": "String",
-            "Default": "1"
-        },
         "LoggingBucketVersioning": {
             "Description": "The versioning state of an Amazon S3 bucket. If you enable versioning, you must suspend versioning to disable it.",
             "Type": "String",
@@ -479,12 +489,20 @@
                 "BucketName": {
                     "Fn::Sub": "${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}"
                 },
+                "OwnershipControls": {
+                    "Rules": [
+                        {
+                            "ObjectOwnership": "ObjectWriter"
+                        }
+                    ]
+                },
                 "PublicAccessBlockConfiguration": {
                     "BlockPublicAcls": true,
                     "BlockPublicPolicy": true,
                     "IgnorePublicAcls": true,
                     "RestrictPublicBuckets": true
                 },
+                "AccessControl": "LogDeliveryWrite",
                 "BucketEncryption": {
                     "ServerSideEncryptionConfiguration": [
                         {
@@ -558,23 +576,11 @@
                 "ImageId": {
                     "Ref": "EC2ImageId"
                 },
-                "AvailabilityZone": {
-                    "Fn::Select": [
-                        "0",
-                        {
-                            "Fn::GetAZs": {
-                                "Ref": "AWS::Region"
-                            }
-                        }
-                    ]
-                },
                 "InstanceType": {
                     "Ref": "EC2InstanceType"
                 },
                 "SubnetId": {
-                    "Fn::ImportValue": {
-                        "Fn::Sub": "${AppName}-vpc-${Environment}-PublicSubnet1ID"
-                    }
+                    "Ref": "PublicSubnetId1"
                 },
                 "BlockDeviceMappings": [
                     {
@@ -621,9 +627,7 @@
             "Properties": {
                 "GroupDescription": "EC2 Instance Security Group",
                 "VpcId": {
-                    "Fn::ImportValue": {
-                        "Fn::Sub": "${AppName}-vpc-${Environment}-VPC-ID"
-                    }
+                    "Ref": "VpcId"
                 },
                 "Tags": [
                     {
@@ -689,14 +693,10 @@
                 ],
                 "Subnets": [
                     {
-                        "Fn::ImportValue": {
-                            "Fn::Sub": "${AppName}-vpc-${Environment}-PublicSubnet1ID"
-                        }
+                        "Ref": "PublicSubnetId1"
                     },
                     {
-                        "Fn::ImportValue": {
-                            "Fn::Sub": "${AppName}-vpc-${Environment}-PublicSubnet2ID"
-                        }
+                        "Ref": "PublicSubnetId2"
                     }
                 ],
                 "SecurityGroups": [
@@ -772,9 +772,7 @@
                 },
                 "Protocol": "HTTP",
                 "VpcId": {
-                    "Fn::ImportValue": {
-                        "Fn::Sub": "${AppName}-vpc-${Environment}-VPC-ID"
-                    }
+                    "Ref": "VpcId"
                 },
                 "Tags": [
                     {
@@ -807,7 +805,7 @@
                 "LoadBalancerArn": {
                     "Ref": "OriginALB"
                 },
-                "Port": "443",
+                "Port": 443,
                 "Protocol": "HTTPS",
                 "Certificates": [
                     {
@@ -850,9 +848,7 @@
             "Properties": {
                 "GroupDescription": "Allow external access to ALB",
                 "VpcId": {
-                    "Fn::ImportValue": {
-                        "Fn::Sub": "${AppName}-vpc-${Environment}-VPC-ID"
-                    }
+                    "Ref": "VpcId"
                 },
                 "Tags": [
                     {
@@ -876,9 +872,9 @@
                 "GroupId": {
                     "Ref": "ALBExternalAccessSG"
                 },
-                "ToPort": "443",
+                "ToPort": 443,
                 "IpProtocol": "tcp",
-                "FromPort": "443",
+                "FromPort": 443,
                 "CidrIp": "0.0.0.0/0"
             }
         },
@@ -888,9 +884,9 @@
                 "GroupId": {
                     "Ref": "ALBExternalAccessSG"
                 },
-                "ToPort": "80",
+                "ToPort": 80,
                 "IpProtocol": "tcp",
-                "FromPort": "80",
+                "FromPort": 80,
                 "CidrIp": "0.0.0.0/0"
             }
         },
@@ -900,9 +896,9 @@
                 "GroupId": {
                     "Ref": "ALBExternalAccessSG"
                 },
-                "ToPort": "8080",
+                "ToPort": 8080,
                 "IpProtocol": "tcp",
-                "FromPort": "8080",
+                "FromPort": 8080,
                 "DestinationSecurityGroupId": {
                     "Ref": "EC2InstanceSG"
                 }
@@ -929,8 +925,8 @@
                                 "Ref": "OriginALB"
                             },
                             "CustomOriginConfig": {
-                                "HTTPPort": "80",
-                                "HTTPSPort": "443",
+                                "HTTPPort": 80,
+                                "HTTPSPort": 443,
                                 "OriginProtocolPolicy": {
                                     "Ref": "OriginProtocolPolicy"
                                 },
@@ -1061,49 +1057,11 @@
             }
         },
         "LambdaEdgeVersion": {
-            "Type": "Custom::LambdaVersion",
+            "Type": "AWS::Lambda::Version",
             "Properties": {
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "LambdaEdgeVersionFunction",
-                        "Arn"
-                    ]
-                },
                 "FunctionName": {
                     "Ref": "LambdaEdgeFunction"
-                },
-                "LambdaCodeVersion": {
-                    "Ref": "LambdaFunctionVersion"
                 }
-            }
-        },
-        "LambdaEdgeVersionFunction": {
-            "Type": "AWS::Lambda::Function",
-            "Metadata": {
-                "guard": {
-                    "SuppressedRules": [
-                        "LAMBDA_INSIDE_VPC"
-                    ]
-                }
-            },
-            "Properties": {
-                "Description": "A custom Lambda@Edge Version function",
-                "FunctionName": {
-                    "Fn::Sub": "${AppName}-lambda-edge-version-${Environment}"
-                },
-                "Handler": "index.handler",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "LambdaEdgeIAMRole",
-                        "Arn"
-                    ]
-                },
-                "MemorySize": 128,
-                "Timeout": 30,
-                "Code": {
-                    "ZipFile": "var AWS = require('aws-sdk');\nvar response = require('cfn-response');\nexports.handler = (event, context) => {\n  console.log(\"Request received:\\n\", JSON.stringify(event));\n  if (event.RequestType == 'Delete') {\n    return response.send(event, context, response.SUCCESS);\n  }\n  var lambda = new AWS.Lambda();\n  lambda.publishVersion({FunctionName: event.ResourceProperties.FunctionName}).promise().then((data) => {\n    return response.send(event, context, response.SUCCESS, {Version: data.Version}, data.FunctionArn);\n  }).catch((e) => {\n    return response.send(event, context, response.FAILED, e);\n  });\n};\n"
-                },
-                "Runtime": "nodejs20.x"
             }
         }
     },
