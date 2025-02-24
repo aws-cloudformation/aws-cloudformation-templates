@@ -242,5 +242,6 @@ Resources:
       Path: /
 
 Outputs:
-  BucketName: !Ref Bucket
+  BucketName:
+    Value: !Ref Bucket
 

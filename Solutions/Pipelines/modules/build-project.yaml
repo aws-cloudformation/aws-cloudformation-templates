@@ -66,5 +66,6 @@ Resources:
       PolicyName: !Sub "${Name}-policy"
 
 Outputs:
-  ProjectName: !Ref Project
+  ProjectName:
+    Value: !Ref Project
 

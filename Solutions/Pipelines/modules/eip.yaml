@@ -1,0 +1,10 @@
+Resources:
+  Address:
+    Type: AWS::EC2::EIP
+    
+Outputs:
+  AllocationId:
+    Value: !GetAtt Address.AllocationId
+  PublicIp:
+    Value: !GetAtt Address.PublicIp
+

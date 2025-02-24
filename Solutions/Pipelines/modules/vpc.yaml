@@ -9,7 +9,27 @@ Parameters:
   PublicCidrBlocks:
     Type: CommaDelimitedList
 
+  NatAllocationIds:
+    Type: List<String>
+    Default: ""
+    Description: Optionally provide a list of pre-provisioned EIP allocation IDs
+
+Conditions:
+  NeedToCreateEIPs:
+    Fn::Equals:
+      - !Ref NatAllocationIds
+      - ""
+
 Modules:
+
+  EIP:
+    Condition: NeedToCreateEIPs
+    Source: ./eip.yaml
+    Map: !Ref PublicCidrBlocks
+    Overrides:
+      Address:
+        DependsOn: GatewayAttachment
+
   PublicSubnet:
     Map: !Ref PublicCidrBlocks
     Source: ./subnet.yaml
@@ -19,6 +39,13 @@ Modules:
       VPCId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
       IsPublic: true
+      NATIPID: 
+        Fn::If:
+          - NeedToCreateEIPs
+          - !GetAtt EIP[$MapIndex].AllocationId
+          - Fn::Select:
+            - NatAllocationIds
+            - $MapIndex
     Overrides:
       DefaultRoute:
         DependsOn: GatewayAttachment
@@ -32,9 +59,11 @@ Modules:
       VPCId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
       IsPublic: false
+      PublicNATGateway: !GetAtt PublicSubnet[$MapIndex].NATGateway
     Overrides:
       DefaultRoute:
         DependsOn: GatewayAttachment
+  
 
 Resources:
 
@@ -55,7 +84,9 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
+
 Outputs:
-  VpcId: !Ref VPC
+  VpcId:
+    Value: !Ref VPC
 
 
