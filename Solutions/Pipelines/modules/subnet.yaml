@@ -101,3 +101,5 @@ Resources:
 Outputs:
   NATGateway:
     Value: !Ref NATGateway
+  SubnetId:
+    Value: !GetAtt Subnet.SubnetId

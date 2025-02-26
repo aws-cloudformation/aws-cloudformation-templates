@@ -84,9 +84,12 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
 
-
 Outputs:
   VpcId:
     Value: !Ref VPC
+  PrivateSubnetIds:
+    Value: !GetAtt PrivateSubnet[].SubnetId
+  DefaultSecurityGroupId:
+    Value: !GetAtt VPC.DefaultSecurityGroup
 
 

@@ -74,6 +74,9 @@ Modules:
         Properties:
           VpcConfig:
             VpcId: !GetAtt Network.VpcId
+            Subnets: !GetAtt Network.PrivateSubnetIds
+            SecurityGroupIds: 
+              - !GetAtt Network.DefaultSecurityGroupId
 
   Build:
     Description: Build project for the application source
@@ -86,6 +89,9 @@ Modules:
         Properties:
           VpcConfig:
             VpcId: !GetAtt Network.VpcId
+            Subnets: !GetAtt Network.PrivateSubnetIds
+            SecurityGroupIds: 
+              - !GetAtt Network.DefaultSecurityGroupId
 
   Event:
     Source: ../../../modules/pipeline-events.yaml
@@ -290,6 +296,21 @@ Resources:
             Resource:
               - !Sub ${Const::ArtifactArn}
               - !Sub ${Const::ArtifactArn}/*
+          - Action:
+              - s3:DeleteBucketPolicy
+            Effect: Allow
+            Resource:
+              - !Sub ${Const::AppSourceArn}
+              - !Sub ${Const::ArtifactArn}
+          - Action:
+              - iam:GetRolePolicy
+            Effect: Allow
+            Resource:
+              - !GetAtt Build.RoleArn
+              - !GetAtt Validate.RoleArn
+              - !GetAtt Event.RoleArn
+              - !GetAtt PipelineRole.Arn
+              - !GetAtt PipelineMutateRole.Arn
           - Action:
               - cloudformation:DescribeStacks
             Effect: Allow

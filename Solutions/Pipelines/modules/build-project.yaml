@@ -10,6 +10,7 @@ Resources:
 
   Project:
     Type: AWS::CodeBuild::Project
+    DependsOn: Policy
     Properties:
       Name: !Ref Name 
       Artifacts:
@@ -54,7 +55,7 @@ Resources:
               - codebuild:StopBuildBatch
             Effect: Allow
             Resource:
-              - !GetAtt Project.Arn
+              - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Name}
           - Action:
               - s3:Get*
               - s3:List*
@@ -62,10 +63,27 @@ Resources:
             Resource: 
               - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
               - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/*"
+          - Action:
+              - ec2:DescribeSecurityGroups
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeDhcpOptions
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeVpcs
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - ec2:CreateNetworkInterfacePermission
+            Effect: Allow
+            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
         Version: 2012-10-17
       PolicyName: !Sub "${Name}-policy"
 
 Outputs:
   ProjectName:
     Value: !Ref Project
+  RoleArn:
+    Value: !GetAtt Role.Arn
 

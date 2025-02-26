@@ -53,4 +53,7 @@ Resources:
           RoleArn: !GetAtt Role.Arn
           Id: !Sub codepipeline-${PipelineName}
 
+Outputs:
+  RoleArn:
+    Value: !GetAtt Role.Arn
 

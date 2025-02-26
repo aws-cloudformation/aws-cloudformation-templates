@@ -1,7 +1,7 @@
 *-pkg.yaml
 dist
-deploy.sh
 .DS_Store
+.local/
 
 
 
