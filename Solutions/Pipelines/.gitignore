@@ -1,0 +1,7 @@
+*-pkg.yaml
+dist
+.DS_Store
+.local/
+
+
+
