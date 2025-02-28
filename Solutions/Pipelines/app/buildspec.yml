@@ -1,0 +1,13 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - pwd
+      - ls
+      - echo "Install phase..."
+  build:
+    commands:
+      - pwd
+      - ls
+      - echo "Build phase..."
+

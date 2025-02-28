@@ -1,0 +1,59 @@
+Parameters:
+
+  PipelineName:
+    Type: String
+
+Resources:
+
+  Role:
+    Type: AWS::IAM::Role
+    Metadata:
+      Description: This role allows event bridge to start the pipeline execution when it sees a notification from S3 indicating a source change.
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+
+  RolePolicy:
+    Type: AWS::IAM::RolePolicy
+    Metadata:
+      Description: This policy allows event bridge to start the pipeline execution when it sees a notification from S3 indicating a source change.
+    Properties:
+      PolicyName: eventbridge-pipeline-execution
+      RoleName: !Ref Role
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action: codepipeline:StartPipelineExecution
+            Resource: !Sub arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}
+
+  Rule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+      Name: EnabledS3SourceRule
+      State: ENABLED
+      Targets:
+        -
+          Arn: !Sub arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${PipelineName}
+          RoleArn: !GetAtt Role.Arn
+          Id: !Sub codepipeline-${PipelineName}
+
+Outputs:
+  RoleArn:
+    Value: !GetAtt Role.Arn
+
