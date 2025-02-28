@@ -14,11 +14,20 @@ Parameters:
     Default: ""
     Description: Optionally provide a list of pre-provisioned EIP allocation IDs
 
+  Tags:
+    Type: List
+    Description: A list of 'Key' 'Value' pairs
+
 Conditions:
   NeedToCreateEIPs:
     Fn::Equals:
       - !Ref NatAllocationIds
       - ""
+
+Constants:
+  SourceTag:
+  - Key: CloudFormationModuleSource
+    Value: Solutions/Pipelines/modules/vpc.yaml
 
 Modules:
 
@@ -74,6 +83,10 @@ Resources:
       EnableDnsHostnames: true
       EnableDnsSupport: true
       InstanceTenancy: default
+      Tags:
+        Fn::Merge:
+          - !Ref Tags
+          - !Ref Const::SourceTag
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -83,6 +96,15 @@ Resources:
     Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
+
+  S3VPCEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref VPC
+      SubnetIds: !GetAtt PrivateSubnet[].SubnetId
+      RouteTableIds: !GetAtt PrivateSubnet[].RouteTableId
+      ServiceName: 'com.amazonaws.us-west-2.s3'
+      VpcEndpointType: Gateway
 
 Outputs:
   VpcId:

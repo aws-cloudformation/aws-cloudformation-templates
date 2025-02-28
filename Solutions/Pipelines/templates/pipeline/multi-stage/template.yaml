@@ -37,6 +37,15 @@ Constants:
   PipelineSourceArn: ${Const::S3Arn}${PipelineSource.BucketName}
   AppSourceArn: ${Const::S3Arn}${AppSource.BucketName}
   ArtifactArn: ${Const::S3Arn}${Artifacts.BucketName}
+  CodeBuildVpcConfig:
+    VpcId: !GetAtt Network.VpcId
+    Subnets: !GetAtt Network.PrivateSubnetIds
+    SecurityGroupIds: 
+      - !GetAtt Network.DefaultSecurityGroupId
+  LambdaVpcConfig:
+    SubnetIds: !GetAtt Network.PrivateSubnetIds
+    SecurityGroupIds: 
+      - !GetAtt Network.DefaultSecurityGroupId
 
 Modules:
 
@@ -46,22 +55,44 @@ Modules:
       CidrBlock: 10.0.0.0/16
       PrivateCidrBlocks: 10.0.0.0/18,10.0.64.0/18
       PublicCidrBlocks: 10.0.128.0/18,10.0.192.0/18
+      Tags:
+        - Key: Name
+          Value: !Ref AppName
+
+  Empty:
+    Source: ../../../modules/empty-function.yaml
+    Properties:
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      FunctionName: !Sub Empty-${AppName}
+      CodePath: ../../../modules/empty.py
+      BucketArns:
+        Fn::Merge:
+          - Fn::Merge:
+            - !GetAtt PipelineSource.Arns
+            - !GetAtt ApplicationSource.Arns
+          - !GetAtt Artifacts.Arns 
 
   PipelineSource:
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-pipeline-source
       EnableEventBridge: true
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
 
   AppSource:
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-app-source
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
 
   Artifacts:
     Source: ../../../modules/bucket.yaml
     Properties:
       Name: !Sub ${AppName}-artifacts
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
 
   Validate:
     Description: Build project to validate compliance
@@ -72,11 +103,7 @@ Modules:
     Overrides:
       Project:
         Properties:
-          VpcConfig:
-            VpcId: !GetAtt Network.VpcId
-            Subnets: !GetAtt Network.PrivateSubnetIds
-            SecurityGroupIds: 
-              - !GetAtt Network.DefaultSecurityGroupId
+          VpcConfig: !Ref Const::CodeBuildVpcConfig
 
   Build:
     Description: Build project for the application source
@@ -87,11 +114,7 @@ Modules:
     Overrides:
       Project:
         Properties:
-          VpcConfig:
-            VpcId: !GetAtt Network.VpcId
-            Subnets: !GetAtt Network.PrivateSubnetIds
-            SecurityGroupIds: 
-              - !GetAtt Network.DefaultSecurityGroupId
+          VpcConfig: !Ref Const::CodeBuildVpcConfig
 
   Event:
     Source: ../../../modules/pipeline-events.yaml
@@ -201,6 +224,8 @@ Resources:
 
   PipelineRole:
     Type: AWS::IAM::Role
+    Metadata:
+      Comment: This policy has admin access because the pipeline is self-mutating, and it needs to be able to update any resource in the stack. Scoped permissions would be so wide that they are basically the same as admin, and if you miss anything, you risk ending up in an UPDATE_ROLLBACK_FAILED state.
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -209,6 +234,8 @@ Resources:
             Principal:
               Service: codepipeline.amazonaws.com
         Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   PipelinePolicy:
     Type: AWS::IAM::RolePolicy
@@ -277,6 +304,8 @@ Resources:
             Principal:
               Service: cloudformation.amazonaws.com
         Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   PipelineMutatePolicy:
     Type: AWS::IAM::RolePolicy

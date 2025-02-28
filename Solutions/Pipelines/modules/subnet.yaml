@@ -103,3 +103,5 @@ Outputs:
     Value: !Ref NATGateway
   SubnetId:
     Value: !GetAtt Subnet.SubnetId
+  RouteTableId:
+    Value: !GetAtt RouteTable.RouteTableId

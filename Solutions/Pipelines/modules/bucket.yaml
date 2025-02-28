@@ -21,6 +21,21 @@ Parameters:
     Description: Set this to true to enable notifications
     Default: false
 
+  VpcConfig:
+    Type: Object
+    Description: VPC Config for lambda functions
+    Default: ""
+
+  EmptyOnDelete:
+    Type: String
+    Description: If true, delete all objects when the bucket is deleted
+    Default: false
+
+  EmptyBucketHandlerArn:
+    Type: String
+    Default: ""
+    Description: If this is not set, a new function will be created
+
 Conditions:
 
   IsLoggingEnabled:
@@ -37,6 +52,21 @@ Conditions:
     Fn::Equals:
       - !Ref EnableEventBridge
       - true
+
+  EmptyOnDelete:
+    Fn::Equals:
+      - !Ref EmptyOnDelete
+      - true 
+
+  EmptyLogOnDelete:
+    Fn::And:
+      - Condition: EmptyOnDelete
+      - Condition: IsLoggingEnabled
+
+  EmptyReplicaOnDelete:
+    Fn::And:
+      - Condition: EmptyOnDelete
+      - Condition: IsReplicationEnabled
 
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
@@ -90,6 +120,30 @@ Modules:
     Properties:
       PolicyBucketName: !Sub ${Const::ReplicaBucketName}
 
+  Empty:
+    Source: empty-bucket.yaml
+    Condition: EmptyOnDelete
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !GetAtt Bucket.Arn
+      FunctionName: !Sub Empty-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+
+  EmptyLog:
+    Condition: EmptyLogOnDelete
+    Source: empty-bucket.yaml
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !GetAtt LogBucket.Arn
+      FunctionName: !Sub EmptyLog-${Name} 
+
+  EmptyReplica:
+    Condition: EmptyReplicaOnDelete
+    Source: empty-bucket.yaml
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !GetAtt ReplicaBucket.Arn
+      FunctionName: !Sub EmptyReplica-${Name} 
 
 Resources:
 
@@ -241,7 +295,23 @@ Resources:
         Version: "2012-10-17"
       Path: /
 
+
 Outputs:
   BucketName:
     Value: !Ref Bucket
-
+  Arns:
+    Value:
+      - !Sub ${Bucket.Arn}
+      - !Sub ${Bucket.Arn}/*
+      - Fn::If:
+        - IsLoggingEnabled
+        - 
+          - !Sub ${LogBucket.Arn}
+          - !Sub ${LogBucket.Arn}/*
+        - !Ref AWS::NoValue
+      - Fn::If:
+        - IsReplicationEnabled
+        - 
+          - !Sub ${ReplicaBucket.Arn}
+          - !Sub ${ReplicaBucket.Arn}/*
+        - !Ref AWS::NoValue
