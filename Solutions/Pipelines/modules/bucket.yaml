@@ -305,13 +305,11 @@ Outputs:
       - !Sub ${Bucket.Arn}/*
       - Fn::If:
         - IsLoggingEnabled
-        - 
-          - !Sub ${LogBucket.Arn}
+        - - !Sub ${LogBucket.Arn}
           - !Sub ${LogBucket.Arn}/*
         - !Ref AWS::NoValue
       - Fn::If:
         - IsReplicationEnabled
-        - 
-          - !Sub ${ReplicaBucket.Arn}
+        - - !Sub ${ReplicaBucket.Arn}
           - !Sub ${ReplicaBucket.Arn}/*
         - !Ref AWS::NoValue

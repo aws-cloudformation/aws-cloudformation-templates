@@ -67,10 +67,10 @@ Modules:
       CodePath: ../../../modules/empty.py
       BucketArns:
         Fn::Merge:
+          - !GetAtt Artifacts.Arns
           - Fn::Merge:
             - !GetAtt PipelineSource.Arns
-            - !GetAtt ApplicationSource.Arns
-          - !GetAtt Artifacts.Arns 
+            - !GetAtt AppSource.Arns
 
   PipelineSource:
     Source: ../../../modules/bucket.yaml
@@ -79,6 +79,7 @@ Modules:
       EnableEventBridge: true
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !GetAtt Empty.Arn
 
   AppSource:
     Source: ../../../modules/bucket.yaml
@@ -86,6 +87,7 @@ Modules:
       Name: !Sub ${AppName}-app-source
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !GetAtt Empty.Arn
 
   Artifacts:
     Source: ../../../modules/bucket.yaml
@@ -93,6 +95,7 @@ Modules:
       Name: !Sub ${AppName}-artifacts
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !GetAtt Empty.Arn
 
   Validate:
     Description: Build project to validate compliance

@@ -101,7 +101,6 @@ Resources:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
       VpcId: !Ref VPC
-      SubnetIds: !GetAtt PrivateSubnet[].SubnetId
       RouteTableIds: !GetAtt PrivateSubnet[].RouteTableId
       ServiceName: 'com.amazonaws.us-west-2.s3'
       VpcEndpointType: Gateway
