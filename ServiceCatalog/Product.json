@@ -245,7 +245,7 @@
             "Properties": {
                 "TagOptionId": {
                     "Fn::ImportValue": {
-                        "Fn::Sub": "${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptions"
+                        "Fn::Sub": "${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptionsDept"
                     }
                 },
                 "ResourceId": {

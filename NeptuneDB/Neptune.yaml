@@ -525,7 +525,7 @@ Resources:
             Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
-              - logs:DescriptLogStreams
+              - logs:DescribeLogStreams
               - logs:GetLogEvents
             Resource:
               - !Sub arn:${AWS::Partition}:logs:*:*:log-group:/aws/neptune/*:log-stream:*
