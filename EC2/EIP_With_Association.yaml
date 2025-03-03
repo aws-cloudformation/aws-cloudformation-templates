@@ -89,8 +89,8 @@ Resources:
       SubnetId: !Select
         - 0
         - !Ref Subnets
-      SecurityGroups:
-        - !Ref InstanceSecurityGroup
+      SecurityGroupIds:
+        - !GetAtt InstanceSecurityGroup.GroupId
       KeyName: !Ref KeyName
       ImageId: !Ref LatestAmiId
 
