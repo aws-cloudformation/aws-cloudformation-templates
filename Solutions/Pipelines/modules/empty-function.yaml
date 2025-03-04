@@ -84,7 +84,8 @@ Resources:
                   ArnEquals:
                      lambda:SourceFunctionArn: !Sub ${Const::FunctionArn} 
 
+
 Outputs:
   Arn: 
-    Value: !GetAtt Handler.Arn
+    Value: !Ref Const::FunctionArn
 

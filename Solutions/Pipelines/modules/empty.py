@@ -5,6 +5,7 @@
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 
+import logging
 import json
 import re
 import boto3
@@ -19,16 +20,18 @@ VERSION_ID_MARKER = "VersionIdMarker"
 KEY_MARKER = "KeyMarker"
 KEY = "Key"
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def empty(event, context):
     "Empty bucket contents on Delete"
     try:
-        print(f"boto3 version: {boto3.__version__}")
-        print(f"botocore version: {botocore.__version__}")
-        print(event)
+        logger.info("boto3 version: %s", boto3.__version__)
+        logger.info("botocore version: %s", botocore.__version__)
+        logger.info(event)
 
         if event["RequestType"] != "Delete":
-            print("Not a delete")
+            logger.info("Not a delete")
             send(event, context, SUCCESS, {})
             return
 
@@ -36,6 +39,8 @@ def empty(event, context):
         if BUCKET_ARN not in props:
             raise Exception(f"Missing {BUCKET_ARN}")
         bucket_name = props[BUCKET_ARN].replace("arn:aws:s3:::", "")
+
+        is_test = props.get("Test", False)
 
         s3 = boto3.client("s3")
 
@@ -50,12 +55,12 @@ def empty(event, context):
             if next_key_marker:
                 args[KEY_MARKER] = next_key_marker
                 args[VERSION_ID_MARKER] = next_version_id_marker
-            print("About to list object versions:", args)
+            logger.info("About to list object versions: %s", args)
             contents = s3.list_object_versions(**args)
 
             if VERSIONS not in contents and DELETE_MARKERS not in contents:
                 msg = f"{VERSIONS} or {DELETE_MARKERS} not found in contents"
-                print(msg)
+                logger.info(msg)
                 break
 
             if VERSIONS in contents:
@@ -73,7 +78,7 @@ def empty(event, context):
                     objects_to_delete.append(d)
 
             if len(objects_to_delete) == 0:
-                print("objects_to_delete is empty")
+                logger.info("objects_to_delete is empty")
                 break
 
             if contents["IsTruncated"] is True:
@@ -81,13 +86,13 @@ def empty(event, context):
                 next_key_marker = contents["NextKeyMarker"]
                 next_version_id_marker = contents["NextVersionIdMarker"]
                 if next_key_marker is None or next_version_id_marker is None:
-                    print("NextKeyMarker and NextVersionIdMarker not set")
+                    logger.info("NextKeyMarker and NextVersionIdMarker not set")
                     break
             else:
                 has_more_results = False
 
         # Delete the contents
-        print("Bucket has %s objects to delete", len(objects_to_delete))
+        logger.info("Bucket has %s objects to delete", len(objects_to_delete))
 
         # Break into chunks of 1000 or less
         def chunks(lst, n):
@@ -96,14 +101,18 @@ def empty(event, context):
                 yield lst[i : i + n]
 
         for chunk in chunks(objects_to_delete, 1000):
-            print("About to delete chunk: %s", json.dumps(chunk, default=str))
+            logger.info("About to delete chunk: %s", json.dumps(chunk, default=str))
             r = s3.delete_objects(Bucket=bucket_name, Delete={"Objects": chunk})
-            print("delete_objects response: %s", json.dumps(r, default=str))
+            logger.info("delete_objects response: %s", json.dumps(r, default=str))
 
-        print("Done")
+        logger.info("Done")
+        if is_test:
+            return
         send(event, context, SUCCESS, {})
     except Exception as e:
-        print(e)
+        logger.exception(e)
+        if is_test:
+            raise e
         send(event, context, FAILED, {})
 
 
@@ -140,8 +149,8 @@ def send(
 
     json_response_body = json.dumps(response_body)
 
-    print("Response body:")
-    print(json_response_body)
+    logger.info("Response body:")
+    logger.info(json_response_body)
 
     headers = {"content-type": "", "content-length": str(len(json_response_body))}
 
@@ -149,12 +158,12 @@ def send(
         response = http.request(
             "PUT", response_url, headers=headers, body=json_response_body
         )
-        print("Status code:", response.status)
+        logger.info("Status code: %s", response.status)
 
     except Exception as e:
 
-        print(
-            "send(..) failed executing http.request(..):",
+        logger.exception(
+            "send(..) failed executing http.request(..): %s",
             mask_credentials_and_signature(e),
         )
 

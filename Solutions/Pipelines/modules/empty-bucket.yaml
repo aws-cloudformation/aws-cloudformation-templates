@@ -12,6 +12,10 @@ Parameters:
     Default: ""
     Description: A new function will be created if this is not set
 
+  FunctionName:
+    Type: String
+    Description: This is required if the HandlerArn is not set.
+
 Conditions:
 
   HandlerArn:
@@ -32,6 +36,7 @@ Modules:
     Condition: NeedHandler
     Properties:
       VpcConfig: !Ref VpcConfig
+      FunctionName: !Ref FunctionName
       
 
 Resources:

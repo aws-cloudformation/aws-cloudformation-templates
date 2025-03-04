@@ -32,7 +32,7 @@ cd ../../..
 
 function get_bucket {
     aws cloudformation describe-stacks \
-        --stack-name awscli-multi-stage \
+        --stack-name $APP_NAME \
         --query "Stacks[].Outputs[*].[OutputKey,OutputValue]" \
         --output text | grep $1 | sed "s/$1\t//g"
 }

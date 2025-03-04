@@ -34,52 +34,48 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
         Version: '2012-10-17'
-
-  Policy:
-    Type: AWS::IAM::RolePolicy
-    Properties:
-      RoleName: !Ref Role
-      PolicyDocument:
-        Statement:
-          - Action:
-              - logs:*
-            Effect: Allow
-            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Name}:*
-          - Action:
-              - codebuild:StartBuild
-              - codebuild:BatchGetBuilds
-              - codebuild:StopBuild
-              - codebuild:RetryBuild
-              - codebuild:StartBuildBatch
-              - codebuild:RetryBuildBatch
-              - codebuild:StopBuildBatch
-            Effect: Allow
-            Resource:
-              - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Name}
-          - Action:
-              - s3:Get*
-              - s3:List*
-            Effect: Allow
-            Resource: 
-              - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
-              - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/*"
-          - Action:
-              - ec2:DescribeSecurityGroups
-              - ec2:CreateNetworkInterface
-              - ec2:DescribeDhcpOptions
-              - ec2:DescribeNetworkInterfaces
-              - ec2:DeleteNetworkInterface
-              - ec2:DescribeSubnets
-              - ec2:DescribeSecurityGroups
-              - ec2:DescribeVpcs
-            Effect: Allow
-            Resource: "*"
-          - Action:
-              - ec2:CreateNetworkInterfacePermission
-            Effect: Allow
-            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
-        Version: 2012-10-17
-      PolicyName: !Sub "${Name}-policy"
+      Policies:
+        - PolicyName: !Sub ${Name}
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:*
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Name}:*
+              - Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StopBuild
+                  - codebuild:RetryBuild
+                  - codebuild:StartBuildBatch
+                  - codebuild:RetryBuildBatch
+                  - codebuild:StopBuildBatch
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Name}
+              - Action:
+                  - s3:Get*
+                  - s3:List*
+                Effect: Allow
+                Resource: 
+                  - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+                  - !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/*"
+              - Action:
+                  - ec2:DescribeSecurityGroups
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeDhcpOptions
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - ec2:CreateNetworkInterfacePermission
+                Effect: Allow
+                Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
+            Version: 2012-10-17
 
 Outputs:
   ProjectName:

@@ -72,8 +72,10 @@ Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
   BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"
   LogBucketName: "${Name}-logs-${AWS::Region}-${AWS::AccountId}"
-  LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
   ReplicaBucketName: "${Name}-replicas-${AWS::Region}-${AWS::AccountId}"
+  BucketArn: "${Const::S3Arn}${Const::BucketName}"
+  LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
+  ReplicaBucketArn: "${Const::S3Arn}${Const::ReplicaBucketName}"
 
 Modules:
 
@@ -125,25 +127,37 @@ Modules:
     Condition: EmptyOnDelete
     Properties:
       VpcConfig: !Ref VpcConfig
-      BucketArn: !GetAtt Bucket.Arn
+      BucketArn: !Sub ${Const::S3Arn}${Const::BucketName} 
       FunctionName: !Sub Empty-${Name} 
       HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: Bucket
 
   EmptyLog:
     Condition: EmptyLogOnDelete
     Source: empty-bucket.yaml
     Properties:
       VpcConfig: !Ref VpcConfig
-      BucketArn: !GetAtt LogBucket.Arn
+      BucketArn: !Sub ${Const::S3Arn}${Const::LogBucketName} 
       FunctionName: !Sub EmptyLog-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: LogBucket
 
   EmptyReplica:
     Condition: EmptyReplicaOnDelete
     Source: empty-bucket.yaml
     Properties:
       VpcConfig: !Ref VpcConfig
-      BucketArn: !GetAtt ReplicaBucket.Arn
+      BucketArn: !Sub ${Const::S3Arn}${Const::ReplicaBucketName} 
       FunctionName: !Sub EmptyReplica-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: ReplicaBucket
+
 
 Resources:
 
@@ -243,7 +257,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      BucketName: !Sub ${Constant:ReplicaBucketName}
+      BucketName: !Sub ${Const:ReplicaBucketName}
       ObjectLockEnabled: false
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -301,15 +315,15 @@ Outputs:
     Value: !Ref Bucket
   Arns:
     Value:
-      - !Sub ${Bucket.Arn}
-      - !Sub ${Bucket.Arn}/*
+      - !Sub ${Const::BucketArn}
+      - !Sub ${Const::BucketArn}/*
       - Fn::If:
         - IsLoggingEnabled
-        - - !Sub ${LogBucket.Arn}
-          - !Sub ${LogBucket.Arn}/*
+        - - !Sub ${Const::LogBucketArn}
+          - !Sub ${Const::LogBucketArn}/*
         - !Ref AWS::NoValue
       - Fn::If:
         - IsReplicationEnabled
-        - - !Sub ${ReplicaBucket.Arn}
-          - !Sub ${ReplicaBucket.Arn}/*
+        - - !Sub ${Const::ReplicaBucketArn}
+          - !Sub ${Const::ReplicaBucketArn}/*
         - !Ref AWS::NoValue

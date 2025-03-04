@@ -30,6 +30,10 @@ Parameters:
     Description: The name of the S3 object key for the application source
     Default: app-source.zip
 
+  S3PrefixList:
+    Type: String
+    Default: pl-68a54001
+
   # Note: For each new parameter added here, also add it to the SelfMutate action
 
 Constants:
@@ -46,6 +50,9 @@ Constants:
     SubnetIds: !GetAtt Network.PrivateSubnetIds
     SecurityGroupIds: 
       - !GetAtt Network.DefaultSecurityGroupId
+      - !GetAtt LambdaSecurityGroup.GroupId
+  FunctionArnPrefix: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:"
+  EmptyFunctionArn: ${Const::FunctionArnPrefix}Empty-${AppName}
 
 Modules:
 
@@ -58,6 +65,9 @@ Modules:
       Tags:
         - Key: Name
           Value: !Ref AppName
+    Overrides:
+      VPC:
+        DependsOn: PipelineMutateRole
 
   Empty:
     Source: ../../../modules/empty-function.yaml
@@ -65,12 +75,15 @@ Modules:
       VpcConfig: !Ref Const::LambdaVpcConfig
       FunctionName: !Sub Empty-${AppName}
       CodePath: ../../../modules/empty.py
-      BucketArns:
+      BucketArns: 
         Fn::Merge:
           - !GetAtt Artifacts.Arns
-          - Fn::Merge:
-            - !GetAtt PipelineSource.Arns
-            - !GetAtt AppSource.Arns
+          - !GetAtt PipelineSource.Arns
+          - !GetAtt AppSource.Arns
+          - !GetAtt TestDelete.Arns
+    Overrides:
+      HandlerRole:
+        DependsOn: PipelineMutateRole
 
   PipelineSource:
     Source: ../../../modules/bucket.yaml
@@ -79,7 +92,7 @@ Modules:
       EnableEventBridge: true
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
-      EmptyBucketHandlerArn: !GetAtt Empty.Arn
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
 
   AppSource:
     Source: ../../../modules/bucket.yaml
@@ -87,7 +100,7 @@ Modules:
       Name: !Sub ${AppName}-app-source
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
-      EmptyBucketHandlerArn: !GetAtt Empty.Arn
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
 
   Artifacts:
     Source: ../../../modules/bucket.yaml
@@ -95,7 +108,15 @@ Modules:
       Name: !Sub ${AppName}-artifacts
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
-      EmptyBucketHandlerArn: !GetAtt Empty.Arn
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+
+  TestDelete:
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-test-delete
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
 
   Validate:
     Description: Build project to validate compliance
@@ -105,8 +126,11 @@ Modules:
       ArtifactBucket: !Sub ${Artifacts.BucketName}
     Overrides:
       Project:
+        DependsOn: PipelineMutateRole
         Properties:
           VpcConfig: !Ref Const::CodeBuildVpcConfig
+      Role:
+        DependsOn: PipelineMutateRole
 
   Build:
     Description: Build project for the application source
@@ -116,8 +140,11 @@ Modules:
       ArtifactBucket: !Sub ${Artifacts.BucketName}
     Overrides:
       Project:
+        DependsOn: PipelineMutateRole
         Properties:
           VpcConfig: !Ref Const::CodeBuildVpcConfig
+      Role:
+        DependsOn: PipelineMutateRole
 
   Event:
     Source: ../../../modules/pipeline-events.yaml
@@ -195,7 +222,8 @@ Resources:
                     "StageNames": "${StageNames}",
                     "Accounts": "${Accounts}",
                     "PipelineSourceKey": "${PipelineSourceKey}",
-                    "AppSourceKey": "${AppSourceKey}"
+                    "AppSourceKey": "${AppSourceKey}",
+                    "S3PrefixList": "${S3PrefixList}"
                   }
               RunOrder: 1
         - Name: Build
@@ -227,8 +255,6 @@ Resources:
 
   PipelineRole:
     Type: AWS::IAM::Role
-    Metadata:
-      Comment: This policy has admin access because the pipeline is self-mutating, and it needs to be able to update any resource in the stack. Scoped permissions would be so wide that they are basically the same as admin, and if you miss anything, you risk ending up in an UPDATE_ROLLBACK_FAILED state.
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -240,65 +266,10 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
 
-  PipelinePolicy:
-    Type: AWS::IAM::RolePolicy
-    Properties:
-      PolicyName: !Sub "${AppName}-pipeline-policy"
-      RoleName: !Ref PipelineRole
-      PolicyDocument:
-        Statement:
-          - Action:
-              - s3:GetObject*
-              - s3:GetBucket*
-              - s3:List*
-              - s3:DeleteObject*
-              - s3:PutObject*
-              - s3:Abort*
-            Effect: Allow
-            Resource:
-              - !Sub ${Const::ArtifactArn}
-              - !Sub ${Const::ArtifactArn}/*
-          - Action:
-              - s3:GetObject*
-              - s3:GetBucket*
-              - s3:List*
-            Effect: Allow
-            Resource:
-              - !Sub ${Const::AppSourceArn}
-              - !Sub ${Const::AppSourceArn}/*
-          - Action:
-              - s3:GetObject*
-              - s3:GetBucket*
-              - s3:List*
-            Effect: Allow
-            Resource:
-              - !Sub ${Const::PipelineSourceArn}
-              - !Sub ${Const::PipelineSourceArn}/*
-          - Action:
-              - codebuild:StartBuild
-              - codebuild:BatchGetBuilds
-              - codebuild:StopBuild
-              - codebuild:RetryBuild
-              - codebuild:StartBuildBatch
-              - codebuild:RetryBuildBatch
-              - codebuild:StopBuildBatch
-            Effect: Allow
-            Resource:
-              - !GetAtt ValidateProject.Arn
-              - !GetAtt BuildProject.Arn
-          - Action:
-              - iam:PassRole
-            Effect: Allow
-            Resource: !GetAtt PipelineMutateRole.Arn
-          - Action:
-              - cloudformation:DescribeStacks
-              - cloudformation:UpdateStack
-            Effect: Allow
-            Resource:
-              - !Sub ${AWS::StackId}
-
   PipelineMutateRole:
     Type: AWS::IAM::Role
+    Metadata:
+      Comment: This policy has admin access because the pipeline is self-mutating, and it needs to be able to update any resource in the stack. Scoped permissions would be so wide that they are basically the same as admin, and if you miss anything, you risk ending up in an UPDATE_ROLLBACK_FAILED state.
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -310,45 +281,14 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
 
-  PipelineMutatePolicy:
-    Type: AWS::IAM::RolePolicy
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      PolicyName: !Sub "${AppName}-pipeline-mutate-policy"
-      RoleName: !Ref PipelineMutateRole
-      PolicyDocument:
-        Statement:
-          - Action:
-              - s3:GetObject*
-              - s3:GetBucket*
-              - s3:List*
-              - s3:DeleteObject*
-              - s3:PutObject*
-              - s3:Abort*
-            Effect: Allow
-            Resource:
-              - !Sub ${Const::ArtifactArn}
-              - !Sub ${Const::ArtifactArn}/*
-          - Action:
-              - s3:DeleteBucketPolicy
-            Effect: Allow
-            Resource:
-              - !Sub ${Const::AppSourceArn}
-              - !Sub ${Const::ArtifactArn}
-          - Action:
-              - iam:GetRolePolicy
-            Effect: Allow
-            Resource:
-              - !GetAtt Build.RoleArn
-              - !GetAtt Validate.RoleArn
-              - !GetAtt Event.RoleArn
-              - !GetAtt PipelineRole.Arn
-              - !GetAtt PipelineMutateRole.Arn
-          - Action:
-              - cloudformation:DescribeStacks
-            Effect: Allow
-            Resource:
-              - !Sub ${AWS::StackId}
-
+      VpcId: !GetAtt Network.VpcId
+      GroupDescription: Connect lambda to s3 endpoint
+      SecurityGroupEgress: 
+        - DestinationPrefixListId: !Ref S3PrefixList
+          IpProtocol: -1
 
 Outputs:
 
