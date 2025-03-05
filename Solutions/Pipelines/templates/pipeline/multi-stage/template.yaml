@@ -106,6 +106,8 @@ Modules:
     Overrides:
       Bucket:
         DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
 
   Artifacts:
     Source: ../../../modules/bucket.yaml
@@ -117,6 +119,8 @@ Modules:
     Overrides:
       Bucket:
         DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
 
   Validate:
     Description: Build project to validate compliance

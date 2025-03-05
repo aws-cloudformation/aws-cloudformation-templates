@@ -18,8 +18,13 @@ Parameters:
 
   NATIPID:
     Type: String
-    Description: If set, use this allocation id instead of creating an EIP
     Default: ""
+    Description: If CreateNATIPID is false, this should be set
+
+  CreateNATIPID:
+    Type: Boolean
+    Default: false
+    Description: If true, create an EIP instead of using NATIPID
 
   PublicNATGateway:
     Type: String
@@ -33,8 +38,8 @@ Conditions:
       - true
   CreateNATIP:
     Fn::Equals:
-      - !Ref NATIPID
-      - ""
+      - !Ref CreateNATIPID
+      - true
 
 Resources:
 

@@ -74,6 +74,11 @@ Conditions:
           - EmptyBucketHandlerArn
           - ""
 
+  NeedHandler:
+    - Fn::Equals:
+        - EmptyBucketHandlerArn
+        - ""
+
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
   BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"

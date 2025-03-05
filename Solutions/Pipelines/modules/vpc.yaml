@@ -31,14 +31,6 @@ Constants:
 
 Modules:
 
-  EIP:
-    Condition: NeedToCreateEIPs
-    Source: ./eip.yaml
-    Map: !Ref PublicCidrBlocks
-    Overrides:
-      Address:
-        DependsOn: GatewayAttachment
-
   PublicSubnet:
     Map: !Ref PublicCidrBlocks
     Source: ./subnet.yaml
@@ -50,11 +42,16 @@ Modules:
       IsPublic: true
       NATIPID: 
         Fn::If:
-          - CreateNATIP
-          - !GetAtt EIP[$MapIndex].AllocationId
+          - NeedToCreateEIPs
+          - ""
           - Fn::Select:
-            - NatAllocationIds
+            - !Ref NatAllocationIds
             - $MapIndex
+      CreateNATIPID:
+        Fn::If:
+          - NeedToCreateEIPs
+          - true
+          - false
     Overrides:
       DefaultRoute:
         DependsOn: GatewayAttachment
@@ -69,6 +66,7 @@ Modules:
       InternetGatewayId: !Ref InternetGateway
       IsPublic: false
       PublicNATGateway: !GetAtt PublicSubnet[$MapIndex].NATGateway
+      CreateNATIPID: false
     Overrides:
       DefaultRoute:
         DependsOn: GatewayAttachment
