@@ -33,6 +33,7 @@ Modules:
       FunctionName: !Ref FunctionName
       BucketArns:
         - !Ref BucketArn
+        - !Sub ${BucketArn}/*
       
 
 Resources:
