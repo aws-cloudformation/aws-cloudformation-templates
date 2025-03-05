@@ -68,6 +68,12 @@ Conditions:
       - Condition: EmptyOnDelete
       - Condition: IsReplicationEnabled
 
+  HasEmptyBucketHandlerArn:
+    Fn::Not:
+      - Fn::Equals:
+          - EmptyBucketHandlerArn
+          - ""
+
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
   BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"
@@ -132,7 +138,12 @@ Modules:
       HandlerArn: !Ref EmptyBucketHandlerArn
     Overrides:
       CustomResource:
-        DependsOn: Bucket
+        DependsOn: 
+          - Bucket
+          - Fn::If:
+            - NeedHandler
+            - EmptyBucketHandler
+            - !Ref AWS::NoValue
 
   EmptyLog:
     Condition: EmptyLogOnDelete

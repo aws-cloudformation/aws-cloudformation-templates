@@ -1,4 +1,4 @@
-"Empty bucket contents"
+"Empty the contents of a bucket"
 
 # pylint: disable=too-many-locals,broad-exception-caught
 # pylint: disable=broad-exception-raised,too-many-branches

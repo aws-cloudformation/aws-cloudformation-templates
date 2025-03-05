@@ -1,9 +1,10 @@
-Resources:
-  Source:
-    Type: LocalModule
+Modules:
+  Content:
     Source: ../../modules/bucket.yaml
     Properties:
-      Name: !Sub source
+      Name: compliant-test
       EnableEventBridge: false
-      CreateLogBucket: true
-      CreateReplicaBucket: true
+      CreateLogBucket: false
+      CreateReplicaBucket: false
+      EmptyOnDelete: true
+

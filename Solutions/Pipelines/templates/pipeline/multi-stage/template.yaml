@@ -76,11 +76,7 @@ Modules:
       FunctionName: !Sub Empty-${AppName}
       CodePath: ../../../modules/empty.py
       BucketArns: 
-        Fn::Merge:
-          - !GetAtt Artifacts.Arns
-          - !GetAtt PipelineSource.Arns
-          - !GetAtt AppSource.Arns
-          - !GetAtt TestDelete.Arns
+        - !Sub "arn:${AWS::Partition}:s3:::${AppName}*"
     Overrides:
       HandlerRole:
         DependsOn: PipelineMutateRole
@@ -93,6 +89,12 @@ Modules:
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
       EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
+          
 
   AppSource:
     Source: ../../../modules/bucket.yaml
@@ -101,6 +103,9 @@ Modules:
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
       EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
 
   Artifacts:
     Source: ../../../modules/bucket.yaml
@@ -109,14 +114,9 @@ Modules:
       EmptyOnDelete: true
       VpcConfig: !Ref Const::LambdaVpcConfig
       EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
-
-  TestDelete:
-    Source: ../../../modules/bucket.yaml
-    Properties:
-      Name: !Sub ${AppName}-test-delete
-      EmptyOnDelete: true
-      VpcConfig: !Ref Const::LambdaVpcConfig
-      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
 
   Validate:
     Description: Build project to validate compliance
@@ -149,7 +149,7 @@ Modules:
   Event:
     Source: ../../../modules/pipeline-events.yaml
     Properties:
-      PipelineName: !Ref Pipeline
+      PipelineName: !Ref AppName
     Overrides:
       Rule:
         Properties:
@@ -164,6 +164,7 @@ Resources:
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
+    DependsOn: NetworkVPC
     Properties:
       Name: !Ref AppName
       RoleArn: !GetAtt PipelineRole.Arn

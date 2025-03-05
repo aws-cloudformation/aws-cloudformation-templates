@@ -17,12 +17,6 @@ Parameters:
     Description: This is required if the HandlerArn is not set.
 
 Conditions:
-
-  HandlerArn:
-    Type: String
-    Default: ""
-
-Conditions:
   
   NeedHandler:
     Fn::Equals:
@@ -37,6 +31,8 @@ Modules:
     Properties:
       VpcConfig: !Ref VpcConfig
       FunctionName: !Ref FunctionName
+      BucketArns:
+        - !Ref BucketArn
       
 
 Resources:
@@ -48,7 +44,7 @@ Resources:
       ServiceToken: 
         Fn::If:
           - NeedHandler
-          - !GetAtt EmptyBucket.Arn
+          - !Sub ${EmptyBucket.Arn}
           - !Ref HandlerArn
       Properties:
         BucketArn: !Ref BucketArn

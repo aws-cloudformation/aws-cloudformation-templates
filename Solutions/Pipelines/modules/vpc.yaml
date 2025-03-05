@@ -50,7 +50,7 @@ Modules:
       IsPublic: true
       NATIPID: 
         Fn::If:
-          - NeedToCreateEIPs
+          - CreateNATIP
           - !GetAtt EIP[$MapIndex].AllocationId
           - Fn::Select:
             - NatAllocationIds
