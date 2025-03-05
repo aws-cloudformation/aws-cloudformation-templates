@@ -264,8 +264,8 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType
       SubnetId: !Ref SubnetId
-      SecurityGroups:
-        - !Ref InstanceSecurityGroup
+      SecurityGroupIds:
+        - !GetAtt InstanceSecurityGroup.GroupId
       KeyName: !Ref KeyName
       ImageId: !FindInMap
         - AWSRegionArch2AMI
