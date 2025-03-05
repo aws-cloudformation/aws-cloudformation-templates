@@ -75,213 +75,11 @@
         },
         "SubnetId": {
             "Type": "AWS::EC2::Subnet::Id"
-        }
-    },
-    "Mappings": {
-        "AWSInstanceType2Arch": {
-            "t1.micro": {
-                "Arch": "HVM64"
-            },
-            "t2.nano": {
-                "Arch": "HVM64"
-            },
-            "t2.micro": {
-                "Arch": "HVM64"
-            },
-            "t2.small": {
-                "Arch": "HVM64"
-            },
-            "t2.medium": {
-                "Arch": "HVM64"
-            },
-            "t2.large": {
-                "Arch": "HVM64"
-            },
-            "m1.small": {
-                "Arch": "HVM64"
-            },
-            "m1.medium": {
-                "Arch": "HVM64"
-            },
-            "m1.large": {
-                "Arch": "HVM64"
-            },
-            "m1.xlarge": {
-                "Arch": "HVM64"
-            },
-            "m2.xlarge": {
-                "Arch": "HVM64"
-            },
-            "m2.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "m2.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "m3.medium": {
-                "Arch": "HVM64"
-            },
-            "m3.large": {
-                "Arch": "HVM64"
-            },
-            "m3.xlarge": {
-                "Arch": "HVM64"
-            },
-            "m3.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "m4.large": {
-                "Arch": "HVM64"
-            },
-            "m4.xlarge": {
-                "Arch": "HVM64"
-            },
-            "m4.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "m4.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "m4.10xlarge": {
-                "Arch": "HVM64"
-            },
-            "c1.medium": {
-                "Arch": "HVM64"
-            },
-            "c1.xlarge": {
-                "Arch": "HVM64"
-            },
-            "c3.large": {
-                "Arch": "HVM64"
-            },
-            "c3.xlarge": {
-                "Arch": "HVM64"
-            },
-            "c3.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "c3.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "c3.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "c4.large": {
-                "Arch": "HVM64"
-            },
-            "c4.xlarge": {
-                "Arch": "HVM64"
-            },
-            "c4.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "c4.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "c4.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "r3.large": {
-                "Arch": "HVM64"
-            },
-            "r3.xlarge": {
-                "Arch": "HVM64"
-            },
-            "r3.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "r3.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "r3.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "i2.xlarge": {
-                "Arch": "HVM64"
-            },
-            "i2.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "i2.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "i2.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "d2.xlarge": {
-                "Arch": "HVM64"
-            },
-            "d2.2xlarge": {
-                "Arch": "HVM64"
-            },
-            "d2.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "d2.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "hi1.4xlarge": {
-                "Arch": "HVM64"
-            },
-            "hs1.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "cr1.8xlarge": {
-                "Arch": "HVM64"
-            },
-            "cc2.8xlarge": {
-                "Arch": "HVM64"
-            }
         },
-        "AWSRegionArch2AMI": {
-            "us-east-1": {
-                "HVM64": "ami-08c40ec9ead489470"
-            },
-            "us-west-2": {
-                "HVM64": "ami-017fecd1353bcc96e"
-            },
-            "us-west-1": {
-                "HVM64": "ami-02ea247e531eb3ce6"
-            },
-            "eu-west-1": {
-                "HVM64": "ami-096800910c1b781ba"
-            },
-            "eu-west-2": {
-                "HVM64": "ami-0f540e9f488cfa27d"
-            },
-            "eu-west-3": {
-                "HVM64": "ami-0493936afbe820b28"
-            },
-            "eu-central-1": {
-                "HVM64": "ami-0caef02b518350c8b"
-            },
-            "ap-northeast-1": {
-                "HVM64": "ami-03f4fa076d2981b45"
-            },
-            "ap-northeast-2": {
-                "HVM64": "ami-0e9bfdb247cc8de84"
-            },
-            "ap-northeast-3": {
-                "HVM64": "ami-08c2ee02329b72f26"
-            },
-            "ap-southeast-1": {
-                "HVM64": "ami-07651f0c4c315a529"
-            },
-            "ap-southeast-2": {
-                "HVM64": "ami-09a5c873bc79530d9"
-            },
-            "ap-south-1": {
-                "HVM64": "ami-062df10d14676e201"
-            },
-            "us-east-2": {
-                "HVM64": "ami-097a2df4ac947655f"
-            },
-            "ca-central-1": {
-                "HVM64": "ami-0a7154091c5c6623e"
-            },
-            "sa-east-1": {
-                "HVM64": "ami-04b3c23ec8efcc2d6"
-            }
+        "InstanceAMI": {
+            "Description": "Managed AMI ID for EC2 Instance",
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/canonical/ubuntu/eks-pro/22.04/1.29/stable/current/amd64/hvm/ebs-gp2/ami-id"
         }
     },
     "Resources": {
@@ -340,30 +138,19 @@
                 "SubnetId": {
                     "Ref": "SubnetId"
                 },
-                "SecurityGroups": [
+                "SecurityGroupIds": [
                     {
-                        "Ref": "InstanceSecurityGroup"
+                        "Fn::GetAtt": [
+                            "InstanceSecurityGroup",
+                            "GroupId"
+                        ]
                     }
                 ],
                 "KeyName": {
                     "Ref": "KeyName"
                 },
                 "ImageId": {
-                    "Fn::FindInMap": [
-                        "AWSRegionArch2AMI",
-                        {
-                            "Ref": "AWS::Region"
-                        },
-                        {
-                            "Fn::FindInMap": [
-                                "AWSInstanceType2Arch",
-                                {
-                                    "Ref": "InstanceType"
-                                },
-                                "Arch"
-                            ]
-                        }
-                    ]
+                    "Ref": "InstanceAMI"
                 },
                 "UserData": {
                     "Fn::Base64": {
