@@ -41,15 +41,6 @@ Parameters:
     Type: String
     Default: arn:aws:rds:us-east-1:01234567890123:cluster-snapshot:dms-sampledb-snapshot
     Description: The ARN of the Aurora DB Cluster Snapshot used to populate the Aurora DB Cluster that will be used as the source for the DMS task.
-  
-  DBPassword:
-    NoEcho: 'true'
-    Description: Password for the master user of the snapshot
-    Type: String
-    MinLength: '8'
-    MaxLength: '41'
-    AllowedPattern: '[a-zA-Z0-9]*'
-    ConstraintDescription: must contain only alphanumeric characters.
 
 Conditions:
   NotExistsDMSVPCRole: !Equals
@@ -327,7 +318,7 @@ Resources:
     Properties:
       EndpointType: source
       EngineName: AURORA
-      Password: !Ref DBPassword
+      Password: '{{resolve:secretsmanager:aurora-source-enpoint-password:SecretString:password}}'
       Port: 3306
       ServerName: !GetAtt AuroraCluster.Endpoint.Address
       Username: admin
