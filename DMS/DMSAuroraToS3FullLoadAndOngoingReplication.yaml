@@ -40,6 +40,7 @@ Parameters:
   SnapshotIdentifier:
     Type: String
     Default: arn:aws:rds:us-east-1:01234567890123:cluster-snapshot:dms-sampledb-snapshot
+    Description: The ARN of the Aurora DB Cluster Snapshot used to populate the Aurora DB Cluster that will be used as the source for the DMS task.
 
 Conditions:
   NotExistsDMSVPCRole: !Equals
@@ -153,15 +154,6 @@ Resources:
           ToPort: "3306"
           CidrIp: 10.0.0.0/24
 
-  AuroraClusterParameterGroup:
-    Type: AWS::RDS::DBClusterParameterGroup
-    Properties:
-      Description: Enables bin_log prerequisites
-      Family: aurora5.6
-      Parameters:
-        binlog_format: ROW
-        binlog_checksum: NONE
-
   AuroraCluster:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
@@ -169,7 +161,6 @@ Resources:
     Properties:
       DatabaseName: dms_sample
       BackupRetentionPeriod: 7
-      DBClusterParameterGroupName: !Ref AuroraClusterParameterGroup
       DBSubnetGroupName: !Ref AuroraDBSubnetGroup
       Engine: aurora-postgresql
       SnapshotIdentifier: !Ref SnapshotIdentifier
