@@ -1,0 +1,112 @@
+Parameters:
+
+  AZSelection:
+    Type: Number
+
+  SubnetCidrBlock:
+    Type: String
+
+  VPCId:
+    Type: String
+
+  InternetGatewayId:
+    Type: String
+
+  IsPublic:
+    Type: String
+    Description: true for public, false for private
+
+  NATIPID:
+    Type: String
+    Default: ""
+    Description: If CreateNATIPID is false, this should be set
+
+  CreateNATIPID:
+    Type: Boolean
+    Default: false
+    Description: If true, create an EIP instead of using NATIPID
+
+  PublicNATGateway:
+    Type: String
+    Description: A Ref to the gateway in the public subnet
+    Default: ""
+
+Conditions:
+  IsPublic:
+    Fn::Equals:
+      - !Ref IsPublic
+      - true
+  CreateNATIP:
+    Fn::Equals:
+      - !Ref CreateNATIPID
+      - true
+
+Resources:
+
+  EIP:
+    Condition: CreateNATIP
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      guard:
+        SuppressedRules:
+          - SUBNET_AUTO_ASSIGN_PUBLIC_IP_DISABLED
+    Properties:
+      AvailabilityZone: !Select [!Ref AZSelection, Fn::GetAZs: !Ref "AWS::Region"]
+      CidrBlock: !Ref SubnetCidrBlock 
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPCId
+
+  NATGateway:
+    Condition: IsPublic
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: 
+        Fn::If:
+        - CreateNATIP
+        - !GetAtt EIP.AllocationId
+        - !Ref NATIPID
+      SubnetId: !Ref Subnet
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCId
+
+  RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref Subnet
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    Metadata:
+      guard:
+        SuppressedRules:
+          - NO_UNRESTRICTED_ROUTE_TO_IGW
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: 
+        Fn::If: 
+          - IsPublic
+          - !Ref InternetGatewayId
+          - !Ref AWS::NoValue
+      NatGatewayId:
+        Fn::If: 
+          - IsPublic
+          - !Ref AWS::NoValue
+          - !Ref PublicNATGateway
+      RouteTableId: !Ref RouteTable
+
+Outputs:
+  NATGateway:
+    Value: !Ref NATGateway
+  SubnetId:
+    Value: !GetAtt Subnet.SubnetId
+  RouteTableId:
+    Value: !GetAtt RouteTable.RouteTableId

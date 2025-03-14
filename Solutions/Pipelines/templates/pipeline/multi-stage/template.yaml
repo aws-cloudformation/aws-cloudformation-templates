@@ -1,0 +1,305 @@
+Description: A multi-stage application delivery pipeline. Stages can be deployed to separate accounts. Automated test actions after deployments can be used to stop the pipeline if any tests fail. Apache-2.0 License. Adapt this template to your needs and thoruoughly test it before introducing it in a production environment. **WARNING** This template will create resources in your account that may incur billing charges.
+
+Parameters:
+
+  AppName:
+    Type: String
+    Description: The unique name for this application. The name will be used as a part of resource names and tags.
+
+  TeamName:
+    Type: String
+    Description: The name of the team that owns this application.
+  
+  StageNames:
+    Type: String
+    Description: A list of stage names, for example, "dev,stage,prod"
+    Default: prod
+
+  Accounts:
+    Type: String
+    Description: A list of accounts to match the stage names. If left blank, the assumption is that this is a single-account pipeline that is being deployed to the currently configured AWS account. This template does not bootstrap those accounts. Bootstrapping has to be done prior to deploying this template.
+    Default: ""
+
+  PipelineSourceKey:
+    Type: String
+    Description: The name of the S3 object key for the pipeline source
+    Default: pipeline-source.zip
+
+  AppSourceKey:
+    Type: String
+    Description: The name of the S3 object key for the application source
+    Default: app-source.zip
+
+  S3PrefixList:
+    Type: String
+    Default: pl-68a54001
+
+  # Note: For each new parameter added here, also add it to the SelfMutate action
+
+Constants:
+  S3Arn: "arn:${AWS::Partition}:s3:::"
+  PipelineSourceArn: ${Const::S3Arn}${PipelineSource.BucketName}
+  AppSourceArn: ${Const::S3Arn}${AppSource.BucketName}
+  ArtifactArn: ${Const::S3Arn}${Artifacts.BucketName}
+  CodeBuildVpcConfig:
+    VpcId: !GetAtt Network.VpcId
+    Subnets: !GetAtt Network.PrivateSubnetIds
+    SecurityGroupIds: 
+      - !GetAtt Network.DefaultSecurityGroupId
+  LambdaVpcConfig:
+    SubnetIds: !GetAtt Network.PrivateSubnetIds
+    SecurityGroupIds: 
+      - !GetAtt Network.DefaultSecurityGroupId
+      - !GetAtt LambdaSecurityGroup.GroupId
+  FunctionArnPrefix: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:"
+  EmptyFunctionArn: ${Const::FunctionArnPrefix}Empty-${AppName}
+
+Modules:
+
+  Network:
+    Source: ../../../modules/vpc.yaml
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      PrivateCidrBlocks: 10.0.0.0/18,10.0.64.0/18
+      PublicCidrBlocks: 10.0.128.0/18,10.0.192.0/18
+      Tags:
+        - Key: Name
+          Value: !Ref AppName
+    Overrides:
+      VPC:
+        DependsOn: PipelineMutateRole
+
+  Empty:
+    Source: ../../../modules/empty-function.yaml
+    Properties:
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      FunctionName: !Sub Empty-${AppName}
+      CodePath: ../../../modules/empty.py
+      BucketArns: 
+        - !Sub "arn:${AWS::Partition}:s3:::${AppName}*"
+    Overrides:
+      HandlerRole:
+        DependsOn: PipelineMutateRole
+
+  PipelineSource:
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-pipeline-source
+      EnableEventBridge: true
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
+          
+
+  AppSource:
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-app-source
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
+
+  Artifacts:
+    Source: ../../../modules/bucket.yaml
+    Properties:
+      Name: !Sub ${AppName}-artifacts
+      EmptyOnDelete: true
+      VpcConfig: !Ref Const::LambdaVpcConfig
+      EmptyBucketHandlerArn: !Sub ${Const::EmptyFunctionArn} 
+    Overrides:
+      Bucket:
+        DependsOn: NetworkVPC
+      EmptyCustomResource:
+        DependsOn: EmptyHandler
+
+  Validate:
+    Description: Build project to validate compliance
+    Source: ../../../modules/build-project.yaml
+    Properties:
+      Name: !Sub ${AppName}-validate
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
+    Overrides:
+      Project:
+        DependsOn: PipelineMutateRole
+        Properties:
+          VpcConfig: !Ref Const::CodeBuildVpcConfig
+      Role:
+        DependsOn: PipelineMutateRole
+
+  Build:
+    Description: Build project for the application source
+    Source: ../../../modules/build-project.yaml
+    Properties:
+      Name: !Sub ${AppName}-build
+      ArtifactBucket: !Sub ${Artifacts.BucketName}
+    Overrides:
+      Project:
+        DependsOn: PipelineMutateRole
+        Properties:
+          VpcConfig: !Ref Const::CodeBuildVpcConfig
+      Role:
+        DependsOn: PipelineMutateRole
+
+  Event:
+    Source: ../../../modules/pipeline-events.yaml
+    Properties:
+      PipelineName: !Ref AppName
+    Overrides:
+      Rule:
+        Properties:
+          EventPattern:
+            detail:
+              bucket:
+                name:
+                  - !GetAtt PipelineSource.BucketName
+                  - !GetAtt AppSource.BucketName
+
+Resources:
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn: NetworkVPC
+    Properties:
+      Name: !Ref AppName
+      RoleArn: !GetAtt PipelineRole.Arn
+      RestartExecutionOnUpdate: true
+      ArtifactStore:
+        Type: S3
+        Location: !Sub ${Artifacts.BucketName}
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: PipelineSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                S3Bucket: !Sub ${PipelineSource.BucketName}
+                S3ObjectKey: !Ref PipelineSourceKey
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: pipeline-source
+            - Name: AppSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                S3Bucket: !Sub ${AppSource.BucketName}
+                S3ObjectKey: !Ref AppSourceKey
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: app-source
+        - Name: SelfMutate
+          Actions:
+            - Name: StackUpdate
+              InputArtifacts:
+                - Name: pipeline-source
+                - Name: app-source
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: !Sub ${AWS::StackName}
+                Capabilities: CAPABILITY_IAM
+                RoleArn: !GetAtt PipelineMutateRole.Arn
+                TemplatePath: pipeline-source::template.yaml
+                ParameterOverrides: !Sub | 
+                  {
+                    "AppName": "${AppName}",
+                    "TeamName": "${TeamName}",
+                    "StageNames": "${StageNames}",
+                    "Accounts": "${Accounts}",
+                    "PipelineSourceKey": "${PipelineSourceKey}",
+                    "AppSourceKey": "${AppSourceKey}",
+                    "S3PrefixList": "${S3PrefixList}"
+                  }
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Validate
+              InputArtifacts:
+                - Name: pipeline-source
+                - Name: app-source
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !GetAtt Validate.ProjectName
+                PrimarySource: pipeline-source
+              RunOrder: 1
+            - Name: Build
+              InputArtifacts:
+                - Name: app-source
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !GetAtt Build.ProjectName
+              RunOrder: 1
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  PipelineMutateRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      Comment: This policy has admin access because the pipeline is self-mutating, and it needs to be able to update any resource in the stack. Scoped permissions would be so wide that they are basically the same as admin, and if you miss anything, you risk ending up in an UPDATE_ROLLBACK_FAILED state.
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !GetAtt Network.VpcId
+      GroupDescription: Connect lambda to s3 endpoint
+      SecurityGroupEgress: 
+        - DestinationPrefixListId: !Ref S3PrefixList
+          IpProtocol: -1
+
+Outputs:
+
+  AppSourceBucket:
+    Value: !Sub ${AppSource.BucketName}
+
+  PipelineSourceBucket:
+    Value: !Sub ${PipelineSource.BucketName}
+
