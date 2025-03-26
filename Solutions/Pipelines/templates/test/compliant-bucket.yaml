@@ -1,0 +1,10 @@
+Modules:
+  Content:
+    Source: ../../modules/bucket.yaml
+    Properties:
+      Name: compliant-test
+      EnableEventBridge: false
+      CreateLogBucket: false
+      CreateReplicaBucket: false
+      EmptyOnDelete: true
+

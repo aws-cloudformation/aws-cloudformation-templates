@@ -1,0 +1,114 @@
+Parameters:
+
+  CidrBlock:
+    Type: String
+
+  PrivateCidrBlocks:
+    Type: CommaDelimitedList
+
+  PublicCidrBlocks:
+    Type: CommaDelimitedList
+
+  NatAllocationIds:
+    Type: List<String>
+    Default: ""
+    Description: Optionally provide a list of pre-provisioned EIP allocation IDs
+
+  Tags:
+    Type: List
+    Description: A list of 'Key' 'Value' pairs
+
+Conditions:
+  NeedToCreateEIPs:
+    Fn::Equals:
+      - !Ref NatAllocationIds
+      - ""
+
+Constants:
+  SourceTag:
+  - Key: CloudFormationModuleSource
+    Value: Solutions/Pipelines/modules/vpc.yaml
+
+Modules:
+
+  PublicSubnet:
+    Map: !Ref PublicCidrBlocks
+    Source: ./subnet.yaml
+    Properties:
+      SubnetCidrBlock: $MapValue
+      AZSelection: $MapIndex
+      VPCId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+      IsPublic: true
+      NATIPID: 
+        Fn::If:
+          - NeedToCreateEIPs
+          - ""
+          - Fn::Select:
+            - !Ref NatAllocationIds
+            - $MapIndex
+      CreateNATIPID:
+        Fn::If:
+          - NeedToCreateEIPs
+          - true
+          - false
+    Overrides:
+      DefaultRoute:
+        DependsOn: GatewayAttachment
+
+  PrivateSubnet:
+    Map: !Ref PrivateCidrBlocks
+    Source: ./subnet.yaml
+    Properties:
+      SubnetCidrBlock: $MapValue
+      AZSelection: $MapIndex
+      VPCId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+      IsPublic: false
+      PublicNATGateway: !GetAtt PublicSubnet[$MapIndex].NATGateway
+      CreateNATIPID: false
+    Overrides:
+      DefaultRoute:
+        DependsOn: GatewayAttachment
+  
+
+Resources:
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref CidrBlock 
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        Fn::Merge:
+          - !Ref Tags
+          - !Ref Const::SourceTag
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  S3VPCEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref VPC
+      RouteTableIds: !GetAtt PrivateSubnet[].RouteTableId
+      ServiceName: 'com.amazonaws.us-west-2.s3'
+      VpcEndpointType: Gateway
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+  PrivateSubnetIds:
+    Value: !GetAtt PrivateSubnet[].SubnetId
+  DefaultSecurityGroupId:
+    Value: !GetAtt VPC.DefaultSecurityGroup
+
+

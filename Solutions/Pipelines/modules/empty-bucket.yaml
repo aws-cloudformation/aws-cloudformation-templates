@@ -1,0 +1,52 @@
+Parameters:
+
+  VpcConfig:
+    Type: Object
+    Default: ""
+
+  BucketArn:
+    Type: String
+
+  HandlerArn:
+    Type: String
+    Default: ""
+    Description: A new function will be created if this is not set
+
+  FunctionName:
+    Type: String
+    Description: This is required if the HandlerArn is not set.
+
+Conditions:
+  
+  NeedHandler:
+    Fn::Equals:
+      - !Ref HandlerArn
+      - ""
+
+Modules:
+
+  EmptyBucket:
+    Source: empty-function.yaml
+    Condition: NeedHandler
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      FunctionName: !Ref FunctionName
+      BucketArns:
+        - !Ref BucketArn
+        - !Sub ${BucketArn}/*
+      
+
+Resources:
+
+  CustomResource:
+    Type: Custom::EmptyBucket
+    Properties:
+      ServiceTimeout: 300
+      ServiceToken: 
+        Fn::If:
+          - NeedHandler
+          - !Sub ${EmptyBucket.Arn}
+          - !Ref HandlerArn
+      Properties:
+        BucketArn: !Ref BucketArn
+
