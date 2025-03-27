@@ -47,9 +47,6 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
-  LogsBucket:
-    Type: String
-
 Mappings:
   Region2Examples:
     us-east-1:
@@ -132,7 +129,11 @@ Resources:
         S3BucketPrefix: Logs
         Enabled: "true"
         EmitInterval: "60"
-
+  LogsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: Private
   LogsBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -143,7 +144,7 @@ Resources:
           - Sid: ELBAccessLogs20130930
             Effect: Allow
             Resource:
-              - !Sub aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*
+              - !Sub arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*
             Principal:
               AWS: !FindInMap
                 - Region2ELBAccountId
@@ -159,8 +160,8 @@ Resources:
             Principal:
               AWS: '*'
             Resource:
-              - !Sub aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}
-              - !Sub aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*
+              - !Sub arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}
+              - !Sub arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*
 
   WebServerGroup:
     CreationPolicy:
@@ -248,25 +249,17 @@ Resources:
       SecurityGroups:
         - !Ref InstanceSecurityGroup
       InstanceType: !Ref InstanceType
-      UserData: !Base64
-        Fn::Join:
-          - ""
-          - - '#!/bin/bash -xe '
-            - 'yum update -y aws-cfn-bootstrap '
-            - '/opt/aws/bin/cfn-init -v '
-            - '         --stack '
-            - !Ref AWS::StackName
-            - '         --resource LaunchConfig '
-            - '         --region '
-            - !Ref AWS::Region
-            - ' '
-            - '/opt/aws/bin/cfn-signal -e $? '
-            - '         --stack '
-            - !Ref AWS::StackName
-            - '         --resource WebServerGroup '
-            - '         --region '
-            - !Ref AWS::Region
-            - ' '
+      UserData: !Base64        
+        Fn::Sub: |
+          #!/bin/bash -xe          
+          yum update -y aws-cfn-bootstrap 
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} \
+                   --resource LaunchConfig \
+                   --region ${AWS::Region}
+
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} \
+                   --resource WebServerGroup \
+                   --region ${AWS::Region} 
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup

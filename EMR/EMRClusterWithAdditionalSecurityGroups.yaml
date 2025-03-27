@@ -30,7 +30,14 @@ Parameters:
   SubnetID:
     Description: Must be a valid public subnet ID
     Type: String
-    Default: subnet-dba430ad
+
+  AdditionalSlaveSecurityGroups:
+    Description: Comma-delimited list of additional security groups names
+    Type: CommaDelimitedList
+  
+  AdditionalMasterSecurityGroups:
+    Description: Comma-delimited list of additional security groups names
+    Type: CommaDelimitedList
 
   LogUri:
     Description: Must be a valid S3 URL
@@ -93,12 +100,8 @@ Resources:
       Instances:
         Ec2KeyName: !Ref KeyName
         Ec2SubnetId: !Ref SubnetID
-        AdditionalMasterSecurityGroups:
-          - sg-9cb487fb
-          - sg-9cb4876b
-        AdditionalSlaveSecurityGroups:
-          - sg-9cb48144
-          - sg-9cb48788
+        AdditionalMasterSecurityGroups: !Ref AdditionalMasterSecurityGroups
+        AdditionalSlaveSecurityGroups: !Ref AdditionalSlaveSecurityGroups        
         MasterInstanceGroup:
           InstanceCount: 1
           InstanceType: !Ref MasterInstanceType
