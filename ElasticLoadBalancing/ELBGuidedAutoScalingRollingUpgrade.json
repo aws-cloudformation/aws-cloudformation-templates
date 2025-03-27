@@ -325,36 +325,7 @@
                 },
                 "UserData": {
                     "Fn::Base64": {
-                        "Fn::Join": [
-                            "",
-                            [
-                                "#!/bin/bash -xe ",
-                                "yum update -y aws-cfn-bootstrap ",
-                                "/opt/aws/bin/cfn-init -v ",
-                                "         --stack ",
-                                {
-                                    "Ref": "AWS::StackName"
-                                },
-                                "         --resource LaunchConfig ",
-                                "         --configsets full_install ",
-                                "         --region ",
-                                {
-                                    "Ref": "AWS::Region"
-                                },
-                                " ",
-                                "/opt/aws/bin/cfn-signal -e $? ",
-                                "         --stack ",
-                                {
-                                    "Ref": "AWS::StackName"
-                                },
-                                "         --resource WebServerGroup ",
-                                "         --region ",
-                                {
-                                    "Ref": "AWS::Region"
-                                },
-                                " "
-                            ]
-                        ]
+                        "Fn::Sub": "#!/bin/bash -xe          \nyum update -y aws-cfn-bootstrap \n/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} \\\n         --resource LaunchConfig \\\n         --configsets full_install \\\n         --region ${AWS::Region}\n\n/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} \\\n         --resource WebServerGroup \\\n         --region ${AWS::Region} \n"
                     }
                 }
             }
