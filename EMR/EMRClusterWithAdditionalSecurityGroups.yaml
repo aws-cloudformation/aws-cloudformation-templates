@@ -31,12 +31,12 @@ Parameters:
     Description: Must be a valid public subnet ID
     Type: String
 
-  AdditionalSlaveSecurityGroups:
-    Description: Comma-delimited list of additional security groups names
+  AdditionalCoreNodeSecurityGroups:
+    Description: Comma-delimited list of additional security groups for core and task nodes
     Type: CommaDelimitedList
   
-  AdditionalMasterSecurityGroups:
-    Description: Comma-delimited list of additional security groups names
+  AdditionalPrimaryNodeSecurityGroups:
+    Description: Comma-delimited list of additional security groups for primary nodes
     Type: CommaDelimitedList
 
   LogUri:
@@ -100,8 +100,8 @@ Resources:
       Instances:
         Ec2KeyName: !Ref KeyName
         Ec2SubnetId: !Ref SubnetID
-        AdditionalMasterSecurityGroups: !Ref AdditionalMasterSecurityGroups
-        AdditionalSlaveSecurityGroups: !Ref AdditionalSlaveSecurityGroups        
+        AdditionalMasterSecurityGroups: !Ref AdditionalPrimaryNodeSecurityGroups
+        AdditionalSlaveSecurityGroups: !Ref AdditionalCoreNodeSecurityGroups        
         MasterInstanceGroup:
           InstanceCount: 1
           InstanceType: !Ref MasterInstanceType
