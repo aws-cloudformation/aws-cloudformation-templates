@@ -30,12 +30,12 @@
             "Description": "Must be a valid public subnet ID",
             "Type": "String"
         },
-        "AdditionalSlaveSecurityGroups": {
-            "Description": "Comma-delimited list of additional security groups names",
+        "AdditionalCoreNodeSecurityGroups": {
+            "Description": "Comma-delimited list of additional security groups for core and task nodes",
             "Type": "CommaDelimitedList"
         },
-        "AdditionalMasterSecurityGroups": {
-            "Description": "Comma-delimited list of additional security groups names",
+        "AdditionalPrimaryNodeSecurityGroups": {
+            "Description": "Comma-delimited list of additional security groups for primary nodes",
             "Type": "CommaDelimitedList"
         },
         "LogUri": {
@@ -141,10 +141,10 @@
                         "Ref": "SubnetID"
                     },
                     "AdditionalMasterSecurityGroups": {
-                        "Ref": "AdditionalMasterSecurityGroups"
+                        "Ref": "AdditionalPrimaryNodeSecurityGroups"
                     },
                     "AdditionalSlaveSecurityGroups": {
-                        "Ref": "AdditionalSlaveSecurityGroups"
+                        "Ref": "AdditionalCoreNodeSecurityGroups"
                     },
                     "MasterInstanceGroup": {
                         "InstanceCount": 1,
