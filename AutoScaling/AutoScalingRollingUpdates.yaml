@@ -191,7 +191,6 @@ Mappings:
   AWSRegionArch2AMI:
     us-east-1:
       PV64: ami-2a69aa47
-      #HVM64: ami-02f624c08a83ca16f  #Amazon Linux 2, a newer version AMI, able to login in Linux console with EC2 "Connect" 
       HVM64: ami-6869aa05
       HVMG2: ami-a41a3fb3
     us-west-2:
