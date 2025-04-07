@@ -156,7 +156,7 @@ Resources:
           - Action:
               - s3:ReplicateObject
               - s3:ReplicateDelete
-              - s3:ReplicationTags
+              - s3:ReplicateTags
             Effect: Allow
             Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}/*
         Version: "2012-10-17"
