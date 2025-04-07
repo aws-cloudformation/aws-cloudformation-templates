@@ -1,0 +1,21 @@
+Parameters:
+  PolicyBucketName:
+    Type: String
+Resources:
+  Policy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PolicyBucketName
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+            Effect: Deny
+            Principal:
+              AWS: '*'
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}"
+              - !Sub "arn:${AWS::Partition}:s3:::${PolicyBucketName}/*"
+        Version: "2012-10-17"

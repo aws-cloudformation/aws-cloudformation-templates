@@ -1,0 +1,90 @@
+Parameters:
+
+  VpcConfig:
+    Type: Object
+    Default: ""
+
+  FunctionName:
+    Type: String
+
+  BucketArns:
+    Type: List
+    Description: A list of all Arns for the policy statement
+
+  CodePath:
+    Type: String
+    Default: empty.py
+
+Constants:
+  FunctionArn: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${FunctionName}
+
+Conditions:
+
+  NoVPC:
+    Fn::Equals:
+      - !Ref VpcConfig
+      - ""
+
+
+Resources:
+
+  Handler:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.empty
+      FunctionName: !Ref FunctionName
+      Runtime: python3.11 
+      Timeout: 300
+      VpcConfig: 
+        Fn::If:
+          - NoVPC
+          - !Ref AWS::NoValue
+          - !Ref VpcConfig
+      Code: 
+        ZipFile: 
+          Fn::InsertFile: !Ref CodePath
+      Role: !GetAtt HandlerRole.Arn
+
+  HandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: S3
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                  - s3:*
+                Effect: Allow
+                Resource: !Ref BucketArns
+              - Effect: Deny
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DetachNetworkInterface
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+                Condition:
+                  ArnEquals:
+                     lambda:SourceFunctionArn: !Sub ${Const::FunctionArn} 
+
+
+Outputs:
+  Arn: 
+    Value: !Ref Const::FunctionArn
+

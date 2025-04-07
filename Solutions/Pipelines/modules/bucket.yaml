@@ -1,0 +1,332 @@
+Description: This module creates an S3 bucket that will pass common compliance checks. It can create an associated log bucket and replica bucket, and encrypts the contents of the bucket.
+
+Parameters:
+
+  Name:
+    Type: String
+    Description: This string will serve as a prefix for all resource names, which have the general form of Name-ResourceName-Region-Account. 
+
+  CreateLogBucket:
+    Type: String
+    Description: If true, create a bucket for access logs
+    Default: false
+
+  CreateReplicaBucket:
+    Type: String
+    Description: If true, create a bucket for replicas
+    Default: false
+
+  EnableEventBridge:
+    Type: String
+    Description: Set this to true to enable notifications
+    Default: false
+
+  VpcConfig:
+    Type: Object
+    Description: VPC Config for lambda functions
+    Default: ""
+
+  EmptyOnDelete:
+    Type: String
+    Description: If true, delete all objects when the bucket is deleted
+    Default: false
+
+  EmptyBucketHandlerArn:
+    Type: String
+    Default: ""
+    Description: If this is not set, a new function will be created
+
+Conditions:
+
+  IsLoggingEnabled:
+    Fn::Equals:
+      - !Ref CreateLogBucket
+      - true
+
+  IsReplicationEnabled:
+    Fn::Equals:
+      - !Ref CreateReplicaBucket
+      - true
+
+  IsEventBridgeEnabled:
+    Fn::Equals:
+      - !Ref EnableEventBridge
+      - true
+
+  EmptyOnDelete:
+    Fn::Equals:
+      - !Ref EmptyOnDelete
+      - true 
+
+  EmptyLogOnDelete:
+    Fn::And:
+      - Condition: EmptyOnDelete
+      - Condition: IsLoggingEnabled
+
+  EmptyReplicaOnDelete:
+    Fn::And:
+      - Condition: EmptyOnDelete
+      - Condition: IsReplicationEnabled
+
+  HasEmptyBucketHandlerArn:
+    Fn::Not:
+      - Fn::Equals:
+          - !Ref EmptyBucketHandlerArn
+          - ""
+
+  NeedHandler:
+    Fn::Equals:
+      - !Ref EmptyBucketHandlerArn
+      - ""
+
+Constants:
+  S3Arn: "arn:${AWS::Partition}:s3:::"
+  BucketName: "${Name}-${AWS::Region}-${AWS::AccountId}"
+  LogBucketName: "${Name}-logs-${AWS::Region}-${AWS::AccountId}"
+  ReplicaBucketName: "${Name}-replicas-${AWS::Region}-${AWS::AccountId}"
+  BucketArn: "${Const::S3Arn}${Const::BucketName}"
+  LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
+  ReplicaBucketArn: "${Const::S3Arn}${Const::ReplicaBucketName}"
+  BucketEncryption:
+    ServerSideEncryptionConfiguration:
+      - ServerSideEncryptionByDefault:
+          SSEAlgorithm: AES256
+  PublicAccessBlockConfiguration:
+    BlockPublicAcls: true
+    BlockPublicPolicy: true
+    IgnorePublicAcls: true
+    RestrictPublicBuckets: true
+
+Modules:
+
+  BucketAccess:
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::BucketName}
+
+  LogBucketAccess:
+    Condition: IsLoggingEnabled
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::LogBucketName}
+    Overrides:
+      Policy:
+        Properties:
+          PolicyDocument:
+            Statement:
+              - Action: s3:*
+                Condition:
+                  Bool:
+                    aws:SecureTransport: false
+                Effect: Deny
+                Principal:
+                  AWS: '*'
+                Resource:
+                  - !Sub ${Const::LogBucketArn}
+                  - !Sub ${Const::LogBucketArn}/*
+              - Action: s3:PutObject
+                Condition:
+                  ArnLike:
+                    aws:SourceArn: !Sub ${Const::LogBucketArn}/*
+                  StringEquals:
+                    aws:SourceAccount: !Ref AWS::AccountId
+                Effect: Allow
+                Principal:
+                  Service: logging.s3.amazonaws.com
+                Resource:
+                  - !Sub ${Const::LogBucketArn}/*
+
+  ReplicaBucketAccess:
+    Condition: IsReplicationEnabled
+    Source: bucket-policy.yaml
+    Properties:
+      PolicyBucketName: !Sub ${Const::ReplicaBucketName}
+
+  Empty:
+    Source: empty-bucket.yaml
+    Condition: EmptyOnDelete
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !Sub ${Const::S3Arn}${Const::BucketName} 
+      FunctionName: !Sub Empty-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: 
+          - Bucket
+          - Fn::If:
+            - NeedHandler
+            - EmptyBucketHandler
+            - !Ref AWS::NoValue
+
+  EmptyLog:
+    Condition: EmptyLogOnDelete
+    Source: empty-bucket.yaml
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !Sub ${Const::S3Arn}${Const::LogBucketName} 
+      FunctionName: !Sub EmptyLog-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: LogBucket
+
+  EmptyReplica:
+    Condition: EmptyReplicaOnDelete
+    Source: empty-bucket.yaml
+    Properties:
+      VpcConfig: !Ref VpcConfig
+      BucketArn: !Sub ${Const::S3Arn}${Const::ReplicaBucketName} 
+      FunctionName: !Sub EmptyReplica-${Name} 
+      HandlerArn: !Ref EmptyBucketHandlerArn
+    Overrides:
+      CustomResource:
+        DependsOn: ReplicaBucket
+
+
+Resources:
+
+  LogBucket:
+    Type: AWS::S3::Bucket
+    Condition: IsLoggingEnabled
+    Metadata:
+      Comment: This bucket records access logs for the main bucket
+      checkov:
+        skip:
+          - comment: This is the log bucket
+            id: CKV_AWS_18
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_LOGGING_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+    Properties:
+      BucketEncryption: !Ref Const::BucketEncryption
+      BucketName: !Sub ${Const::LogBucketName}
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: COMPLIANCE
+            Years: 1
+      ObjectLockEnabled: true
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
+      VersioningConfiguration:
+        Status: Enabled
+
+  Bucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+    Properties:
+      BucketEncryption: !Ref Const::BucketEncryption
+      BucketName: !Sub ${Const::BucketName}
+      NotificationConfiguration:
+        Fn::If:
+          - IsEventBridgeEnabled
+          - EventBridgeConfiguration:
+              EventBridgeEnabled: true
+          - !Ref AWS::NoValue
+      LoggingConfiguration:
+        Fn::If:
+          - IsLoggingEnabled
+          - DestinationBucketName: !Ref LogBucket
+          - !Ref AWS::NoValue
+      ObjectLockEnabled: false
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
+      ReplicationConfiguration:
+        Fn::If:
+          - IsReplicationEnabled
+          - Role: !GetAtt ReplicationRole.Arn
+            Rules:
+              - Destination:
+                  Bucket: !GetAtt ReplicaBucket.Arn
+                Status: Enabled
+          - !Ref AWS::NoValue
+      VersioningConfiguration:
+        Status: Enabled
+
+
+  ReplicaBucket:
+    Condition: IsReplicationEnabled
+    Type: AWS::S3::Bucket
+    Metadata:
+      Comment: This bucket is used as a target for replicas from the main bucket
+      checkov:
+        skip:
+          - comment: This is the replica bucket
+            id: CKV_AWS_18
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+    Properties:
+      BucketEncryption: !Ref Const::BucketEncryption
+      BucketName: !Sub ${Const:ReplicaBucketName}
+      ObjectLockEnabled: false
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
+      VersioningConfiguration:
+        Status: Enabled
+
+  ReplicationPolicy:
+    Condition: IsReplicationEnabled
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetReplicationConfiguration
+              - s3:ListBucket
+            Effect: Allow
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::BucketName}
+          - Action:
+              - s3:GetObjectVersionForReplication
+              - s3:GetObjectVersionAcl
+              - s3:GetObjectVersionTagging
+            Effect: Allow
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::BucketName}/*
+          - Action:
+              - s3:ReplicateObject
+              - s3:ReplicateDelete
+              - s3:ReplicationTags
+            Effect: Allow
+            Resource: !Sub arn:${AWS::Partition}:s3:::${Const::ReplicaBucketName}/*
+        Version: "2012-10-17"
+      PolicyName: bucket-replication-policy
+      RoleName: !Ref ReplicationRole
+
+  ReplicationRole:
+    Condition: IsReplicationEnabled
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+
+
+Outputs:
+  BucketName:
+    Value: !Ref Bucket
+  Arns:
+    Value:
+      - !Sub ${Const::BucketArn}
+      - !Sub ${Const::BucketArn}/*
+      - Fn::If:
+        - IsLoggingEnabled
+        - - !Sub ${Const::LogBucketArn}
+          - !Sub ${Const::LogBucketArn}/*
+        - !Ref AWS::NoValue
+      - Fn::If:
+        - IsReplicationEnabled
+        - - !Sub ${Const::ReplicaBucketArn}
+          - !Sub ${Const::ReplicaBucketArn}/*
+        - !Ref AWS::NoValue
