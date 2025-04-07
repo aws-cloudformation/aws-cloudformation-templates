@@ -3,7 +3,7 @@ set -eou pipefail
 
 APPNAME=cli-cfn-webapp
 PROFILE=""
-if [ -z "$1" ]; then
+if [ "$#" -ne 1 ]; then
   echo "Using default profile"
 else
   PROFILE="--profile $1"
@@ -16,7 +16,7 @@ echo "Building Site..."
 ./buildsite.sh
 
 echo "Packaging..."
-awscli cloudformation package $PROFILE \
+aws cloudformation package $PROFILE \
     --s3-bucket ezbeard-rain-lambda \
     --template-file webapp.yaml --output-template-file webapp-pkg.yaml
 
@@ -24,7 +24,7 @@ echo "Linting..."
 cfn-lint webapp-pkg.yaml
 
 echo "Deploying..."
-awscli cloudformation deploy $PROFILE \
+aws cloudformation deploy $PROFILE \
     --template-file webapp-pkg.yaml \
     --stack-name $APPNAME \
     --parameter-overrides AppName=$APPNAME \

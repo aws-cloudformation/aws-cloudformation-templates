@@ -1,4 +1,4 @@
-Inputs:
+Parameters:
   PolicyBucketName:
     Type: String
 Resources:

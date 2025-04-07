@@ -2,7 +2,7 @@ Description: |
   This module creates an S3 bucket that will pass common compliance checks 
   by default. It also creates an associated log bucket and replica bucket.
 
-Inputs:
+Parameters:
 
   AppName:
     Type: String

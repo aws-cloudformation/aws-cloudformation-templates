@@ -1,6 +1,6 @@
 Description: This module creates a static website consisting of an S3 bucket and a CloudFront distribution.
 
-Inputs:
+Parameters:
 
   AppName: 
     Type: String

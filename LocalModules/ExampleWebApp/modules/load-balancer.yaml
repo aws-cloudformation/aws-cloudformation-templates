@@ -1,7 +1,7 @@
 Description: |
   This module creates an ELBv2 load balancer
 
-Inputs:
+Parameters:
 
   CertificateArn:
     Type: String
@@ -97,7 +97,7 @@ Resources:
       TargetType: ip
       VpcId: !Ref VPCId
 
-References:
+Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName
 

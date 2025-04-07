@@ -1,6 +1,6 @@
 Description: This module contains a lambda handler and the API Gateway resource to proxy requests to the lambda. It is assumed that the lambda function can handle all HTTPMethods sent to the specified path, including the OPTIONS pre-flight request. The lambda function must also return the approppriate CORS headers with each response.
 
-Inputs:
+Parameters:
 
   Name:
     Type: String

@@ -32,7 +32,7 @@ Outputs:
       Ref: SiteContentBucket
 Metadata:
   AWSToolsMetrics:
-    CloudForCloudFormationPackage:
+    CloudFormationPackage:
       Modules: 'true'
 Resources:
   CognitoClient:
@@ -110,7 +110,7 @@ Resources:
       Runtime: provided.al2023
       Code:
         S3Bucket: ezbeard-rain-lambda
-        S3Key: f6ba729426a335e7d5e1a9905bfff923
+        S3Key: e6d1579db392489f6cf9e1887e33d16e
       Role:
         Fn::GetAtt:
         - JwtResourceHandlerRole
@@ -224,13 +224,9 @@ Resources:
         Ref: RestApi
     DependsOn:
     - TestResourceGet
+    - JwtResourceOptions
     - TestResourceOptions
     - JwtResourceGet
-    - JwtResourceOptions
-    - TestResourceGet
-    - TestResourceOptions
-    - JwtResourceGet
-    - JwtResourceOptions
     Metadata:
       SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/rest-api.yaml:ApiDeployment:16
   RestApiStage:
@@ -249,7 +245,7 @@ Resources:
       guard:
         SuppressedRules:
         - S3_BUCKET_DEFAULT_LOCK_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:Bucket:98
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -302,7 +298,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteCloudFrontLogsLogBucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -315,7 +311,7 @@ Resources:
         SuppressedRules:
         - S3_BUCKET_LOGGING_ENABLED
         - S3_BUCKET_REPLICATION_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsLogBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:LogBucket:65
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -379,7 +375,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsLogBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteCloudFrontLogsReplicaBucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -393,7 +389,7 @@ Resources:
         - S3_BUCKET_DEFAULT_LOCK_ENABLED
         - S3_BUCKET_REPLICATION_ENABLED
         - S3_BUCKET_LOGGING_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsReplicaBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicaBucket:127
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -428,7 +424,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsReplicaBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteCloudFrontLogsReplicationPolicy:
     Type: AWS::IAM::RolePolicy
     Properties:
@@ -459,7 +455,7 @@ Resources:
       RoleName:
         Ref: SiteCloudFrontLogsReplicationRole
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsReplicationPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicationPolicy:155
   SiteCloudFrontLogsReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -474,14 +470,14 @@ Resources:
         Version: '2012-10-17'
       Path: /
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:CloudFrontLogsReplicationRole:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicationRole:181
   SiteContentBucket:
     Type: AWS::S3::Bucket
     Metadata:
       guard:
         SuppressedRules:
         - S3_BUCKET_DEFAULT_LOCK_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:Bucket:98
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -551,7 +547,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteContentLogBucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -564,7 +560,7 @@ Resources:
         SuppressedRules:
         - S3_BUCKET_LOGGING_ENABLED
         - S3_BUCKET_REPLICATION_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentLogBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:LogBucket:65
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -628,7 +624,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentLogBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteContentReplicaBucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -642,7 +638,7 @@ Resources:
         - S3_BUCKET_DEFAULT_LOCK_ENABLED
         - S3_BUCKET_REPLICATION_ENABLED
         - S3_BUCKET_LOGGING_ENABLED
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentReplicaBucket:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicaBucket:127
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -677,7 +673,7 @@ Resources:
           - Fn::Sub: arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}/*
         Version: '2012-10-17'
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentReplicaBucketAccessPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/bucket-policy.yaml:Policy:5
   SiteContentReplicationPolicy:
     Type: AWS::IAM::RolePolicy
     Properties:
@@ -708,7 +704,7 @@ Resources:
       RoleName:
         Ref: SiteContentReplicationRole
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentReplicationPolicy:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicationPolicy:155
   SiteContentReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -723,7 +719,7 @@ Resources:
         Version: '2012-10-17'
       Path: /
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/static-site.yaml:ContentReplicationRole:0
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/compliant-bucket.yaml:ReplicationRole:181
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
     Metadata:
@@ -890,7 +886,7 @@ Resources:
       Runtime: provided.al2023
       Code:
         S3Bucket: ezbeard-rain-lambda
-        S3Key: dc82c39a468dffef96bdf651a075a87c
+        S3Key: 7dc753763da763a8f66f4375fd434792
       Role:
         Fn::GetAtt:
         - TestResourceHandlerRole
