@@ -10,7 +10,6 @@ Resources:
 
   Project:
     Type: AWS::CodeBuild::Project
-    DependsOn: Policy
     Properties:
       Name: !Ref Name 
       Artifacts:

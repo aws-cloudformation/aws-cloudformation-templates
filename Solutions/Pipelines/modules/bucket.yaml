@@ -71,13 +71,13 @@ Conditions:
   HasEmptyBucketHandlerArn:
     Fn::Not:
       - Fn::Equals:
-          - EmptyBucketHandlerArn
+          - !Ref EmptyBucketHandlerArn
           - ""
 
   NeedHandler:
-    - Fn::Equals:
-        - EmptyBucketHandlerArn
-        - ""
+    Fn::Equals:
+      - !Ref EmptyBucketHandlerArn
+      - ""
 
 Constants:
   S3Arn: "arn:${AWS::Partition}:s3:::"
@@ -87,6 +87,15 @@ Constants:
   BucketArn: "${Const::S3Arn}${Const::BucketName}"
   LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
   ReplicaBucketArn: "${Const::S3Arn}${Const::ReplicaBucketName}"
+  BucketEncryption:
+    ServerSideEncryptionConfiguration:
+      - ServerSideEncryptionByDefault:
+          SSEAlgorithm: AES256
+  PublicAccessBlockConfiguration:
+    BlockPublicAcls: true
+    BlockPublicPolicy: true
+    IgnorePublicAcls: true
+    RestrictPublicBuckets: true
 
 Modules:
 
@@ -191,10 +200,7 @@ Resources:
           - S3_BUCKET_LOGGING_ENABLED
           - S3_BUCKET_REPLICATION_ENABLED
     Properties:
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+      BucketEncryption: !Ref Const::BucketEncryption
       BucketName: !Sub ${Const::LogBucketName}
       ObjectLockConfiguration:
         ObjectLockEnabled: Enabled
@@ -203,11 +209,7 @@ Resources:
             Mode: COMPLIANCE
             Years: 1
       ObjectLockEnabled: true
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
       VersioningConfiguration:
         Status: Enabled
 
@@ -218,12 +220,8 @@ Resources:
         SuppressedRules:
           - S3_BUCKET_DEFAULT_LOCK_ENABLED
     Properties:
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+      BucketEncryption: !Ref Const::BucketEncryption
       BucketName: !Sub ${Const::BucketName}
-
       NotificationConfiguration:
         Fn::If:
           - IsEventBridgeEnabled
@@ -236,11 +234,7 @@ Resources:
           - DestinationBucketName: !Ref LogBucket
           - !Ref AWS::NoValue
       ObjectLockEnabled: false
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
       ReplicationConfiguration:
         Fn::If:
           - IsReplicationEnabled
@@ -269,17 +263,10 @@ Resources:
           - S3_BUCKET_REPLICATION_ENABLED
           - S3_BUCKET_LOGGING_ENABLED
     Properties:
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+      BucketEncryption: !Ref Const::BucketEncryption
       BucketName: !Sub ${Const:ReplicaBucketName}
       ObjectLockEnabled: false
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+      PublicAccessBlockConfiguration: !Ref Const::PublicAccessBlockConfiguration
       VersioningConfiguration:
         Status: Enabled
 

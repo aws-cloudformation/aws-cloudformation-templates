@@ -17,7 +17,6 @@ Parameters:
 
 Constants:
   FunctionArn: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${FunctionName}
-Resources:
 
 Conditions:
 
