@@ -10,15 +10,55 @@ Parameters:
       This string will serve as a prefix for all resource names, which have 
       the general form of AppName-ResourceName-Region-Account. 
 
-  Content:
-    Type: String
-    Description: A local path to a directory that will be uploaded to the bucket
-    Default: RAIN_NO_CONTENT
+Constants:
+  S3Arn: "arn:${AWS::Partition}:s3:::"
+  BucketName: "${AppName}-${AWS::Region}-${AWS::AccountId}"
+  LogBucketName: "${AppName}-logs-${AWS::Region}-${AWS::AccountId}"
+  LogBucketArn: "${Const::S3Arn}${Const::LogBucketName}"
+  ReplicaBucketName: "${AppName}-replicas-${AWS::Region}-${AWS::AccountId}"
 
-  EmptyOnDelete:
-    Type: Boolean
-    Description: If true, the contents of all buckets will be permanently deleted when the stack is deleted.
-    Default: false
+Modules:
+
+  LogBucketAccess:
+    Source: "bucket-policy.yaml"
+    Properties:
+      PolicyBucketName: !Sub ${Const::LogBucketName}
+    Overrides:
+      Policy:
+        Properties:
+          PolicyDocument:
+            Statement:
+              - Action: s3:*
+                Condition:
+                  Bool:
+                    aws:SecureTransport: false
+                Effect: Deny
+                Principal:
+                  AWS: '*'
+                Resource:
+                  - !Sub ${Const::LogBucketArn}
+                  - !Sub ${Const::LogBucketArn}/*
+              - Action: s3:PutObject
+                Condition:
+                  ArnLike:
+                    aws:SourceArn: !Sub ${Const::LogBucketArn}/*
+                  StringEquals:
+                    aws:SourceAccount: !Ref AWS::AccountId
+                Effect: Allow
+                Principal:
+                  Service: logging.s3.amazonaws.com
+                Resource:
+                  - !Sub ${Const::LogBucketArn}/*
+
+  BucketAccess:
+    Source: "bucket-policy.yaml"
+    Properties:
+      PolicyBucketName: !Sub ${AppName}-${AWS::Region}-${AWS::AccountId}
+
+  ReplicaBucketAccess:
+    Source: "bucket-policy.yaml"
+    Properties:
+      PolicyBucketName: !Sub ${AppName}-replicas-${AWS::Region}-${AWS::AccountId}
 
 Resources:
 
@@ -34,15 +74,12 @@ Resources:
         SuppressedRules:
           - S3_BUCKET_LOGGING_ENABLED
           - S3_BUCKET_REPLICATION_ENABLED
-      Rain:
-        Content: RAIN_NO_CONTENT
-        EmptyOnDelete: !Ref EmptyOnDelete
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      BucketName: !Sub ${AppName}-logs-${AWS::Region}-${AWS::AccountId}
+      BucketName: !Sub ${Const::LogBucketName}
       ObjectLockConfiguration:
         ObjectLockEnabled: Enabled
         Rule:
@@ -58,27 +95,18 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  LogBucketAccess:
-    Type: !Rain::Module "bucket-policy.yaml"
-    Properties:
-      PolicyBucketName: !Sub ${AppName}-logs-${AWS::Region}-${AWS::AccountId}
-
   Bucket:
     Type: AWS::S3::Bucket
     Metadata:
       guard:
         SuppressedRules:
           - S3_BUCKET_DEFAULT_LOCK_ENABLED
-      Rain:
-        Content: !Ref Content
-        EmptyOnDelete: !Ref EmptyOnDelete
-        DistributionLogicalId: NONE
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      BucketName: !Sub ${AppName}-${AWS::Region}-${AWS::AccountId}
+      BucketName: !Sub ${Const::BucketName}
       LoggingConfiguration:
         DestinationBucketName: !Ref LogBucket
       ObjectLockEnabled: false
@@ -96,11 +124,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  BucketAccess:
-    Type: !Rain::Module "bucket-policy.yaml"
-    Properties:
-      PolicyBucketName: !Sub ${AppName}-${AWS::Region}-${AWS::AccountId}
-
   ReplicaBucket:
     Type: AWS::S3::Bucket
     Metadata:
@@ -114,9 +137,6 @@ Resources:
           - S3_BUCKET_DEFAULT_LOCK_ENABLED
           - S3_BUCKET_REPLICATION_ENABLED
           - S3_BUCKET_LOGGING_ENABLED
-      Rain:
-        Content: RAIN_NO_CONTENT
-        EmptyOnDelete: !Ref EmptyOnDelete
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -131,11 +151,6 @@ Resources:
         RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
-
-  ReplicaBucketAccess:
-    Type: !Rain::Module "bucket-policy.yaml"
-    Properties:
-      PolicyBucketName: !Sub ${AppName}-replicas-${AWS::Region}-${AWS::AccountId}
 
   ReplicationPolicy:
     Type: AWS::IAM::RolePolicy
@@ -156,7 +171,7 @@ Resources:
           - Action:
               - s3:ReplicateObject
               - s3:ReplicateDelete
-              - s3:ReplicateTags
+              - s3:ReplicationTags
             Effect: Allow
             Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-replicas-${AWS::Region}-${AWS::AccountId}/*
         Version: "2012-10-17"

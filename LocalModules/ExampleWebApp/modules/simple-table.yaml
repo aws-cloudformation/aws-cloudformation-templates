@@ -1,0 +1,55 @@
+Parameters:
+
+  TableName:
+    Type: String
+  
+  LambdaRole:
+    Type: String
+    Description: If set, allow the lambda function to access this table
+    Default: ""
+
+  AllowLambda:
+    Type: Boolean
+    Default: false
+
+Conditions:
+  LambdaRole:
+    Fn::Equals:
+      - !Ref AllowLambda
+      - true 
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      TableName: !Sub ${TableName}
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  LambdaPolicy:
+    Type: AWS::IAM::RolePolicy
+    Condition: LambdaRole
+    Metadata:
+      Comment: This resource is created only if the LambdaRoleArn is set
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:BatchWriteItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource: 
+              - !GetAtt Table.Arn
+      PolicyName: !Sub ${TableName}-policy
+      RoleName: !Ref LambdaRole
+
