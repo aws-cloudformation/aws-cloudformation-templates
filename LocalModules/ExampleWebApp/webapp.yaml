@@ -60,6 +60,7 @@ Modules:
     Properties:
       TableName: !Sub ${AppName}-test
       LambdaRole: !Ref TestResourceHandlerRole
+      AllowLambda: true
 
   JwtResource:
     Source: "modules/api-resource.yaml"

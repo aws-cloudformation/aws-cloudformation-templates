@@ -1,3 +1,4 @@
+
 Description: Creates a web application with a static website using S3 and CloudFront,
   an API Gateway REST API, and a DynamoDB table, with Cognito authentication.  Apache-2.0
   License. Adapt this template to your needs and thoruoughly test it before introducing
@@ -223,9 +224,9 @@ Resources:
       RestApiId:
         Ref: RestApi
     DependsOn:
-    - TestResourceGet
-    - JwtResourceOptions
     - TestResourceOptions
+    - JwtResourceOptions
+    - TestResourceGet
     - JwtResourceGet
     Metadata:
       SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/rest-api.yaml:ApiDeployment:16
@@ -824,7 +825,7 @@ Resources:
     Type: AWS::IAM::RolePolicy
     Metadata:
       Comment: This resource is created only if the LambdaRoleArn is set
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/simple-table.yaml:LambdaPolicy:31
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/simple-table.yaml:LambdaPolicy:34
     Properties:
       PolicyDocument:
         Statement:
@@ -858,7 +859,7 @@ Resources:
       - AttributeName: id
         KeyType: HASH
     Metadata:
-      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/simple-table.yaml:Table:19
+      SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/simple-table.yaml:Table:22
   TestResourceGet:
     Type: AWS::ApiGateway::Method
     Properties:

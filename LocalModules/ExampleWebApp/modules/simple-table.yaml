@@ -8,12 +8,15 @@ Parameters:
     Description: If set, allow the lambda function to access this table
     Default: ""
 
+  AllowLambda:
+    Type: Boolean
+    Default: false
+
 Conditions:
   LambdaRole:
-    Fn::Not:
-    - Fn::Equals:
-        - !Ref LambdaRole
-        - ""
+    Fn::Equals:
+      - !Ref AllowLambda
+      - true 
 
 Resources:
   Table:
