@@ -284,7 +284,9 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       AvailabilityZones: !GetAZs
-      LaunchConfigurationName: !Ref LaunchConfig
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
       MinSize: 2
       MaxSize: 5
       LoadBalancerNames:
@@ -306,8 +308,8 @@ Resources:
       MinSize: "1"
       Recurrence: 0 19 * * *
 
-  LaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Metadata:
       Comment: Install a simple application
       AWS::CloudFormation::Init:
@@ -330,32 +332,20 @@ Resources:
               owner: root
               group: root
             /etc/cfn/cfn-hup.conf:
-              content: !Join
-                - ""
-                - - '[main] '
-                  - stack=
-                  - !Ref AWS::StackId
-                  - ' '
-                  - region=
-                  - !Ref AWS::Region
-                  - ' '
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
               mode: "000400"
               owner: root
               group: root
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
-              content: !Join
-                - ""
-                - - '[cfn-auto-reloader-hook] '
-                  - 'triggers=post.update '
-                  - 'path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init '
-                  - 'action=/opt/aws/bin/cfn-init -v '
-                  - '         --stack '
-                  - !Ref AWS::StackName
-                  - '         --resource LaunchConfig '
-                  - '         --region '
-                  - !Ref AWS::Region
-                  - ' '
-                  - 'runas=root '
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --region ${AWS::Region}
+                runas=root
           services:
             sysvinit:
               httpd:
@@ -368,36 +358,24 @@ Resources:
                   - /etc/cfn/cfn-hup.conf
                   - /etc/cfn/hooks.d/cfn-auto-reloader.conf
     Properties:
-      KeyName: !Ref KeyName
-      ImageId: !FindInMap
-        - AWSRegionArch2AMI
-        - !Ref AWS::Region
-        - !FindInMap
-          - AWSInstanceType2Arch
-          - !Ref InstanceType
-          - Arch
-      SecurityGroups:
-        - !Ref InstanceSecurityGroup
-      InstanceType: !Ref InstanceType
-      UserData: !Base64
-        Fn::Join:
-          - ""
-          - - '#!/bin/bash -xe '
-            - 'yum update -y aws-cfn-bootstrap '
-            - '/opt/aws/bin/cfn-init -v '
-            - '         --stack '
-            - !Ref AWS::StackName
-            - '         --resource LaunchConfig '
-            - '         --region '
-            - !Ref AWS::Region
-            - ' '
-            - '/opt/aws/bin/cfn-signal -e $? '
-            - '         --stack '
-            - !Ref AWS::StackName
-            - '         --resource WebServerGroup '
-            - '         --region '
-            - !Ref AWS::Region
-            - ' '
+      LaunchTemplateData:
+        KeyName: !Ref KeyName
+        ImageId: !FindInMap
+          - AWSRegionArch2AMI
+          - !Ref AWS::Region
+          - !FindInMap
+            - AWSInstanceType2Arch
+            - !Ref InstanceType
+            - Arch
+        SecurityGroups:
+          - !Ref InstanceSecurityGroup
+        InstanceType: !Ref InstanceType
+        UserData: !Base64
+          Fn::Sub: |
+            #!/bin/bash -xe
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate  --region ${AWS::Region}
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region ${AWS::Region}
 
   ElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
