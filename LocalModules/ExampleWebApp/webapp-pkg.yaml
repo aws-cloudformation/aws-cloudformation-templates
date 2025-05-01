@@ -1,4 +1,3 @@
-
 Description: Creates a web application with a static website using S3 and CloudFront,
   an API Gateway REST API, and a DynamoDB table, with Cognito authentication.  Apache-2.0
   License. Adapt this template to your needs and thoruoughly test it before introducing
@@ -111,7 +110,7 @@ Resources:
       Runtime: provided.al2023
       Code:
         S3Bucket: ezbeard-rain-lambda
-        S3Key: e6d1579db392489f6cf9e1887e33d16e
+        S3Key: 60d68af0c03c0c0bae1f90bac8448bbe
       Role:
         Fn::GetAtt:
         - JwtResourceHandlerRole
@@ -224,10 +223,10 @@ Resources:
       RestApiId:
         Ref: RestApi
     DependsOn:
-    - TestResourceOptions
-    - JwtResourceOptions
     - TestResourceGet
+    - TestResourceOptions
     - JwtResourceGet
+    - JwtResourceOptions
     Metadata:
       SourceMap: /Users/ezbeard/Source/aws-cloudformation-templates/LocalModules/ExampleWebApp/modules/rest-api.yaml:ApiDeployment:16
   RestApiStage:
@@ -887,7 +886,7 @@ Resources:
       Runtime: provided.al2023
       Code:
         S3Bucket: ezbeard-rain-lambda
-        S3Key: 7dc753763da763a8f66f4375fd434792
+        S3Key: 003fb4cce9debaa376abe8ce3e02759b
       Role:
         Fn::GetAtt:
         - TestResourceHandlerRole
