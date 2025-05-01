@@ -1,0 +1,113 @@
+Description: Creates a web application with a static website using S3 and CloudFront, an API Gateway REST API, and a DynamoDB table, with Cognito authentication.  Apache-2.0 License. Adapt this template to your needs and thoruoughly test it before introducing it in a production environment. **WARNING** This template will create resources in your account that may incur billing charges.
+
+Parameters:
+
+  AppName:
+    Type: String
+    Description: This name is used as a prefix for resource names
+    Default: awscli-cfn-webapp
+
+Modules:
+
+  Site:
+    Source: "modules/static-site.yaml"
+    Properties:
+      AppName: !Ref AppName
+
+  Cognito:
+    Source: "modules/cognito.yaml"
+    Properties:
+      AppName: !Ref AppName
+      CallbackURL: !Sub "https://${SiteDistribution.DomainName}/index.html"
+    Overrides:
+      UserPool:
+        DependsOn: SiteDistribution
+
+  Rest:
+    Source: "modules/rest-api.yaml"
+    Properties:
+      AppName: !Ref AppName
+      UserPoolArn: !GetAtt CognitoUserPool.Arn
+    Overrides:
+      ApiDeployment:
+        DependsOn:
+          - TestResourceGet
+          - TestResourceOptions
+          - JwtResourceGet
+          - JwtResourceOptions
+
+  TestResource:
+    Source: "modules/api-resource.yaml"
+    Metadata:
+      Comment: This module handles all methods on the /test path on the API. The lambda function code is located in api/resources/test.  
+    Properties:
+      Name: !Sub ${AppName}-test
+      RestApi: !Ref RestApi
+      RestApiDeployment: !Ref RestApiDeployment
+      CodePath: api/dist/test/lambda-handler.zip
+      ResourcePath: test
+      StageName: staging
+      AuthorizerId: !Ref RestApiAuthorizer
+    Overrides:
+      Handler:
+        Properties:
+          Environment:
+            Variables:
+              TABLE_NAME: !Ref TestDataTable
+
+  TestData:
+    Source: "modules/simple-table.yaml" 
+    Properties:
+      TableName: !Sub ${AppName}-test
+      LambdaRole: !Ref TestResourceHandlerRole
+      AllowLambda: true
+
+  JwtResource:
+    Source: "modules/api-resource.yaml"
+    Metadata:
+      Comment: This module handles all methods on the /jwt path on the API. The lambda function code is located in api/resources/jwt
+    Properties:
+      Name: !Sub ${AppName}-jwt
+      RestApi: !Ref RestApi
+      RestApiDeployment: !Ref RestApiDeployment
+      CodePath: api/dist/jwt/lambda-handler.zip
+      ResourcePath: jwt
+      StageName: staging
+      AuthorizerId: AWS::NoValue
+    Overrides:
+      Handler:
+        Properties:
+          Environment:
+            Variables:
+              COGNITO_REGION: us-east-1
+              COGNITO_POOL_ID: !Ref CognitoUserPool 
+              COGNITO_REDIRECT_URI: !Sub "https://${SiteDistribution.DomainName}/index.html"
+              COGNITO_DOMAIN_PREFIX: !Ref AppName
+              COGNITO_APP_CLIENT_ID: !Ref CognitoClient 
+      Get:
+        Properties:
+          AuthorizationType: NONE
+
+Outputs:
+
+  SiteURL:
+    Value: !Sub "https://${SiteDistribution.DomainName}"
+
+  RedirectURI:
+    Value: !Sub "https://${SiteDistribution.DomainName}/index.html"
+
+  AppName:
+    Value: !Ref AppName
+
+  RestApiInvokeURL:
+    Value: !Sub https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}
+
+  AppClientId:
+    Value: !Ref CognitoClient
+
+  CognitoDomainPrefix:
+    Value: !Ref AppName
+
+  ContentBucketName:
+    Value: !Ref SiteContentBucket
+
