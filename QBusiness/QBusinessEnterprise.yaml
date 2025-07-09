@@ -1,0 +1,804 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Comprehensive Amazon Q Business deployment for enterprise AI assistance with data sources, retrievers, web experience, and plugins for real-world use cases'
+
+# DEPLOYMENT NOTES AND FIXES:
+# 
+# This template includes several critical fixes discovered during testing:
+#
+# 1. QBusinessRetriever Configuration:
+#    - Uses NativeIndexConfiguration (not KendraIndexConfiguration)
+#    - Uses !GetAtt QBusinessIndex.IndexId (not !Ref) to get proper IndexId format
+#
+# 2. IAM Role Trust Policies:
+#    - Enhanced with multiple ARN patterns for broader compatibility
+#    - Includes both specific data source patterns and general application patterns
+#
+# 3. S3 Data Source Configuration:
+#    - Includes required 'syncMode' field set to 'FULL_CRAWL'
+#    - Includes 'version' field for schema compliance
+#    - Proper structure with all required nested configurations
+#
+# 4. Web Experience Configuration:
+#    - Includes RoleArn to prevent PENDING_AUTH_CONFIG status
+#    - This prevents the common 404 error on web experience URL
+#
+# 5. Post-Deployment Requirements:
+#    - Users must be created in Identity Center and assigned to the Q Business application
+#    - Users need passwords set in Identity Center to be considered "active"
+#    - Web experience will only become ACTIVE after proper user assignment
+#
+# For detailed deployment instructions and troubleshooting, see DEPLOYMENT-GUIDE.md
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Application Configuration"
+        Parameters:
+          - ApplicationName
+          - ApplicationDescription
+          - IdentityCenterInstanceArn
+      - Label:
+          default: "Data Source Configuration"
+        Parameters:
+          - S3BucketName
+          - SharePointSiteUrl
+          - SharePointDomain
+      - Label:
+          default: "Web Experience Configuration"
+        Parameters:
+          - WebExperienceTitle
+          - WebExperienceSubtitle
+      - Label:
+          default: "Security Configuration"
+        Parameters:
+          - EncryptionKeyId
+          - NotificationEmail
+    ParameterLabels:
+      ApplicationName:
+        default: "Application Name"
+      ApplicationDescription:
+        default: "Application Description"
+      IdentityCenterInstanceArn:
+        default: "Identity Center Instance ARN"
+      S3BucketName:
+        default: "S3 Bucket for Documents"
+      SharePointSiteUrl:
+        default: "SharePoint Site URL"
+      SharePointDomain:
+        default: "SharePoint Domain"
+      WebExperienceTitle:
+        default: "Web Experience Title"
+      WebExperienceSubtitle:
+        default: "Web Experience Subtitle"
+      NotificationEmail:
+        default: "Email for Alerts"
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: 'EnterpriseQBusinessApp'
+    Description: 'Name for the Q Business Application (3-1000 characters)'
+    MinLength: 3
+    MaxLength: 1000
+    ConstraintDescription: 'Must be between 3 and 1000 characters'
+    
+  ApplicationDescription:
+    Type: String
+    Default: 'Enterprise AI assistant with document search, SharePoint integration, and intelligent Q&A capabilities'
+    Description: 'Description for the Q Business Application'
+    MaxLength: 1000
+    
+  IdentityCenterInstanceArn:
+    Type: String
+    Description: 'ARN of the AWS IAM Identity Center instance (required for user authentication)'
+    AllowedPattern: '^arn:aws:sso:::instance/ssoins-[a-zA-Z0-9]{16}$'
+    ConstraintDescription: 'Must be a valid Identity Center instance ARN'
+
+  S3BucketName:
+    Type: String
+    Description: 'Name of existing S3 bucket containing documents for indexing'
+    AllowedPattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name'
+
+  SharePointSiteUrl:
+    Type: String
+    Default: 'https://yourcompany.sharepoint.com/sites/documents'
+    Description: 'SharePoint site URL for document indexing (optional)'
+    
+  SharePointDomain:
+    Type: String
+    Default: 'yourcompany.sharepoint.com'
+    Description: 'SharePoint domain for authentication'
+
+  WebExperienceTitle:
+    Type: String
+    Default: 'Enterprise Knowledge Assistant'
+    Description: 'Title for the web experience interface'
+    MaxLength: 500
+
+  WebExperienceSubtitle:
+    Type: String
+    Default: 'Ask questions about company documents, policies, and procedures'
+    Description: 'Subtitle for the web experience interface'
+    MaxLength: 500
+
+  EncryptionKeyId:
+    Type: String
+    Default: 'AWS_MANAGED'
+    AllowedValues:
+      - 'AWS_MANAGED'
+      - 'CUSTOMER_MANAGED'
+    Description: 'Encryption type: AWS_MANAGED (free) or CUSTOMER_MANAGED (creates dedicated KMS key)'
+
+  NotificationEmail:
+    Type: String
+    Description: 'Email address for receiving alerts and notifications'
+    AllowedPattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    ConstraintDescription: 'Must be a valid email address'
+
+Conditions:
+  HasSharePointConfig: !Not [!Equals [!Ref SharePointSiteUrl, 'https://yourcompany.sharepoint.com/sites/documents']]
+  UseCustomerManagedKey: !Equals [!Ref EncryptionKeyId, 'CUSTOMER_MANAGED']
+
+Resources:
+  # KMS Key for Customer Managed Encryption (optional)
+  QBusinessKMSKey:
+    Type: AWS::KMS::Key
+    Condition: UseCustomerManagedKey
+    Properties:
+      Description: !Sub 'KMS Key for Q Business Application: ${ApplicationName}'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Q Business Service
+            Effect: Allow
+            Principal:
+              Service: qbusiness.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:CreateGrant'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                'kms:EncryptionContext:aws:logs:arn': !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/qbusiness/${ApplicationName}'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'QBusiness-Encryption'
+
+  # KMS Key Alias
+  QBusinessKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Condition: UseCustomerManagedKey
+    Properties:
+      AliasName: !Sub 'alias/${ApplicationName}-qbusiness-key'
+      TargetKeyId: !Ref QBusinessKMSKey
+
+  # CloudWatch Log Group for Q Business Application
+  QBusinessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/qbusiness/${ApplicationName}'
+      RetentionInDays: 90
+      KmsKeyId: !If 
+        - UseCustomerManagedKey
+        - !Ref QBusinessKMSKey
+        - !Ref 'AWS::NoValue'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'QBusiness-Logs'
+
+  # IAM Role for Q Business Application
+  QBusinessServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ApplicationName}-QBusinessRole-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AmazonQApplicationPermission
+            Effect: Allow
+            Principal:
+              Service: qbusiness.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/*'
+          - Sid: QBusinessWebExperiencePermission
+            Effect: Allow
+            Principal:
+              Service: application.qbusiness.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+              - sts:SetContext
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/*'
+      Policies:
+        - PolicyName: QBusinessApplicationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AmazonQApplicationPutMetricDataPermission
+                Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'AWS/QBusiness'
+              - Sid: AmazonQApplicationDescribeLogGroupsPermission
+                Effect: Allow
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource: '*'
+              - Sid: AmazonQApplicationCreateLogGroupPermission
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/qbusiness/*'
+              - Sid: AmazonQApplicationLogStreamPermission
+                Effect: Allow
+                Action:
+                  - 'logs:DescribeLogStreams'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/qbusiness/*:log-stream:*'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'QBusiness-ServiceRole'
+
+  # IAM Role for Q Business Web Experience (separate role for web experience)
+  QBusinessWebExperienceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ApplicationName}-WebExperienceRole-${AWS::Region}'
+      Path: '/service-role/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: QBusinessTrustPolicy
+            Effect: Allow
+            Principal:
+              Service: application.qbusiness.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+              - sts:SetContext
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+              ArnEquals:
+                'aws:SourceArn': !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/${QBusinessApplication}'
+      Policies:
+        - PolicyName: QBusinessWebExperiencePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AmazonQWebExperiencePermissions
+                Effect: Allow
+                Action:
+                  - 'qbusiness:Chat'
+                  - 'qbusiness:ChatSync'
+                  - 'qbusiness:ListMessages'
+                  - 'qbusiness:ListConversations'
+                  - 'qbusiness:DeleteConversation'
+                  - 'qbusiness:PutFeedback'
+                  - 'qbusiness:GetWebExperience'
+                  - 'qbusiness:GetApplication'
+                  - 'qbusiness:GetChatControlsConfiguration'
+                  - 'qbusiness:ListPlugins'
+                  - 'qbusiness:GetUser'
+                  - 'qbusiness:ListDataSources'
+                  - 'qbusiness:ListDocuments'
+                  - 'qbusiness:GetRetriever'
+                  - 'qbusiness:SearchRelevantContent'
+                Resource: '*'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'QBusiness-WebExperience'
+
+  # IAM Role for Data Source Access
+  QBusinessDataSourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ApplicationName}-DataSourceRole-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: qbusiness.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+              ArnLike:
+                'aws:SourceArn': 
+                  - !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/*/index/*/data-source/*'
+                  - !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/*'
+      Policies:
+        - PolicyName: S3DataSourcePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3BucketAccess
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${S3BucketName}'
+                  - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+              - Sid: S3BucketVersioning
+                Effect: Allow
+                Action:
+                  - 's3:GetObjectVersion'
+                  - 's3:ListBucketVersions'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${S3BucketName}'
+                  - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+        - PolicyName: QBusinessDataSourcePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: QBusinessDocumentPermissions
+                Effect: Allow
+                Action:
+                  - 'qbusiness:BatchPutDocument'
+                  - 'qbusiness:BatchDeleteDocument'
+                  - 'qbusiness:PutGroup'
+                  - 'qbusiness:CreateUser'
+                  - 'qbusiness:DeleteGroup'
+                  - 'qbusiness:ListGroups'
+                  - 'qbusiness:UpdateUser'
+                  - 'qbusiness:ListUsers'
+                Resource: '*'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'QBusiness-DataSource'
+
+  # Q Business Application
+  QBusinessApplication:
+    Type: AWS::QBusiness::Application
+    Properties:
+      DisplayName: !Ref ApplicationName
+      Description: !Ref ApplicationDescription
+      RoleArn: !GetAtt QBusinessServiceRole.Arn
+      IdentityCenterInstanceArn: !Ref IdentityCenterInstanceArn
+      EncryptionConfiguration: !If
+        - UseCustomerManagedKey
+        - KmsKeyId: !Ref QBusinessKMSKey
+        - !Ref 'AWS::NoValue'
+      AttachmentsConfiguration:
+        AttachmentsControlMode: ENABLED
+      QAppsConfiguration:
+        QAppsControlMode: ENABLED
+      PersonalizationConfiguration:
+        PersonalizationControlMode: ENABLED
+      Tags:
+        - Key: 'Environment'
+          Value: 'Production'
+        - Key: 'CostCenter'
+          Value: 'IT-Knowledge-Management'
+        - Key: 'Owner'
+          Value: 'IT-Team'
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+
+  # Q Business Index
+  QBusinessIndex:
+    Type: AWS::QBusiness::Index
+    Properties:
+      ApplicationId: !Ref QBusinessApplication
+      DisplayName: !Sub '${ApplicationName}-Index'
+      Description: 'Main index for enterprise documents and knowledge base'
+      Type: 'ENTERPRISE'
+      CapacityConfiguration:
+        Units: 1
+      DocumentAttributeConfigurations:
+        - Name: 'department'
+          Type: 'STRING'
+          Search: 'ENABLED'
+        - Name: 'document_type'
+          Type: 'STRING'
+          Search: 'ENABLED'
+        - Name: 'confidentiality'
+          Type: 'STRING'
+          Search: 'ENABLED'
+        - Name: 'last_modified'
+          Type: 'DATE'
+          Search: 'ENABLED'
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'Document-Index'
+
+  # S3 Data Source
+  S3DataSource:
+    Type: AWS::QBusiness::DataSource
+    Properties:
+      ApplicationId: !Ref QBusinessApplication
+      IndexId: !GetAtt QBusinessIndex.IndexId
+      DisplayName: 'S3DocumentRepository'
+      Description: 'S3 bucket containing company documents and knowledge base'
+      Configuration:
+        type: 'S3'
+        syncMode: 'FULL_CRAWL'
+        connectionConfiguration:
+          repositoryEndpointMetadata:
+            BucketName: !Ref S3BucketName
+        repositoryConfigurations:
+          document:
+            fieldMappings:
+              - indexFieldName: 'department'
+                indexFieldType: 'STRING'
+                dataSourceFieldName: 'department'
+              - indexFieldName: 'document_type'
+                indexFieldType: 'STRING'
+                dataSourceFieldName: 'document_type'
+              - indexFieldName: 'confidentiality'
+                indexFieldType: 'STRING'
+                dataSourceFieldName: 'confidentiality'
+        additionalProperties:
+          inclusionPatterns:
+            - '*.pdf'
+            - '*.docx'
+            - '*.txt'
+            - '*.md'
+          exclusionPatterns:
+            - 'temp/*'
+            - '*/archive/*'
+        version: '1.0.0'
+      RoleArn: !GetAtt QBusinessDataSourceRole.Arn
+      SyncSchedule: 'cron(0 2 * * ? *)'  # Daily at 2 AM
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'DataSource'
+          Value: 'S3'
+
+  # Q Business Retriever
+  QBusinessRetriever:
+    Type: AWS::QBusiness::Retriever
+    Properties:
+      ApplicationId: !Ref QBusinessApplication
+      DisplayName: !Sub '${ApplicationName}-Retriever'
+      Type: 'NATIVE_INDEX'
+      Configuration:
+        NativeIndexConfiguration:
+          IndexId: !GetAtt QBusinessIndex.IndexId
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'Document-Retrieval'
+
+  # Q Business Web Experience
+  QBusinessWebExperience:
+    Type: AWS::QBusiness::WebExperience
+    Properties:
+      ApplicationId: !Ref QBusinessApplication
+      Title: !Ref WebExperienceTitle
+      Subtitle: !Ref WebExperienceSubtitle
+      WelcomeMessage: !Sub 'Welcome to ${WebExperienceTitle}! I can help you find information from company documents, policies, and procedures. What would you like to know?'
+      SamplePromptsControlMode: 'ENABLED'
+      RoleArn: !GetAtt QBusinessWebExperienceRole.Arn
+      Tags:
+        - Key: 'Application'
+          Value: !Ref ApplicationName
+        - Key: 'Purpose'
+          Value: 'Web-Interface'
+
+  # CloudWatch Dashboard for Monitoring
+  QBusinessDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${ApplicationName}-Dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/QBusiness", "ActiveUsers", "ApplicationId", "${QBusinessApplication}" ],
+                  [ ".", "Conversations", ".", "." ],
+                  [ ".", "IndexedDocuments", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Q Business Usage Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/QBusiness", "DataSourceSyncSuccess", "ApplicationId", "${QBusinessApplication}", "DataSourceId", "${S3DataSource}" ],
+                  [ ".", "DataSourceSyncFailure", ".", ".", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Data Source Sync Status",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+  # SNS Topic for Alerts
+  QBusinessAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ApplicationName}-Alerts'
+      DisplayName: 'Q Business Application Alerts'
+      KmsMasterKeyId: !Ref EncryptionKeyId
+
+  # SNS Subscription for Email Notifications
+  AlertsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref QBusinessAlertsTopic
+      Protocol: 'email'
+      Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Alarms
+  DataSourceSyncFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ApplicationName}-DataSourceSyncFailure'
+      AlarmDescription: 'Alert when data source sync fails'
+      MetricName: 'DataSourceSyncFailure'
+      Namespace: 'AWS/QBusiness'
+      Statistic: 'Sum'
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold'
+      Dimensions:
+        - Name: 'ApplicationId'
+          Value: !Ref QBusinessApplication
+        - Name: 'DataSourceId'
+          Value: !Ref S3DataSource
+      AlarmActions:
+        - !Ref QBusinessAlertsTopic
+      TreatMissingData: 'notBreaching'
+
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ApplicationName}-HighErrorRate'
+      AlarmDescription: 'Alert when error rate is high'
+      MetricName: 'Errors'
+      Namespace: 'AWS/QBusiness'
+      Statistic: 'Sum'
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: 'GreaterThanThreshold'
+      Dimensions:
+        - Name: 'ApplicationId'
+          Value: !Ref QBusinessApplication
+      AlarmActions:
+        - !Ref QBusinessAlertsTopic
+      TreatMissingData: 'notBreaching'
+
+  # Lambda function for custom metrics
+  CustomMetricsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ApplicationName}-CustomMetrics'
+      Runtime: 'python3.11'
+      Handler: 'index.lambda_handler'
+      Role: !GetAtt CustomMetricsRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          APPLICATION_ID: !Ref QBusinessApplication
+          REGION: !Ref 'AWS::Region'
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime, timedelta
+          
+          def lambda_handler(event, context):
+              cloudwatch = boto3.client('cloudwatch')
+              qbusiness = boto3.client('qbusiness')
+              
+              application_id = os.environ['APPLICATION_ID']
+              
+              try:
+                  # Get application details
+                  response = qbusiness.get_application(applicationId=application_id)
+                  
+                  # Put custom metric for application status
+                  cloudwatch.put_metric_data(
+                      Namespace='QBusiness/Custom',
+                      MetricData=[
+                          {
+                              'MetricName': 'ApplicationHealth',
+                              'Value': 1 if response['status'] == 'ACTIVE' else 0,
+                              'Unit': 'Count',
+                              'Dimensions': [
+                                  {
+                                      'Name': 'ApplicationId',
+                                      'Value': application_id
+                                  }
+                              ]
+                          }
+                      ]
+                  )
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('Metrics published successfully')
+                  }
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps(f'Error: {str(e)}')
+                  }
+
+  # IAM Role for Lambda function
+  CustomMetricsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: QBusinessMetricsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'qbusiness:GetApplication'
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+
+  # EventBridge rule to trigger Lambda function
+  MetricsScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'Trigger custom metrics collection'
+      ScheduleExpression: 'rate(5 minutes)'
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt CustomMetricsFunction.Arn
+          Id: 'CustomMetricsTarget'
+
+  # Permission for EventBridge to invoke Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CustomMetricsFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt MetricsScheduleRule.Arn
+
+Outputs:
+  ApplicationId:
+    Description: 'Q Business Application ID'
+    Value: !Ref QBusinessApplication
+    Export:
+      Name: !Sub '${AWS::StackName}-ApplicationId'
+      
+  ApplicationArn:
+    Description: 'Q Business Application ARN'
+    Value: !GetAtt QBusinessApplication.ApplicationArn
+    Export:
+      Name: !Sub '${AWS::StackName}-ApplicationArn'
+
+  WebExperienceUrl:
+    Description: 'Q Business Web Experience URL'
+    Value: !GetAtt QBusinessWebExperience.DefaultEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-WebExperienceUrl'
+
+  IndexId:
+    Description: 'Q Business Index ID'
+    Value: !GetAtt QBusinessIndex.IndexId
+    Export:
+      Name: !Sub '${AWS::StackName}-IndexId'
+
+  RetrieverId:
+    Description: 'Q Business Retriever ID'
+    Value: !Ref QBusinessRetriever
+    Export:
+      Name: !Sub '${AWS::StackName}-RetrieverId'
+
+  S3DataSourceId:
+    Description: 'S3 Data Source ID'
+    Value: !GetAtt S3DataSource.DataSourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-S3DataSourceId'
+
+  ServiceRoleArn:
+    Description: 'Q Business Service Role ARN'
+    Value: !GetAtt QBusinessServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceRoleArn'
+
+  DataSourceRoleArn:
+    Description: 'Q Business Data Source Role ARN'
+    Value: !GetAtt QBusinessDataSourceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DataSourceRoleArn'
+
+  DashboardUrl:
+    Description: 'CloudWatch Dashboard URL'
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ApplicationName}-Dashboard'
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardUrl'
+
+  AlertsTopicArn:
+    Description: 'SNS Topic ARN for Alerts'
+    Value: !Ref QBusinessAlertsTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlertsTopicArn'
+
+  CustomMetricsFunctionArn:
+    Description: 'Custom Metrics Lambda Function ARN'
+    Value: !GetAtt CustomMetricsFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomMetricsFunctionArn'

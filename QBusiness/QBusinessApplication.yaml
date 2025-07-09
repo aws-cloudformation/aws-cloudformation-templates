@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Create an Amazon Q Business application for enterprise AI assistance. This template demonstrates basic setup with proper IAM roles and security configurations.'
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: 'MyQBusinessApp'
+    Description: 'Name for the Q Business application'
+    MinLength: 1
+    MaxLength: 1000
+  
+  IdentityCenterInstanceArn:
+    Type: String
+    Description: 'ARN of the AWS IAM Identity Center instance'
+    AllowedPattern: '^arn:aws:sso:::instance/ssoins-[a-zA-Z0-9]{16}$'
+
+Resources:
+  QBusinessServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AmazonQApplicationPermission
+            Effect: Allow
+            Principal:
+              Service: qbusiness.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:qbusiness:${AWS::Region}:${AWS::AccountId}:application/*'
+      Policies:
+        - PolicyName: QBusinessApplicationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AmazonQApplicationPutMetricDataPermission
+                Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'AWS/QBusiness'
+              - Sid: AmazonQApplicationDescribeLogGroupsPermission
+                Effect: Allow
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource: '*'
+              - Sid: AmazonQApplicationCreateLogGroupPermission
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/qbusiness/*'
+              - Sid: AmazonQApplicationLogStreamPermission
+                Effect: Allow
+                Action:
+                  - 'logs:DescribeLogStreams'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/qbusiness/*:log-stream:*'
+      Tags:
+        - Key: Purpose
+          Value: QBusinessService
+
+  QBusinessApplication:
+    Type: AWS::QBusiness::Application
+    Properties:
+      DisplayName: !Ref ApplicationName
+      Description: 'Enterprise AI assistant for document search and Q&A'
+      RoleArn: !GetAtt QBusinessServiceRole.Arn
+      IdentityCenterInstanceArn: !Ref IdentityCenterInstanceArn
+      AttachmentsConfiguration:
+        AttachmentsControlMode: ENABLED
+      QAppsConfiguration:
+        QAppsControlMode: ENABLED
+      Tags:
+        - Key: Environment
+          Value: Development
+        - Key: CostCenter
+          Value: IT
+
+Outputs:
+  ApplicationId:
+    Description: 'Q Business Application ID'
+    Value: !Ref QBusinessApplication
+  
+  ApplicationArn:
+    Description: 'Q Business Application ARN'
+    Value: !GetAtt QBusinessApplication.ApplicationArn
+  
+  ServiceRoleArn:
+    Description: 'Service Role ARN for Q Business'
+    Value: !GetAtt QBusinessServiceRole.Arn
