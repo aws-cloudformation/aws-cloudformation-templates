@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'StackSet execution role for target accounts'
+
+Parameters:
+  AdministrationAccountId:
+    Type: String
+    Description: Account ID where the StackSet administration role exists
+
+Resources:
+  AWSCloudFormationStackSetExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSCloudFormationStackSetExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AdministrationAccountId}:role/AWSCloudFormationStackSetAdministrationRole'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ExecutionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudFormation permissions
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:DeleteStack'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:DescribeStackEvents'
+                  - 'cloudformation:DescribeStackResources'
+                  - 'cloudformation:GetTemplate'
+                  - 'cloudformation:ValidateTemplate'
+                Resource: '*'
+              # CloudWatch permissions
+              - Effect: Allow
+                Action:
+                  - 'cloudwatch:PutDashboard'
+                  - 'cloudwatch:DeleteDashboards'
+                  - 'cloudwatch:PutMetricAlarm'
+                  - 'cloudwatch:DeleteAlarms'
+                  - 'cloudwatch:DescribeAlarms'
+                Resource: '*'
+              # SNS permissions
+              - Effect: Allow
+                Action:
+                  - 'sns:CreateTopic'
+                  - 'sns:DeleteTopic'
+                  - 'sns:Subscribe'
+                  - 'sns:Unsubscribe'
+                  - 'sns:SetTopicAttributes'
+                  - 'sns:GetTopicAttributes'
+                  - 'sns:ListSubscriptionsByTopic'
+                Resource: '*'
+              # KMS permissions
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                Resource: '*'
+              # SSM permissions for CDK bootstrap parameters
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                  - 'ssm:GetParametersByPath'
+                Resource: 
+                  - 'arn:aws:ssm:*:*:parameter/cdk-bootstrap/*'
+
+Outputs:
+  ExecutionRoleArn:
+    Description: ARN of the StackSet execution role
+    Value: !GetAtt AWSCloudFormationStackSetExecutionRole.Arn
