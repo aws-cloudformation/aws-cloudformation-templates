@@ -55,7 +55,121 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
 
+  myDynamoDBTable1:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  myDynamoDBTable2:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  myDynamoDBTable3:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  myDynamoDBTable4:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  myDynamoDBTable5:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  myDynamoDBTable6:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: !Ref HashKeyElementName
+          AttributeType: !Ref HashKeyElementType
+      KeySchema:
+        - AttributeName: !Ref HashKeyElementName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
 Outputs:
   TableName:
     Description: Table name of the newly created DynamoDB table
     Value: !Ref myDynamoDBTable
+
+  TableName1:
+    Description: Table name of the first additional DynamoDB table
+    Value: !Ref myDynamoDBTable1
+
+  TableName2:
+    Description: Table name of the second additional DynamoDB table
+    Value: !Ref myDynamoDBTable2
+
+  TableName3:
+    Description: Table name of the third additional DynamoDB table
+    Value: !Ref myDynamoDBTable3
+
+  TableName4:
+    Description: Table name of the fourth additional DynamoDB table
+    Value: !Ref myDynamoDBTable4
+
+  TableName5:
+    Description: Table name of the fifth additional DynamoDB table
+    Value: !Ref myDynamoDBTable5
+
+  TableName6:
+    Description: Table name of the sixth additional DynamoDB table
+    Value: !Ref myDynamoDBTable6
