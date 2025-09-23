@@ -6,12 +6,21 @@ Parameters:
   OUID:
     Type: String
     Default: ou-qxtx-vv0thlla
+  KmsKeyId:
+    Type: String
+    Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+    Default: alias/aws/sqs
+  StackSetRegions:
+    Type: CommaDelimitedList
+    Description: 'AWS Regions where stack instances should be deployed in target accounts'
+    Default: 'us-east-1,eu-west-1'
 
 Resources:
   StackSet:
     Type: AWS::CloudFormation::StackSet
     Properties:
       TemplateBody: |
+        AWSTemplateFormatVersion: "2010-09-09"
         Description: |
           This template has resources that will be installed into all managed accounts
           in the OU. For the purposes of the sample it's not important what exactly we
@@ -24,12 +33,17 @@ Resources:
             Description: This name will be used as part of resource names
             Type: String
             Default: stacksets-sample
+          KmsKeyId:
+            Type: String
+            Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+            Default: alias/aws/sqs
 
         Resources:
           TestQ:
             Type: AWS::SQS::Queue
             Properties:
               QueueName: test-events17
+              KmsMasterKeyId: !Ref KmsKeyId
 
           StorageLogBucket:
             Type: AWS::S3::Bucket
@@ -263,12 +277,12 @@ Resources:
         - DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref OUID
-          Regions:
-            - us-east-1
-            - us-west-2
+          Regions: !Ref StackSetRegions
       Parameters:
         - ParameterKey: AppName
           ParameterValue: stackset-logging-sample
+        - ParameterKey: KmsKeyId
+          ParameterValue: !Ref KmsKeyId
       PermissionModel: SERVICE_MANAGED
       Description: This stack set is part of a sample that demonstrates how to set up cross account logging
       OperationPreferences:
