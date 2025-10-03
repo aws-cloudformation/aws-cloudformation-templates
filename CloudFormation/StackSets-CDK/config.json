@@ -1,0 +1,25 @@
+{
+  "stackset": {
+    "stack_set_name": "Custom-StackSets-Blog-Monitoring",
+    "target_regions": [
+      "us-east-1",
+      "us-west-2"
+    ],
+    "instance_stack_name": "MonitoringStack",
+    "max_concurrent_percentage": 50,
+    "failure_tolerance_percentage": 20,
+    "region_concurrency_type": "SEQUENTIAL"
+  },
+  "monitoring": {
+    "alarm_thresholds": {
+      "BillingThreshold": 100.0,
+      "SNSFailureThreshold": 1.0
+    }
+  },
+  "pipelines": [
+    {
+      "environment": "dev",
+      "branch_name": "main"
+    }
+  ]
+}
