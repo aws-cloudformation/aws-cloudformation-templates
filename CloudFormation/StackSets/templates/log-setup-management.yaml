@@ -1,7 +1,4 @@
 AWSTemplateFormatVersion: "2010-09-09"
-
-Transform: AWS::LanguageExtensions
-
 Description: A central event bus rule and log group to collect CloudFormation logs from all target accounts
 
 Parameters:
@@ -22,6 +19,16 @@ Parameters:
   CentralEventLogName:
     Type: String
     Default: central-cloudformation-logs
+
+  KmsKeyId:
+    Type: String
+    Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+    Default: alias/aws/sqs
+
+  StackSetRegions:
+    Type: CommaDelimitedList
+    Description: 'AWS Regions where stack instances should be deployed in target accounts'
+    Default: 'us-east-1,eu-west-1'
 
 Resources:
   CentralEventBus:
@@ -55,11 +62,13 @@ Resources:
       LogGroupClass: STANDARD
       LogGroupName: !Ref CentralEventLogName
       KmsKeyId: !GetAtt CentralEventLogKey.Arn
+      RetentionInDays: 90
 
   CentralEventLogKey:
     Type: AWS::KMS::Key
     Properties:
       Description: KMS key for log group
+      EnableKeyRotation: true
       KeyPolicy:
         Version: "2012-10-17"
         Id: key-policy
@@ -166,6 +175,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub ${CentralEventBusName}-DLQ
+      KmsMasterKeyId: !Ref KmsKeyId
 
   TargetAccountLogging:
     Type: AWS::CloudFormation::StackSet
@@ -182,6 +192,10 @@ Resources:
         Parameters:
           CentralEventBusArn:
             Type: String
+          KmsKeyId:
+            Type: String
+            Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+            Default: alias/aws/sqs
 
         Resources:
           CloudFormationEventRule:
@@ -206,6 +220,7 @@ Resources:
             Type: AWS::SQS::Queue
             Properties:
               QueueName: CloudFormation-Logs-DLQ
+              KmsMasterKeyId: !Ref KmsKeyId
 
           DeadLetterQueuePolicy:
             Type: AWS::SQS::QueuePolicy
@@ -256,12 +271,12 @@ Resources:
         - DeploymentTargets:
             OrganizationalUnitIds:
               - !Ref OUID
-          Regions:
-            - us-east-1
-            - us-west-2
+          Regions: !Ref StackSetRegions
       Parameters:
         - ParameterKey: CentralEventBusArn
           ParameterValue: !GetAtt CentralEventBus.Arn
+        - ParameterKey: KmsKeyId
+          ParameterValue: !Ref KmsKeyId
       PermissionModel: SERVICE_MANAGED
       Description: This stack set is part of a sample that demonstrates how to set up cross account logging. It configures logging resources in target accounts.
       OperationPreferences:
