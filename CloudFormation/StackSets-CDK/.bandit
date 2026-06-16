@@ -1,2 +1,0 @@
-[bandit]
-exclude = ./tests,./.venv,./.env,./cdk.out
