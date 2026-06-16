@@ -27,7 +27,7 @@ Before you submit a template, we suggest that you follow these guidelines:
 
 - Fork the repository and create a fresh branch to work on your sample
   ```
-  git remote add upstream git@github.com:aws-cloudformation/rain.git
+  git remote add upstream git@github.com:aws-cloudformation/aws-cloudformation-templates.git
   git fetch upstream
   git checkout -b my-branch-name upstream/main
   git push -u origin

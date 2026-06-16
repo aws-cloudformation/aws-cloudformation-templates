@@ -184,7 +184,7 @@ Resources:
     Type: AWS::ServiceCatalog::TagOptionAssociation
     Properties:
       TagOptionId: !ImportValue
-        Fn::Sub: ${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptions
+        Fn::Sub: ${ServiceCatalogPortfolioStackName}-ServiceCatalogProductTagOptionsDept
       ResourceId: !Ref ServiceCatalogCloudFormationProduct
 
 Outputs:

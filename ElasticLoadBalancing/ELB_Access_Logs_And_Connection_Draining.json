@@ -47,9 +47,6 @@
         "LatestAmiId": {
             "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
             "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-        },
-        "LogsBucket": {
-            "Type": "String"
         }
     },
     "Mappings": {
@@ -173,6 +170,13 @@
                 }
             }
         },
+        "LogsBucket": {
+            "DeletionPolicy": "Retain",
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "Private"
+            }
+        },
         "LogsBucketPolicy": {
             "Type": "AWS::S3::BucketPolicy",
             "Properties": {
@@ -187,7 +191,7 @@
                             "Effect": "Allow",
                             "Resource": [
                                 {
-                                    "Fn::Sub": "aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*"
                                 }
                             ],
                             "Principal": {
@@ -218,10 +222,10 @@
                             },
                             "Resource": [
                                 {
-                                    "Fn::Sub": "aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}"
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}"
                                 },
                                 {
-                                    "Fn::Sub": "aws:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${LogsBucket}/Logs/AWSLogs/${AWS::AccountId}/*"
                                 }
                             ]
                         }
@@ -380,35 +384,7 @@
                 },
                 "UserData": {
                     "Fn::Base64": {
-                        "Fn::Join": [
-                            "",
-                            [
-                                "#!/bin/bash -xe ",
-                                "yum update -y aws-cfn-bootstrap ",
-                                "/opt/aws/bin/cfn-init -v ",
-                                "         --stack ",
-                                {
-                                    "Ref": "AWS::StackName"
-                                },
-                                "         --resource LaunchConfig ",
-                                "         --region ",
-                                {
-                                    "Ref": "AWS::Region"
-                                },
-                                " ",
-                                "/opt/aws/bin/cfn-signal -e $? ",
-                                "         --stack ",
-                                {
-                                    "Ref": "AWS::StackName"
-                                },
-                                "         --resource WebServerGroup ",
-                                "         --region ",
-                                {
-                                    "Ref": "AWS::Region"
-                                },
-                                " "
-                            ]
-                        ]
+                        "Fn::Sub": "#!/bin/bash -xe          \nyum update -y aws-cfn-bootstrap \n/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} \\\n         --resource LaunchConfig \\\n         --region ${AWS::Region}\n\n/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} \\\n         --resource WebServerGroup \\\n         --region ${AWS::Region} \n"
                     }
                 }
             }

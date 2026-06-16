@@ -5,7 +5,7 @@
         "DockerImage": {
             "Description": "Docker image to use for the build phase",
             "Type": "String",
-            "Default": "aws/codebuild/standard:6.0"
+            "Default": "aws/codebuild/standard:7.0"
         }
     },
     "Resources": {

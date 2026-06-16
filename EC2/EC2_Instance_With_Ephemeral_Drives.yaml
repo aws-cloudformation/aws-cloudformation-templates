@@ -84,8 +84,8 @@ Resources:
       SubnetId: !Select
         - 0
         - !Ref Subnets
-      SecurityGroups:
-        - !Ref EC2SecurityGroup
+      SecurityGroupIds:
+        - !GetAtt EC2SecurityGroup.GroupId
       KeyName: !Ref KeyName
       ImageId: !Ref LatestAmiId
       BlockDeviceMappings:
