@@ -1,7 +1,2 @@
-.DS_Store
-.idea/
-.vscode/
-.env
-.venv
-params.yml
+*
 
