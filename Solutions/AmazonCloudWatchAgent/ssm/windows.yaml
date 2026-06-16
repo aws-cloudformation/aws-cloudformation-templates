@@ -6,7 +6,7 @@ Parameters:
   SSMKey:
     Description: Name of parameter store which contains the json configuration of CWAgent.
     Type: String
-    Default: AmazonCloudWatch-DefaultLinuxConfigCloudFormation
+    Default: AmazonCloudWatch-DefaultWindowsConfigCloudFormation
 
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
@@ -16,13 +16,13 @@ Parameters:
   InstanceType:
     Description: EC2 instance type
     Type: String
-    Default: m4.2xlarge
+    Default: t3.medium
     ConstraintDescription: must be a valid EC2 instance type.
 
   InstanceAMI:
     Description: Managed AMI ID for EC2 Instance
-    Type: AWS::EC2::Image::Id
-    Default: ami-3703414f
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-SQL_2022_Web
 
   IAMRole:
     Description: EC2 attached IAM role

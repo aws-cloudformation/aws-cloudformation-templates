@@ -12,8 +12,15 @@ Using this AWS CloudFormation Template Example enables CI/CD optimized and autom
 ## Instructions
 
 The following steps provide a brief overview of this process:
- * Upload certificate to AWS Amazon Certificate Manager (ACM) in N.Virginia Region
- * Review provided Parameters and set values that match your use case
+ * Upload certificate to AWS Amazon Certificate Manager (ACM) in N.Virginia Region.
+ * Review provided Parameters and set values that match your use case. 
+ * While creating the CloudFormation stack, please make sure to select the following networking parameter values from the dropdown in Parameters section:
+
+    - **VpcId:** Select a VPC ID
+    - **PublicSubnetId1:** Select the first public subnet from the above VPC
+    - **PublicSubnetId2:** Select the second public subnet from the above VPC
+    - **KeyPairName:** Select an EC2 Key Pair
+
  * Expand solution with additional resources as AutoScaling, etc. that match your use case
 
 ## Builders

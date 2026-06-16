@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Creates an EFS file system with three mount targets and one access point.
+
+Parameters:
+  EFSFileSystemName:
+    Type: String
+    Description: Name for the EFS file system
+    Default: SampleEFSFilesystem
+
+  AccessPointName:
+    Type: String
+    Description: Name for the EFS access point
+    Default: SampleEFSAccessPoint
+
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: A subnet for the first EFS mount target
+
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: A subnet for the second EFS mount target
+
+  Subnet3:
+    Type: AWS::EC2::Subnet::Id
+    Description: A subnet for the third EFS mount target
+
+  SecurityGroup1:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for the first EFS mount target
+
+  SecurityGroup2:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for the second EFS mount target
+
+  SecurityGroup3:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group for the third EFS mount target
+
+Resources:
+  EFSFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+        - Key: Name
+          Value: !Ref EFSFileSystemName
+
+  EFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SecurityGroups:
+        - !Ref SecurityGroup1
+      SubnetId: !Ref Subnet1
+
+  EFSMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SecurityGroups:
+        - !Ref SecurityGroup2
+      SubnetId: !Ref Subnet2
+
+  EFSMountTarget3:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SecurityGroups:
+        - !Ref SecurityGroup3
+      SubnetId: !Ref Subnet3
+
+  EFSAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      AccessPointTags:
+        - Key: Name
+          Value: !Ref AccessPointName
+
+Outputs:
+  FileSystemId:
+    Description: ID of the created EFS File System
+    Value: !Ref EFSFileSystem

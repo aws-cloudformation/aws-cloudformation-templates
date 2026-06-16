@@ -89,11 +89,7 @@ Parameters:
 
   LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
-
-  KmsKeyArn:
-    Description: Used to encrypt logs
-    Type: String
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id
 
 Conditions:
   CronRate: !Equals
@@ -137,6 +133,12 @@ Resources:
       ToPort: "61000"
       SourceSecurityGroupId: !Ref EcsSecurityGroup
 
+  # Create a KMS key to encrypt logs
+  LogsKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "ECS Logs Encryption Key"
+      EnableKeyRotation: true
   CloudwatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -145,7 +147,7 @@ Resources:
         - - ECSLogGroup
           - !Ref AWS::StackName
       RetentionInDays: 14
-      KmsKeyId: !Ref KmsKeyArn
+      KmsKeyId: !Ref LogsKmsKey
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition

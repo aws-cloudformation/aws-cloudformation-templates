@@ -10,13 +10,16 @@
         "InstanceType": {
             "Description": "EC2 instance type",
             "Type": "String",
-            "Default": "m4.2xlarge",
+            "Default": "t3.medium",
             "ConstraintDescription": "must be a valid EC2 instance type."
         },
-        "InstanceAMI": {
-            "Description": "Managed AMI ID for EC2 Instance",
-            "Type": "AWS::EC2::Image::Id",
-            "Default": "ami-28e07e50"
+        "RHELVersion": {
+            "Type": "String",
+            "AllowedValues": [
+                "RHEL9"
+            ],
+            "Default": "RHEL9",
+            "Description": "RHEL version to deploy"
         },
         "IAMRole": {
             "Description": "EC2 attached IAM role",
@@ -37,6 +40,42 @@
             "Type": "AWS::EC2::Subnet::Id"
         }
     },
+
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {
+                "RHEL9": "ami-0fb13bb53494158e9"
+            },
+            "us-east-2": {
+                "RHEL9": "ami-0aeea2f24f6d3ba32"
+            },
+            "us-west-1": {
+                "RHEL9": "ami-068c2af1200ef7356"
+            },
+            "us-west-2": {
+                "RHEL9": "ami-0367f2b5c3d1ef960"
+            },
+            "eu-west-1": {
+                "RHEL9": "ami-0f0f1c02e5e4d9d9f"
+            },
+            "eu-west-2": {
+                "RHEL9": "ami-02b1e3a99e36afd1a"
+            },
+            "ap-northeast-1": {
+                "RHEL9": "ami-0eade93757ef7bb6c"
+            },
+            "ap-northeast-2": {
+                "RHEL9": "ami-097698b6cd8164ea2"
+            },
+            "ap-southeast-1": {
+                "RHEL9": "ami-0b9521fddc9871128"
+            },
+            "ap-southeast-2": {
+                "RHEL9": "ami-0eea634029e7b983c"
+            }
+        }
+    },
+
     "Resources": {
         "EC2Instance": {
             "CreationPolicy": {
@@ -120,19 +159,28 @@
                     "Ref": "KeyName"
                 },
                 "ImageId": {
-                    "Ref": "InstanceAMI"
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        {
+                            "Ref": "RHELVersion"
+                        }
+                    ]
                 },
                 "SubnetId": {
                     "Ref": "SubnetId"
                 },
-                "SecurityGroups": [
+                "SecurityGroupIds": [
                     {
-                        "Ref": "InstanceSecurityGroup"
-                    }
+                        
+                        "Fn::GetAtt" : [ "InstanceSecurityGroup", "GroupId" ]
+                    } 
                 ],
                 "UserData": {
                     "Fn::Base64": {
-                        "Fn::Sub": "#!/bin/bash\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/redhat/amd64/latest/amazon-cloudwatch-agent.rpm\nyum update -y\npip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\ncfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n"
+                        "Fn::Sub": "#!/bin/bash\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/redhat/amd64/latest/amazon-cloudwatch-agent.rpm\nyum update -y\nyum install python3 -y\ncurl -O https://bootstrap.pypa.io/get-pip.py\n# Install pip using python3\npython3 get-pip.py\nexport PATH=$PATH:/usr/local/bin\npip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz\ncfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default\ncfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}\n"
                     }
                 }
             }

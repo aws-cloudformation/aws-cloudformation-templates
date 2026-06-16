@@ -1,0 +1,289 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A central event bus rule and log group to collect CloudFormation logs from all target accounts
+
+Parameters:
+  OUID:
+    Type: String
+    Description: The Id of the Organization Unit to deploy the stack set to.
+    Default: ou-qxtx-vv0thlla
+
+  OrgID:
+    Type: String
+    Description: The Id of the Organization to verify the cross account API call. All accounts in this org will be granted permissions to put events onto the default event bus in this account. Note that this is not the OUID, it's the org itself and should start with o-
+    Default: o-jhfo4fcm1s
+
+  CentralEventBusName:
+    Type: String
+    Default: central-cloudformation
+
+  CentralEventLogName:
+    Type: String
+    Default: central-cloudformation-logs
+
+  KmsKeyId:
+    Type: String
+    Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+    Default: alias/aws/sqs
+
+  StackSetRegions:
+    Type: CommaDelimitedList
+    Description: 'AWS Regions where stack instances should be deployed in target accounts'
+    Default: 'us-east-1,eu-west-1'
+
+Resources:
+  CentralEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Description: A custom event bus in the central account to be used as a destination for events from a rule in target accounts
+      Name: !Ref CentralEventBusName
+      DeadLetterConfig:
+        Arn: !GetAtt DeadLetterQueue.Arn
+
+  CentralEventBusPolicy:
+    Type: AWS::Events::EventBusPolicy
+    Metadata:
+      Comment: Note that the condition requires the Organization ID, not the Organizational Unit ID. If you want to refine the access down to an OU, you could use aws:PrincipalOrgPaths in the condition instead.
+    Properties:
+      EventBusName: !Ref CentralEventBus
+      StatementId: CentralEventBusPolicyStatement
+      Statement:
+        Effect: Allow
+        Principal: '*'
+        Action: events:PutEvents
+        Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${CentralEventBusName}
+        Condition:
+          StringEquals:
+            aws:PrincipalOrgID: !Ref OrgID
+
+  CentralEventLog:
+    DependsOn: CentralEventBus
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: !Ref CentralEventLogName
+      KmsKeyId: !GetAtt CentralEventLogKey.Arn
+      RetentionInDays: 90
+
+  CentralEventLogKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for log group
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: key-policy
+        Statement:
+          - Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+              - kms:GenerateDataKey
+              - kms:TagResource
+              - kms:UntagResource
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/Admin
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
+          - Sid: Allow CloudWatch Logs to use the key
+            Effect: Allow
+            Principal:
+              Service: logs.amazonaws.com
+            Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
+
+  CentralEventLogQuery:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: CentralCloudFormationEventLogs
+      QueryString: fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` | sort @timestamp desc
+      LogGroupNames:
+        - !Ref CentralEventLogName
+
+  CentralEventLogQueryReason:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: CentralCloudFormationFailures
+      QueryString: 'fields time, account, region, `detail.resource-type`, `detail.logical-resource-id`, `detail.status-details.status` as status, `detail.status-details.status-reason` as reason | sort @timestamp desc | filter status like "FAILED" | filter reason not like "canceled" | filter resource not like "AWS::CloudFormation::Stack" '
+      LogGroupNames:
+        - !Ref CentralEventLogName
+
+  CentralEventLogPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Metadata:
+      Comment: The PolicyDocument in this resource *must* be JSON, unlike the standard IAM resources that allow YAML. Also note that you have to put the policy here and not in a role referenced by AWS::Events::Rule.RoleArn, which is meant for cross-account scenarios.
+    Properties:
+      PolicyName: CentralEventLogResourcePolicy
+      PolicyDocument: !Sub |
+        {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "delivery.logs.amazonaws.com",
+                  "events.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "logs:PutLogEvents",
+                "logs:CreateLogStream"
+              ],
+              "Resource": "${CentralEventLog.Arn}"
+            }
+          ]
+        }
+
+  CentralEventRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - CentralEventLog
+    Metadata:
+      Comment: We use an empty prefix here to capture all events forwarded from target accounts
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W3005
+    Properties:
+      Name: CloudFormationLogs
+      EventBusName: !Ref CentralEventBusName
+      State: ENABLED
+      EventPattern:
+        source:
+          - prefix: ""
+      Targets:
+        - Arn: !GetAtt CentralEventLog.Arn
+          Id: CloudFormationLogsToCentralGroup
+          DeadLetterConfig:
+            Arn: !GetAtt DeadLetterQueue.Arn
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${CentralEventBusName}-DLQ
+      KmsMasterKeyId: !Ref KmsKeyId
+
+  TargetAccountLogging:
+    Type: AWS::CloudFormation::StackSet
+    DependsOn:
+      - CentralEventRule
+      - CentralEventLog
+      - CentralEventLogPolicy
+    Properties:
+      TemplateBody: |
+        AWSTemplateFormatVersion: "2010-09-09"
+
+        Description: EventBridge Rule to send CloudFormation events to a central EventBus
+
+        Parameters:
+          CentralEventBusArn:
+            Type: String
+          KmsKeyId:
+            Type: String
+            Description: 'The ID of an AWS Key Management Service (KMS) for Amazon SQS, or a custom KMS. To use the AWS managed KMS for Amazon SQS, specify a (default) alias ARN, alias name (for example alias/aws/sqs), key ARN, or key ID'
+            Default: alias/aws/sqs
+
+        Resources:
+          CloudFormationEventRule:
+            Type: AWS::Events::Rule
+            Metadata:
+              Comment: Send all cloudformation events to the central event bus
+            Properties:
+              Name: CloudFormationEventRule
+              EventBusName: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
+              EventPattern:
+                source:
+                  - aws.cloudformation
+              State: ENABLED
+              Targets:
+                - Arn: !Ref CentralEventBusArn
+                  RoleArn: !GetAtt EventBridgeRole.Arn
+                  Id: CentralEventBus
+                  DeadLetterConfig:
+                    Arn: !GetAtt DeadLetterQueue.Arn
+
+          DeadLetterQueue:
+            Type: AWS::SQS::Queue
+            Properties:
+              QueueName: CloudFormation-Logs-DLQ
+              KmsMasterKeyId: !Ref KmsKeyId
+
+          DeadLetterQueuePolicy:
+            Type: AWS::SQS::QueuePolicy
+            Properties:
+              PolicyDocument:
+                Version: "2012-10-17"
+                Id: AllowEventBridgeToWriteLogs
+                Statement:
+                  - Sid: AllowEventBridgeToWriteLogs
+                    Effect: Allow
+                    Principal:
+                      Service: events.amazonaws.com
+                    Action: sqs:SendMessage
+                    Resource: !GetAtt DeadLetterQueue.Arn
+                    Condition:
+                      ArnLike:
+                        aws:SourceArn: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/CloudFormationEventRule
+              Queues:
+                - !Ref DeadLetterQueue
+
+          EventBridgeRole:
+            Type: AWS::IAM::Role
+            Properties:
+              AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                      Service: events.amazonaws.com
+                    Action: sts:AssumeRole
+
+          EventBridgeRolePolicy:
+            Type: AWS::IAM::RolePolicy
+            Metadata:
+              Comment: Allow CloudFormation events to be written to the default event bus in the target account
+            Properties:
+              PolicyName: EventBridgeRolePolicy
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Action: events:PutEvents
+                    Resource: !Ref CentralEventBusArn
+              RoleName: !Ref EventBridgeRole
+      Capabilities:
+        - CAPABILITY_IAM
+      StackInstancesGroup:
+        - DeploymentTargets:
+            OrganizationalUnitIds:
+              - !Ref OUID
+          Regions: !Ref StackSetRegions
+      Parameters:
+        - ParameterKey: CentralEventBusArn
+          ParameterValue: !GetAtt CentralEventBus.Arn
+        - ParameterKey: KmsKeyId
+          ParameterValue: !Ref KmsKeyId
+      PermissionModel: SERVICE_MANAGED
+      Description: This stack set is part of a sample that demonstrates how to set up cross account logging. It configures logging resources in target accounts.
+      OperationPreferences:
+        FailureToleranceCount: 0
+        MaxConcurrentCount: 2
+        RegionConcurrencyType: PARALLEL
+      AutoDeployment:
+        Enabled: true
+        RetainStacksOnAccountRemoval: true
+      StackSetName: log-setup

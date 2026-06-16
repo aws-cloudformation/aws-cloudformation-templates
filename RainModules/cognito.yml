@@ -1,0 +1,53 @@
+Description: This module creates a simple Cognito User Pool, Domain, and App Client.
+
+Parameters:
+
+  AppName:
+    Type: String
+
+  CallbackURL:
+    Type: String
+
+Resources:
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref AppName
+      AdminCreateUserConfig: 
+        AllowAdminCreateUserOnly: true
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: "OFF" 
+      Schema:
+        - Name: email
+          Required: true
+        - Name: given_name
+          Required: true
+        - Name: family_name
+          Required: true
+
+  Domain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref AppName
+      UserPoolId: !Ref UserPool
+
+  Client:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Ref AppName
+      GenerateSecret: false
+      UserPoolId: !Ref UserPool
+      CallbackURLs:
+        - !Ref CallbackURL
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - phone
+        - email
+        - openid
+      SupportedIdentityProviders:
+        - COGNITO
+
