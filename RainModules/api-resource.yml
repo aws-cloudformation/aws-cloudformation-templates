@@ -1,0 +1,111 @@
+Description: This module contains a lambda handler and the API Gateway resource to proxy requests to the lambda. It is assumed that the lambda function can handle all HTTPMethods sent to the specified path, including the OPTIONS pre-flight request. The lambda function must also return the approppriate CORS headers with each response.
+
+Parameters:
+
+  Name:
+    Type: String
+    Description: This name will be used for resource names and tags
+  
+  RestApi:
+    Type: String
+
+  RestApiDeployment:
+    Type: String
+
+  BuildScript:
+    Type: String
+    Description: The name of the script to run before uploading the lambda handler to S3
+
+  CodePath:
+    Type: String
+    Description: The path of the packaged lambda function created by BuildScript
+
+  ResourcePath:
+    Type: String
+    Description: The URI path name for the resource, for example, "user" or "order"
+
+  AuthorizerId:
+    Type: String
+    Description: The Id of the APIGateway Authorizer
+
+Resources:
+
+  Handler:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: bootstrap
+      FunctionName: !Sub ${Name}-handler
+      Runtime: provided.al2023
+      Code: !Rain::S3
+        Run: !Ref BuildScript
+        Zip: false
+        Path: !Ref CodePath 
+        KeyProperty: S3Key
+        BucketProperty: S3Bucket
+      Role: !GetAtt HandlerRole.Arn
+
+  HandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  Resource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Sub ${RestApi.RootResourceId}
+      PathPart: !Ref ResourcePath
+      RestApiId: !Ref RestApi
+
+  Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt Handler.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/*" 
+
+  RootPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt Handler.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/" 
+
+  Options:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: OPTIONS
+      ResourceId: !Ref Resource 
+      RestApiId: !Ref RestApi
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Handler.Arn}/invocations"
+
+  Get:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref Resource 
+      RestApiId: !Ref RestApi
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref AuthorizerId
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Handler.Arn}/invocations"
+
+
+

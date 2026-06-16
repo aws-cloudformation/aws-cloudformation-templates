@@ -1,0 +1,10 @@
+[run]
+omit =
+    app.py
+    .venv/*
+    __init__.py
+    .env/*
+source =
+    .
+[report]
+include_namespace_packages = True

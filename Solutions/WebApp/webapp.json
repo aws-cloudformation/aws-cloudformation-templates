@@ -1,0 +1,1521 @@
+{
+    "Description": "Creates a web application with a static website using S3 and CloudFront, an API Gateway REST API, and a DynamoDB table, with Cognito authentication. Apache-2.0 License. Adapt this template to your needs and thoruoughly test it before introducing it in a production environment. **WARNING** This template will create resources in your account that may incur billing charges.",
+    "Parameters": {
+        "AppName": {
+            "Description": "This name is used as a prefix for resource names",
+            "Type": "String",
+            "Default": "rain-webapp-sample"
+        },
+        "LambdaCodeS3Bucket": {
+            "Description": "The bucket where your lambda handler is",
+            "Type": "String",
+            "Default": "rain-artifacts-207567786752-us-east-1"
+        },
+        "LambdaCodeS3Key": {
+            "Description": "The object key for your lambda handler",
+            "Type": "String",
+            "Default": "512113b95e9fc6345b2e19a43350af82aaa815011120288f16b1f281d5efdc95"
+        }
+    },
+    "Resources": {
+        "TestResourceHandlerPolicy": {
+            "Type": "AWS::IAM::RolePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:Query",
+                                "dynamodb:Scan",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:UpdateItem"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "TestTable",
+                                        "Arn"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "PolicyName": "handler-policy",
+                "RoleName": {
+                    "Ref": "TestResourceHandlerRole"
+                }
+            }
+        },
+        "TestTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "DYNAMODB_PITR_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BillingMode": "PAY_PER_REQUEST",
+                "TableName": {
+                    "Fn::Sub": "${AppName}-test"
+                },
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "id",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "id",
+                        "KeyType": "HASH"
+                    }
+                ]
+            }
+        },
+        "SiteOriginAccessControl": {
+            "Type": "AWS::CloudFront::OriginAccessControl",
+            "Properties": {
+                "OriginAccessControlConfig": {
+                    "Name": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                {
+                                    "Ref": "AppName"
+                                },
+                                {
+                                    "Fn::Select": [
+                                        2,
+                                        {
+                                            "Fn::Split": [
+                                                "/",
+                                                {
+                                                    "Ref": "AWS::StackId"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        ]
+                    },
+                    "OriginAccessControlOriginType": "s3",
+                    "SigningBehavior": "always",
+                    "SigningProtocol": "sigv4"
+                }
+            }
+        },
+        "SiteDistribution": {
+            "Type": "AWS::CloudFront::Distribution",
+            "Metadata": {
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_174",
+                            "comment": "Using the default cloudfront certificate with no aliases"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "CLOUDFRONT_CUSTOM_SSL_CERTIFICATE",
+                        "CLOUDFRONT_ORIGIN_FAILOVER_ENABLED",
+                        "CLOUDFRONT_SNI_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "DistributionConfig": {
+                    "DefaultCacheBehavior": {
+                        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "Compress": true,
+                        "TargetOriginId": {
+                            "Fn::Sub": "${AppName}-origin-1"
+                        },
+                        "ViewerProtocolPolicy": "redirect-to-https"
+                    },
+                    "DefaultRootObject": "index.html",
+                    "Enabled": true,
+                    "HttpVersion": "http2",
+                    "IPV6Enabled": true,
+                    "Logging": {
+                        "Bucket": {
+                            "Fn::GetAtt": [
+                                "SiteCloudFrontLogsBucket",
+                                "RegionalDomainName"
+                            ]
+                        }
+                    },
+                    "Origins": [
+                        {
+                            "DomainName": {
+                                "Fn::GetAtt": [
+                                    "SiteContentBucket",
+                                    "RegionalDomainName"
+                                ]
+                            },
+                            "Id": {
+                                "Fn::Sub": "${AppName}-origin-1"
+                            },
+                            "OriginAccessControlId": {
+                                "Fn::GetAtt": [
+                                    "SiteOriginAccessControl",
+                                    "Id"
+                                ]
+                            },
+                            "S3OriginConfig": {
+                                "OriginAccessIdentity": ""
+                            }
+                        }
+                    ],
+                    "ViewerCertificate": {
+                        "CloudFrontDefaultCertificate": true
+                    },
+                    "WebACLId": {
+                        "Fn::GetAtt": [
+                            "SiteWebACL",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "SiteWebACL": {
+            "Type": "AWS::WAFv2::WebACL",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${AppName}-WebACLWithAMR"
+                },
+                "Scope": "CLOUDFRONT",
+                "Description": "Web ACL with AWS Managed Rules",
+                "DefaultAction": {
+                    "Allow": {}
+                },
+                "VisibilityConfig": {
+                    "SampledRequestsEnabled": true,
+                    "CloudWatchMetricsEnabled": true,
+                    "MetricName": "MetricForWebACLWithAMR"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "AppName"
+                        }
+                    }
+                ],
+                "Rules": [
+                    {
+                        "Name": "AWS-AWSManagedRulesCommonRuleSet",
+                        "Priority": 0,
+                        "OverrideAction": {
+                            "None": {}
+                        },
+                        "VisibilityConfig": {
+                            "SampledRequestsEnabled": true,
+                            "CloudWatchMetricsEnabled": true,
+                            "MetricName": "MetricForAMRCRS"
+                        },
+                        "Statement": {
+                            "ManagedRuleGroupStatement": {
+                                "VendorName": "AWS",
+                                "Name": "AWSManagedRulesCommonRuleSet",
+                                "ExcludedRules": [
+                                    {
+                                        "Name": "NoUserAgent_HEADER"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "SiteContentLogBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket records access logs for the main bucket",
+                "checkov": {
+                    "skip": [
+                        {
+                            "comment": "This is the log bucket",
+                            "id": "CKV_AWS_18"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "ObjectLockConfiguration": {
+                    "ObjectLockEnabled": "Enabled",
+                    "Rule": {
+                        "DefaultRetention": {
+                            "Mode": "COMPLIANCE",
+                            "Years": 1
+                        }
+                    }
+                },
+                "ObjectLockEnabled": true,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "SiteContentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-content-${AWS::Region}-${AWS::AccountId}"
+                },
+                "LoggingConfiguration": {
+                    "DestinationBucketName": {
+                        "Ref": "SiteContentLogBucket"
+                    }
+                },
+                "ObjectLockEnabled": false,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "ReplicationConfiguration": {
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "SiteContentReplicationRole",
+                            "Arn"
+                        ]
+                    },
+                    "Rules": [
+                        {
+                            "Destination": {
+                                "Bucket": {
+                                    "Fn::GetAtt": [
+                                        "SiteContentReplicaBucket",
+                                        "Arn"
+                                    ]
+                                }
+                            },
+                            "Status": "Enabled"
+                        }
+                    ]
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "SiteContentReplicaBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket is used as a target for replicas from the main bucket",
+                "checkov": {
+                    "skip": [
+                        {
+                            "comment": "This is the replica bucket",
+                            "id": "CKV_AWS_18"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}"
+                },
+                "ObjectLockEnabled": false,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "SiteContentReplicationPolicy": {
+            "Type": "AWS::IAM::RolePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:GetReplicationConfiguration",
+                                "s3:ListBucket"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}"
+                            }
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObjectVersionForReplication",
+                                "s3:GetObjectVersionAcl",
+                                "s3:GetObjectVersionTagging"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        },
+                        {
+                            "Action": [
+                                "s3:ReplicateObject",
+                                "s3:ReplicateDelete",
+                                "s3:ReplicationTags"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "bucket-replication-policy",
+                "RoleName": {
+                    "Ref": "SiteContentReplicationRole"
+                }
+            }
+        },
+        "SiteContentReplicationRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "s3.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/"
+            }
+        },
+        "SiteContentLogBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-logs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "SiteContentBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-content-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:GetObject",
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}/*"
+                            },
+                            "Principal": {
+                                "Service": "cloudfront.amazonaws.com"
+                            },
+                            "Condition": {
+                                "StringEquals": {
+                                    "AWS:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution.Id}"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "SiteContentReplicaBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-content-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "SiteCloudFrontLogsLogBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket records access logs for the main bucket",
+                "checkov": {
+                    "skip": [
+                        {
+                            "comment": "This is the log bucket",
+                            "id": "CKV_AWS_18"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "ObjectLockConfiguration": {
+                    "ObjectLockEnabled": "Enabled",
+                    "Rule": {
+                        "DefaultRetention": {
+                            "Mode": "COMPLIANCE",
+                            "Years": 1
+                        }
+                    }
+                },
+                "ObjectLockEnabled": true,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "SiteCloudFrontLogsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "LoggingConfiguration": {
+                    "DestinationBucketName": {
+                        "Ref": "SiteCloudFrontLogsLogBucket"
+                    }
+                },
+                "ObjectLockEnabled": false,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "ReplicationConfiguration": {
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "SiteCloudFrontLogsReplicationRole",
+                            "Arn"
+                        ]
+                    },
+                    "Rules": [
+                        {
+                            "Destination": {
+                                "Bucket": {
+                                    "Fn::GetAtt": [
+                                        "SiteCloudFrontLogsReplicaBucket",
+                                        "Arn"
+                                    ]
+                                }
+                            },
+                            "Status": "Enabled"
+                        }
+                    ]
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "OwnershipControls": {
+                    "Rules": [
+                        {
+                            "ObjectOwnership": "BucketOwnerPreferred"
+                        }
+                    ]
+                }
+            }
+        },
+        "SiteCloudFrontLogsReplicaBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket is used as a target for replicas from the main bucket",
+                "checkov": {
+                    "skip": [
+                        {
+                            "comment": "This is the replica bucket",
+                            "id": "CKV_AWS_18"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "BucketName": {
+                    "Fn::Sub": "${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}"
+                },
+                "ObjectLockEnabled": false,
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "SiteCloudFrontLogsReplicationPolicy": {
+            "Type": "AWS::IAM::RolePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:GetReplicationConfiguration",
+                                "s3:ListBucket"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}"
+                            }
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObjectVersionForReplication",
+                                "s3:GetObjectVersionAcl",
+                                "s3:GetObjectVersionTagging"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        },
+                        {
+                            "Action": [
+                                "s3:ReplicateObject",
+                                "s3:ReplicateDelete",
+                                "s3:ReplicationTags"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "bucket-replication-policy",
+                "RoleName": {
+                    "Ref": "SiteCloudFrontLogsReplicationRole"
+                }
+            }
+        },
+        "SiteCloudFrontLogsReplicationRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "s3.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/"
+            }
+        },
+        "SiteCloudFrontLogsLogBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-logs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "SiteCloudFrontLogsBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "SiteCloudFrontLogsReplicaBucketAccessPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Fn::Sub": "${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "s3:*",
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": false
+                                }
+                            },
+                            "Effect": "Deny",
+                            "Principal": {
+                                "AWS": "*"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": "s3:PutObject",
+                            "Condition": {
+                                "ArnLike": {
+                                    "aws:SourceArn": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}"
+                                    }
+                                },
+                                "StringEquals": {
+                                    "aws:SourceAccount": {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "logging.s3.amazonaws.com"
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${AppName}-cflogs-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "CognitoUserPool": {
+            "Type": "AWS::Cognito::UserPool",
+            "DependsOn": [
+                "SiteDistribution"
+            ],
+            "Properties": {
+                "UserPoolName": {
+                    "Ref": "AppName"
+                },
+                "AdminCreateUserConfig": {
+                    "AllowAdminCreateUserOnly": true
+                },
+                "AutoVerifiedAttributes": [
+                    "email"
+                ],
+                "Schema": [
+                    {
+                        "Name": "email",
+                        "Required": true
+                    },
+                    {
+                        "Name": "given_name",
+                        "Required": true
+                    },
+                    {
+                        "Name": "family_name",
+                        "Required": true
+                    }
+                ]
+            }
+        },
+        "CognitoDomain": {
+            "Type": "AWS::Cognito::UserPoolDomain",
+            "Properties": {
+                "Domain": {
+                    "Ref": "AppName"
+                },
+                "UserPoolId": {
+                    "Ref": "CognitoUserPool"
+                }
+            }
+        },
+        "CognitoClient": {
+            "Type": "AWS::Cognito::UserPoolClient",
+            "Properties": {
+                "ClientName": {
+                    "Ref": "AppName"
+                },
+                "GenerateSecret": false,
+                "UserPoolId": {
+                    "Ref": "CognitoUserPool"
+                },
+                "CallbackURLs": [
+                    {
+                        "Fn::Sub": "https://${SiteDistribution.DomainName}/index.html"
+                    }
+                ],
+                "AllowedOAuthFlows": [
+                    "code"
+                ],
+                "AllowedOAuthFlowsUserPoolClient": true,
+                "AllowedOAuthScopes": [
+                    "phone",
+                    "email",
+                    "openid"
+                ],
+                "SupportedIdentityProviders": [
+                    "COGNITO"
+                ]
+            }
+        },
+        "TestResourceHandler": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
+            "Properties": {
+                "Handler": "bootstrap",
+                "FunctionName": {
+                    "Fn::Sub": "${AppName}-test-handler"
+                },
+                "Runtime": "provided.al2023",
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaCodeS3Bucket"
+                    },
+                    "S3Key": {
+                        "Ref": "LambdaCodeS3Key"
+                    }
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "TestResourceHandlerRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "TABLE_NAME": {
+                            "Ref": "TestTable"
+                        }
+                    }
+                }
+            }
+        },
+        "TestResourceHandlerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ]
+            }
+        },
+        "TestResourceResource": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "ParentId": {
+                    "Fn::Sub": "${RestApi.RootResourceId}"
+                },
+                "PathPart": "test",
+                "RestApiId": {
+                    "Ref": "RestApi"
+                }
+            }
+        },
+        "TestResourcePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TestResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/*"
+                }
+            }
+        },
+        "TestResourceRootPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "TestResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/"
+                }
+            }
+        },
+        "TestResourceOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "OPTIONS",
+                "ResourceId": {
+                    "Ref": "TestResourceResource"
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "NONE",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TestResourceHandler.Arn}/invocations"
+                    }
+                }
+            }
+        },
+        "TestResourceGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "GET",
+                "ResourceId": {
+                    "Ref": "TestResourceResource"
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "COGNITO_USER_POOLS",
+                "AuthorizerId": {
+                    "Ref": "RestApiAuthorizer"
+                },
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TestResourceHandler.Arn}/invocations"
+                    }
+                }
+            }
+        },
+        "JwtResourceHandler": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC"
+                    ]
+                }
+            },
+            "Properties": {
+                "Handler": "bootstrap",
+                "FunctionName": {
+                    "Fn::Sub": "${AppName}-jwt-handler"
+                },
+                "Runtime": "provided.al2023",
+                "Code": {
+                    "S3Bucket": "rain-artifacts-207567786752-us-east-1",
+                    "S3Key": "15d7c92b571beed29cf6c012a96022482eee1df1b477ad528ddc03a4be52c076"
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "JwtResourceHandlerRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "COGNITO_REGION": "us-east-1",
+                        "COGNITO_POOL_ID": {
+                            "Ref": "CognitoUserPool"
+                        },
+                        "COGNITO_REDIRECT_URI": {
+                            "Fn::Sub": "https://${SiteDistribution.DomainName}/index.html"
+                        },
+                        "COGNITO_DOMAIN_PREFIX": {
+                            "Ref": "AppName"
+                        },
+                        "COGNITO_APP_CLIENT_ID": {
+                            "Ref": "CognitoClient"
+                        }
+                    }
+                }
+            }
+        },
+        "JwtResourceHandlerRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ]
+            }
+        },
+        "JwtResourceResource": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "ParentId": {
+                    "Fn::Sub": "${RestApi.RootResourceId}"
+                },
+                "PathPart": "jwt",
+                "RestApiId": {
+                    "Ref": "RestApi"
+                }
+            }
+        },
+        "JwtResourcePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "JwtResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/*"
+                }
+            }
+        },
+        "JwtResourceRootPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "JwtResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/"
+                }
+            }
+        },
+        "JwtResourceOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "OPTIONS",
+                "ResourceId": {
+                    "Ref": "JwtResourceResource"
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "NONE",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JwtResourceHandler.Arn}/invocations"
+                    }
+                }
+            }
+        },
+        "JwtResourceGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "GET",
+                "ResourceId": {
+                    "Ref": "JwtResourceResource"
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "NONE",
+                "AuthorizerId": "AWS::NoValue",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JwtResourceHandler.Arn}/invocations"
+                    }
+                }
+            }
+        },
+        "RestApi": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+                "Name": {
+                    "Ref": "AppName"
+                }
+            }
+        },
+        "RestApiDeployment": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "DependsOn": [
+                "TestResourceGet",
+                "TestResourceOptions",
+                "JwtResourceGet",
+                "JwtResourceOptions"
+            ],
+            "Metadata": {
+                "Version": 2
+            },
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestApi"
+                }
+            }
+        },
+        "RestApiStage": {
+            "Type": "AWS::ApiGateway::Stage",
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "DeploymentId": {
+                    "Ref": "RestApiDeployment"
+                },
+                "StageName": "prod"
+            }
+        },
+        "RestApiAuthorizer": {
+            "Type": "AWS::ApiGateway::Authorizer",
+            "Properties": {
+                "IdentitySource": "method.request.header.authorization",
+                "Name": "CognitoApiAuthorizer",
+                "ProviderARNs": [
+                    {
+                        "Fn::GetAtt": [
+                            "CognitoUserPool",
+                            "Arn"
+                        ]
+                    }
+                ],
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "Type": "COGNITO_USER_POOLS"
+            }
+        }
+    },
+    "Outputs": {
+        "SiteURL": {
+            "Value": {
+                "Fn::Sub": "https://${SiteDistribution.DomainName}"
+            }
+        },
+        "RedirectURI": {
+            "Value": {
+                "Fn::Sub": "https://${SiteDistribution.DomainName}/index.html"
+            }
+        },
+        "AppName": {
+            "Value": {
+                "Ref": "AppName"
+            }
+        },
+        "RestApiInvokeURL": {
+            "Value": {
+                "Fn::Sub": "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}"
+            }
+        },
+        "AppClientId": {
+            "Value": {
+                "Ref": "CognitoClient"
+            }
+        },
+        "CognitoDomainPrefix": {
+            "Value": {
+                "Ref": "AppName"
+            }
+        }
+    }
+}

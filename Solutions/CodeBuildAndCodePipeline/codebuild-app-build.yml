@@ -7,6 +7,10 @@ env:
     RelativePathToTestProject: "serverless-test-samples/dotnet-test-samples/apigw-lambda-ddb/tests/ApiTests.UnitTest"
     OutputLocation: "output/src/lambda/sample-lambda-code.zip"
 phases:
+  install:
+    runtime-versions:
+      dotnet: 8.0
+
   pre_build:
     commands: 
       - git clone $SampleRepository

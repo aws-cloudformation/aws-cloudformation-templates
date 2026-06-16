@@ -1,0 +1,37 @@
+Parameters:
+
+  AppName:
+    Type: String
+
+  UserPoolArn:
+    Type: String
+
+Resources:
+
+  Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref AppName
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref Api
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref Api
+      DeploymentId: !Ref ApiDeployment
+      StageName: prod
+
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      IdentitySource: method.request.header.authorization
+      Name: CognitoApiAuthorizer
+      ProviderARNs: 
+        - !Ref UserPoolArn
+      RestApiId: !Ref Api
+      Type: COGNITO_USER_POOLS
+

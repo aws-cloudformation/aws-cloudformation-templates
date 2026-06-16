@@ -22,7 +22,7 @@ Resources:
         - Key: Upper
           Value:
             'Fn::Transform':
-             - Name: 'String'
+               Name: 'String'
                Parameters:
                  InputString: !Ref InputString
                  Operation: Upper

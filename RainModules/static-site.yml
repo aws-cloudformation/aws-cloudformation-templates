@@ -1,0 +1,142 @@
+Description: This module creates a static website consisting of an S3 bucket and a CloudFront distribution.
+
+Parameters:
+
+  AppName: 
+    Type: String
+
+Resources:
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Join
+          - ""
+          - - !Ref AppName
+            - !Select
+              - 2
+              - !Split
+                - /
+                - !Ref AWS::StackId
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_174
+            comment: Using the default cloudfront certificate with no aliases
+      guard:
+        SuppressedRules:
+          - CLOUDFRONT_CUSTOM_SSL_CERTIFICATE
+          - CLOUDFRONT_ORIGIN_FAILOVER_ENABLED
+          - CLOUDFRONT_SNI_ENABLED
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          Compress: true
+          TargetOriginId: !Sub ${AppName}-origin-1
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Logging:
+          Bucket: !GetAtt CloudFrontLogsBucket.RegionalDomainName
+        Origins:
+          - DomainName: !GetAtt ContentBucket.RegionalDomainName
+            Id: !Sub ${AppName}-origin-1
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        WebACLId: !GetAtt WebACL.Arn
+
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: WebACLWithAMR
+      Scope: CLOUDFRONT
+      Description: Web ACL with AWS Managed Rules
+      DefaultAction: 
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: MetricForWebACLWithAMR
+      Tags:
+        - Key: Name
+          Value: !Ref AppName
+      Rules: 
+        - Name: AWS-AWSManagedRulesCommonRuleSet
+          Priority: 0
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: MetricForAMRCRS
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules:
+                - Name: NoUserAgent_HEADER
+
+  Content:
+    Type: !Rain::Module "bucket.yaml"
+    Properties:
+      AppName: !Sub ${AppName}-content
+    Overrides:
+      BucketAccessPolicy:
+        Properties:
+          PolicyDocument:
+            Statement:
+              - Action: s3:GetObject
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*
+                Principal:
+                  Service: cloudfront.amazonaws.com
+                Condition:
+                  StringEquals:
+                    AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution.Id}
+              - Action: s3:*
+                Condition:
+                  Bool:
+                    aws:SecureTransport: false
+                Effect: Deny
+                Principal:
+                  AWS: '*'
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}
+                  - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*
+              - Action: s3:PutObject
+                Condition:
+                  ArnLike:
+                    aws:SourceArn: !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}
+                  StringEquals:
+                    aws:SourceAccount: !Ref AWS::AccountId
+                Effect: Allow
+                Principal:
+                  Service: logging.s3.amazonaws.com
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::${AppName}-${AWS::Region}-${AWS::AccountId}/*
+            Version: "2012-10-17"
+
+  CloudFrontLogs:
+    Type: !Rain::Module "bucket.yaml"
+    Properties:
+      AppName: !Sub ${AppName}-cflogs
+    Overrides:
+      Bucket:
+        Properties:
+          OwnershipControls:
+            Rules:
+              - ObjectOwnership: BucketOwnerPreferred
+

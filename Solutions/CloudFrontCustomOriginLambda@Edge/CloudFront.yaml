@@ -20,6 +20,22 @@ Parameters:
       - qa
     Default: dev
 
+  VpcId:
+    Description: Please specify the VPC ID.
+    Type: AWS::EC2::VPC::Id
+    ConstraintDescription: "Must be a valid VPC ID"
+
+  PublicSubnetId1:
+    Description: Please specify first public subnet ID.
+    Type: AWS::EC2::Subnet::Id
+    ConstraintDescription: "Must be a valid subnet ID in the selected VPC"
+  
+  PublicSubnetId2:
+    Description: Please specify second public subnet ID.
+    Type: AWS::EC2::Subnet::Id
+    ConstraintDescription: "Must be a valid subnet ID in the selected VPC"
+
+    
   AppName:
     Description: Application environment name.
     Type: String
@@ -89,8 +105,8 @@ Parameters:
 
   KeyPairName:
     Description: EC2 KeyPair.
-    Type: AWS::EC2::KeyPair::KeyName
-    Default: keypair
+    Type: AWS::EC2::KeyPair::KeyName    
+    ConstraintDescription: "Must be the name of an existing EC2 KeyPair"
 
   BootVolSize:
     Description: EC2 Instance Boot volume size.
@@ -283,11 +299,6 @@ Parameters:
     Type: String
     Default: /health.html
 
-  LambdaFunctionVersion:
-    Description: AWS Lambda@Edge function version.
-    Type: String
-    Default: "1"
-
   LoggingBucketVersioning:
     Description: The versioning state of an Amazon S3 bucket. If you enable versioning, you must suspend versioning to disable it.
     Type: String
@@ -405,11 +416,15 @@ Resources:
           - S3_BUCKET_LOGGING_ENABLED
     Properties:
       BucketName: !Sub ${AppName}-logging-${Environment}-${AWS::AccountId}-${AWS::Region}
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      AccessControl: LogDeliveryWrite
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -448,13 +463,8 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref EC2ImageId
-      AvailabilityZone: !Select
-        - "0"
-        - !GetAZs
-          Ref: AWS::Region
       InstanceType: !Ref EC2InstanceType
-      SubnetId: !ImportValue
-        Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet1ID
+      SubnetId: !Ref PublicSubnetId1
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
@@ -475,8 +485,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: EC2 Instance Security Group
-      VpcId: !ImportValue
-        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
+      VpcId: !Ref VpcId
       Tags:
         - Key: Name
           Value: !Sub ${AppName}-${Environment}-ec2-instance-SG
@@ -508,10 +517,8 @@ Resources:
         - Key: routing.http2.enabled
           Value: !Ref ALBAttributeRoutingHttp2
       Subnets:
-        - !ImportValue
-          Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet1ID
-        - !ImportValue
-          Fn::Sub: ${AppName}-vpc-${Environment}-PublicSubnet2ID
+        - !Ref PublicSubnetId1
+        - !Ref PublicSubnetId2
       SecurityGroups:
         - !Ref ALBExternalAccessSG
       Tags:
@@ -542,8 +549,7 @@ Resources:
           Port: !Ref OriginALBTGPort
       Port: !Ref OriginALBTGPort
       Protocol: HTTP
-      VpcId: !ImportValue
-        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
+      VpcId: !Ref VpcId
       Tags:
         - Key: Name
           Value: !Sub ${AppName}-${Environment}-alb-tg
@@ -558,8 +564,8 @@ Resources:
       DefaultActions:
         - TargetGroupArn: !Ref OriginALBTG
           Type: forward
-      LoadBalancerArn: !Ref OriginALB
-      Port: "443"
+      LoadBalancerArn: !Ref OriginALB      
+      Port: 443
       Protocol: HTTPS
       Certificates:
         - CertificateArn: !Sub arn:${AWS::Partition}:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertificateIdentifier}
@@ -585,8 +591,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow external access to ALB
-      VpcId: !ImportValue
-        Fn::Sub: ${AppName}-vpc-${Environment}-VPC-ID
+      VpcId: !Ref VpcId
       Tags:
         - Key: Name
           Value: !Sub ${AppName}-${Environment}-alb-external-access-ingrees-SG
@@ -598,18 +603,18 @@ Resources:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref ALBExternalAccessSG
-      ToPort: "443"
+      ToPort: 443
       IpProtocol: tcp
-      FromPort: "443"
+      FromPort: 443
       CidrIp: 0.0.0.0/0
 
   HTTPTcpIn:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       GroupId: !Ref ALBExternalAccessSG
-      ToPort: "80"
+      ToPort: 80
       IpProtocol: tcp
-      FromPort: "80"
+      FromPort: 80
       CidrIp: 0.0.0.0/0
 
   # SECURITY GROUP EGRESS
@@ -617,9 +622,9 @@ Resources:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       GroupId: !Ref ALBExternalAccessSG
-      ToPort: "8080"
+      ToPort: 8080
       IpProtocol: tcp
-      FromPort: "8080"
+      FromPort: 8080
       DestinationSecurityGroupId: !Ref EC2InstanceSG
 
   # CLOUDFRONT DISTRIBUTION
@@ -635,8 +640,8 @@ Resources:
           - DomainName: !GetAtt OriginALB.DNSName
             Id: !Ref OriginALB
             CustomOriginConfig:
-              HTTPPort: "80"
-              HTTPSPort: "443"
+              HTTPPort: 80
+              HTTPSPort: 443
               OriginProtocolPolicy: !Ref OriginProtocolPolicy
               OriginKeepaliveTimeout: !Ref OriginKeepaliveTimeout
               OriginReadTimeout: !Ref OriginReadTimeout
@@ -731,45 +736,10 @@ Resources:
             };
       Runtime: nodejs20.x
 
-  # LAMBDA@EDGE VERSION VERSION
   LambdaEdgeVersion:
-    Type: Custom::LambdaVersion
+    Type: AWS::Lambda::Version
     Properties:
-      ServiceToken: !GetAtt LambdaEdgeVersionFunction.Arn
       FunctionName: !Ref LambdaEdgeFunction
-      LambdaCodeVersion: !Ref LambdaFunctionVersion
-
-  # LAMBDA@EDGE VERSION FUNCTION
-  LambdaEdgeVersionFunction:
-    Type: AWS::Lambda::Function
-    Metadata:
-      guard:
-        SuppressedRules:
-          - LAMBDA_INSIDE_VPC
-    Properties:
-      Description: A custom Lambda@Edge Version function
-      FunctionName: !Sub ${AppName}-lambda-edge-version-${Environment}
-      Handler: index.handler
-      Role: !GetAtt LambdaEdgeIAMRole.Arn
-      MemorySize: 128
-      Timeout: 30
-      Code:
-        ZipFile: |
-          var AWS = require('aws-sdk');
-          var response = require('cfn-response');
-          exports.handler = (event, context) => {
-            console.log("Request received:\n", JSON.stringify(event));
-            if (event.RequestType == 'Delete') {
-              return response.send(event, context, response.SUCCESS);
-            }
-            var lambda = new AWS.Lambda();
-            lambda.publishVersion({FunctionName: event.ResourceProperties.FunctionName}).promise().then((data) => {
-              return response.send(event, context, response.SUCCESS, {Version: data.Version}, data.FunctionArn);
-            }).catch((e) => {
-              return response.send(event, context, response.FAILED, e);
-            });
-          };
-      Runtime: nodejs20.x
 
 Outputs:
   AdministratorAccessIAMRole:

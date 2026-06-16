@@ -4,13 +4,11 @@ import json
 
 DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 TIMES = ['morning', 'afternoon', 'evening', 'night', 'day']
-
-
 def lambda_handler(event, _):
     """
     Lambda handler
     """
-    name = event.get("name", "you")
+    name = event.get("name", "your")
     city = event.get("city", "world")
     time = event.get("time", "day")
     day = event.get("day", None)

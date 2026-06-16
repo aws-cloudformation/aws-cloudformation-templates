@@ -1,0 +1,6 @@
+pytest>=7.4.0
+coverage==7.10.2
+pytest-mock==3.10.0
+pylint==3.3.7
+bandit==1.8.6
+pip-audit==2.9.0
