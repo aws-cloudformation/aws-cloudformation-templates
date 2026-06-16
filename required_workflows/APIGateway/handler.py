@@ -1,4 +1,4 @@
-"""Generate a greeting as a demo of an API"""
+"""Generate a greeting as part of a test API"""
 
 import json
 
