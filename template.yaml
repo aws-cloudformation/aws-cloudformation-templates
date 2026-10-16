@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for creating EUC-Multi-Account-Role'
+
+Parameters:
+  DataCollectorAccountId:
+    Type: String
+    Description: 'The AWS account ID (Master Payer/Data Collector) to trust (e.g., 0121131594671)'
+Resources:
+  EUCMultiAccountRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 'EUC-Multi-Account-Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${DataCollectorAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              ForAnyValue:ArnEquals:
+                aws:PrincipalArn:
+                  - !Sub 'arn:aws:iam::${DataCollectorAccountId}:role/Workspaces-CWMetrics-*'
+                  - !Sub 'arn:aws:iam::${DataCollectorAccountId}:role/Workspaces-Events-*'
+                  - !Sub 'arn:aws:iam::${DataCollectorAccountId}:role/Workspaces-Inventory-*'
+      Policies:
+        - PolicyName: CWAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'cloudwatch:GetMetricStatistics'
+                  - 'cloudwatch:ListMetrics'
+                Resource: '*'
+        - PolicyName: WorkspaceAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'workspaces:DescribeWorkspaces'
+                  - 'workspaces:DescribeWorkspaceDirectories'
+                  - 'workspaces:DescribeWorkspacesConnectionStatus'
+                  - 'kms:ListKeys'
+                  - 'kms:ListAliases'
+                  - 'kms:DescribeKey'
+                Resource: '*'
+              - Effect: Allow
+                Action: 'ec2:DescribeRegions'
+                Resource: '*'
+
+Outputs:
+  RoleARN:
+    Description: 'ARN of the created IAM Role'
+    Value: !GetAtt EUCMultiAccountRole.Arn
